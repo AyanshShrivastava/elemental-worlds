@@ -1,8 +1,8 @@
 --!strict
 --[[
     Elemental Worlds: Master Client Entry Point
-    Coordinates all client subsystems: Anime HUD, Camera Shake, 3D Damage Numbers,
-    Tactile Audio, Procedural Limb Lerping, and Network Event Listeners.
+    Initializes Anime HUD, Creator Dashboard, Spin Gacha UI, Monetization Shop,
+    Camera Shake, 3D Damage Numbers, Tactile Audio, and Network Event Listeners.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,26 +14,30 @@ local CombatController = require(script.Parent.Controllers.CombatController)
 local CameraShakeController = require(script.Parent.Controllers.CameraShakeController)
 local MobileController = require(script.Parent.Controllers.MobileController)
 local VFXController = require(script.Parent.Controllers.VFXController)
+local AdminPanelController = require(script.Parent.Controllers.AdminPanelController)
+local SpinUIController = require(script.Parent.Controllers.SpinUIController)
+local ShopUIController = require(script.Parent.Controllers.ShopUIController)
 
 local localPlayer = Players.LocalPlayer
 
--- 1. Initialize Camera Shake
+-- 1. Initialize Core Systems
 CameraShakeController.Init()
-
--- 2. Initialize Anime HUD
 UIController.CreateHUD()
 
--- 3. Link Cooldown callback from CombatController to UI
+-- 2. Link Cooldown callback
 CombatController.SetCooldownCallback(function(slot, duration)
     UIController.StartCooldown(slot, duration)
 end)
 
--- 4. Initialize Controllers
+-- 3. Initialize Interactive Panels & Controllers
 CombatController.Init()
 MobileController.Init()
 VFXController.Init()
+AdminPanelController.Init()
+SpinUIController.Init()
+ShopUIController.Init()
 
--- 5. Track character health changes for dual-layer health bar
+-- 4. Health tracking for dual-layer health bar
 local function OnCharacterAdded(character: Model)
     local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
     if humanoid then
@@ -49,7 +53,7 @@ if localPlayer.Character then
 end
 localPlayer.CharacterAdded:Connect(OnCharacterAdded)
 
--- 6. Listen for Stats updates from server
+-- 5. Network listeners
 local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
 if remotes then
     local updateStatsEvent = remotes:WaitForChild(GameConfig.REMOTES.UPDATE_STATS, 5) :: RemoteEvent?
@@ -67,4 +71,4 @@ if remotes then
     end
 end
 
-print("[Elemental Worlds] Client initialized with full anime VFX, audio & camera systems.")
+print("[Elemental Worlds] Client initialized with full Creator Suite, Spin Gacha, and Monetization Shop.")

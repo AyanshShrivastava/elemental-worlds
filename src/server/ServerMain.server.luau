@@ -1,7 +1,8 @@
 --!strict
 --[[
     Elemental Worlds: Master Server Entry Point
-    Initializes Remotes, Services, Player Lifecycles, and Network Routing.
+    Initializes Remotes, Services, Map Generation, Monetization, Creator Perks,
+    Player Lifecycles, and Network Routing.
 ]]
 
 local Players = game:GetService("Players")
@@ -15,6 +16,9 @@ local CooldownService = require(script.Parent.Services.CooldownService)
 local CombatService = require(script.Parent.Services.CombatService)
 local RNGSystem = require(script.Parent.Services.RNGSystem)
 local AdminService = require(script.Parent.Services.AdminService)
+local MapService = require(script.Parent.Services.MapService)
+local MonetizationService = require(script.Parent.Services.MonetizationService)
+local CreatorPerksService = require(script.Parent.Services.CreatorPerksService)
 
 -- 1. Ensure Remotes folder and events exist
 local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
@@ -40,19 +44,10 @@ local updateStatsEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.UPDATE_STATS)
 local rollElementEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.ROLL_ELEMENT)
 local globalAnnounceEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.GLOBAL_ANNOUNCEMENT)
 local vfxTriggerEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.VFX_TRIGGER)
+local elementRolledEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.ELEMENT_ROLLED)
 
--- 2. Ensure standard Workspace folders exist
-local function EnsureWorkspaceFolder(name: string)
-    if not Workspace:FindFirstChild(name) then
-        local folder = Instance.new("Folder")
-        folder.Name = name
-        folder.Parent = Workspace
-    end
-end
-EnsureWorkspaceFolder("NPCs")
-EnsureWorkspaceFolder("VFX")
-EnsureWorkspaceFolder("SpawnLocations")
-EnsureWorkspaceFolder("Map")
+-- 2. Build World 1 Map and Regions
+MapService.BuildWorld1()
 
 -- 3. Remote Event Listeners
 castAbilityEvent.OnServerEvent:Connect(function(player: Player, slot: any, clientData: any)
@@ -63,8 +58,6 @@ end)
 
 rollElementEvent.OnServerEvent:Connect(function(player: Player)
     local rolled = RNGSystem.RollElement(player)
-    -- Notify client
-    local elementRolledEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.ELEMENT_ROLLED)
     elementRolledEvent:FireClient(player, rolled)
 end)
 
@@ -73,10 +66,14 @@ local function OnPlayerAdded(player: Player)
     -- Load profile
     local profile = PlayerDataService.LoadProfile(player)
 
+    -- Apply creator crown & title if coolzgamer9
+    CreatorPerksService.ApplyCreatorVisuals(player)
+
     -- Handle character spawns
     player.CharacterAdded:Connect(function(character)
         PlayerDataService.ApplyLevelHealth(player)
         PlayerDataService.SyncClient(player)
+        CreatorPerksService.ApplyCreatorVisuals(player)
     end)
 
     if player.Character then
@@ -114,4 +111,4 @@ pcall(function()
     end)
 end)
 
-print("[Elemental Worlds] Server initialized successfully.")
+print("[Elemental Worlds] Master Server with Map, Monetization, Creator Perks, and Saving initialized.")
