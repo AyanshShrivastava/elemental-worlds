@@ -3,12 +3,14 @@
     Elemental Worlds: Hitbox & Target Resolution Service
     Authoritative spatial queries supporting Players and NPCs in nested folders.
     MANDATORY: Directional verification via CombatHelper guarantees no damage to targets behind or outside cone.
+    Replicates visual impact bursts, 3D damage numbers, and combo counters to clients.
 ]]
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local CombatHelper = require(ReplicatedStorage.Shared.Modules.CombatHelper)
 local StatusEffectService = require(script.Parent.StatusEffectService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
@@ -86,7 +88,7 @@ function HitboxService.FindTargetsInCone(
     return targets
 end
 
--- Finds a single closest target in cone (useful for targeted moves like Flames of Fury, Terra Finisher, Got Throwed)
+-- Finds a single closest target in cone
 function HitboxService.FindClosestTargetInCone(
     attackerCFrame: CFrame,
     maxRange: number,
@@ -108,25 +110,25 @@ function HitboxService.FindClosestTargetInCone(
     return closest
 end
 
--- Authoritatively deals damage and applies on-hit effects
+-- Authoritatively deals damage and replicates visual / audio feedback
 function HitboxService.ApplyDamage(
     attackerPlayer: Player?,
     target: ValidTarget,
     baseDamage: number,
-    knockbackVector: Vector3?
+    knockbackVector: Vector3?,
+    comboStep: number?
 ): boolean
     local targetChar = target.Character
     local humanoid = target.Humanoid
 
     -- 1. Check if target can take damage (checks Untouchable & GotGlitched)
     if not StatusEffectService.CanTakeDamage(targetChar) then
-        return false -- Immune!
+        return false -- Invulnerable!
     end
 
     -- 2. Check if Water Dragon transformation is active on target (ends on hit + burst)
     if StatusEffectService.HasEffect(targetChar, "WaterDragon") then
         StatusEffectService.RemoveEffect(targetChar, "WaterDragon")
-        -- Trigger droplet burst damage around target
         local burstTargets = HitboxService.FindTargetsInCone(target.RootPart.CFrame, 15, 360, targetChar)
         for _, bTarget in burstTargets do
             bTarget.Humanoid:TakeDamage(15)
@@ -135,12 +137,14 @@ function HitboxService.ApplyDamage(
 
     -- 3. Calculate scaled damage based on attacker's level
     local attackerLevel = 1
+    local attackerElement = "Fire"
     if attackerPlayer then
         local profile = PlayerDataService.GetProfile(attackerPlayer)
         if profile then
             attackerLevel = profile.Level
+            attackerElement = profile.Element
 
-            -- If using Error element M1, add +5% to Error Meter on valid hit!
+            -- If using Error element M1, add +5% to Error Meter on valid hit
             if profile.Element == "Error" then
                 PlayerDataService.AddErrorMeter(attackerPlayer, 5)
             end
@@ -150,7 +154,35 @@ function HitboxService.ApplyDamage(
     local finalDamage = CombatHelper.CalculateDamage(baseDamage, attackerLevel)
     humanoid:TakeDamage(finalDamage)
 
-    -- 4. Apply knockback impulse if specified
+    -- 4. Replicate Visual Burst & Floating 3D Damage Numbers to clients
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if remotes then
+        local vfxEvent = remotes:FindFirstChild(GameConfig.REMOTES.VFX_TRIGGER) :: RemoteEvent?
+        if vfxEvent then
+            local isCrit = (comboStep == 4)
+            -- 3D Damage Number
+            vfxEvent:FireAllClients("DamageNumber", {
+                Position = target.RootPart.Position,
+                Damage = finalDamage,
+                Element = attackerElement,
+                IsCrit = isCrit,
+            })
+            -- Impact Particle Burst & Shake
+            vfxEvent:FireAllClients("ImpactBurst", {
+                Position = target.RootPart.Position,
+                Element = attackerElement,
+                Count = if isCrit then 45 else 25,
+                Shake = if isCrit then 0.4 else 0.2,
+            })
+
+            -- Combo Hit Counter to attacker
+            if attackerPlayer and comboStep then
+                vfxEvent:FireClient(attackerPlayer, "ComboHit", { Count = comboStep })
+            end
+        end
+    end
+
+    -- 5. Apply knockback impulse
     if knockbackVector and target.RootPart and not target.RootPart.Anchored then
         target.RootPart:ApplyImpulse(knockbackVector * target.RootPart.AssemblyMass)
     end

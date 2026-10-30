@@ -2,7 +2,7 @@
 --[[
     Elemental Worlds: Combat Service
     Server-authoritative router for player ability casts.
-    Performs validation (Cooldowns, Stuns, Elements, Error Meter) before executing abilities.
+    Validates cooldowns, stuns, elements, error meters, and combo steps.
 ]]
 
 local Players = game:GetService("Players")
@@ -35,7 +35,7 @@ local elementHandlers: { [string]: any } = {
     Time = TimeElement,
 }
 
-function CombatService.ProcessCast(player: Player, slot: string)
+function CombatService.ProcessCast(player: Player, slot: string, clientData: any?)
     local char = player.Character
     if not char then return end
 
@@ -51,7 +51,7 @@ function CombatService.ProcessCast(player: Player, slot: string)
     local element = profile.Element
     local ability = AbilityConfig.GetAbility(element, slot)
     if not ability then
-        return -- Invalid slot for this element
+        return
     end
 
     -- 1. Cooldown Check
@@ -60,7 +60,7 @@ function CombatService.ProcessCast(player: Player, slot: string)
         return
     end
 
-    -- 2. Stun Check (Allow if move has CanCastWhileStunned set to true)
+    -- 2. Stun Check
     if not ability.CanCastWhileStunned and not StatusEffectService.CanCastAbilities(char) then
         return
     end
@@ -68,28 +68,39 @@ function CombatService.ProcessCast(player: Player, slot: string)
     -- 3. Error Meter Check
     if ability.ErrorMeterCost and ability.ErrorMeterCost > 0 then
         if profile.ErrorMeter < ability.ErrorMeterCost then
-            return -- Insufficient Error Meter
+            return
         end
     end
 
-    -- Server-Authoritative: Start Cooldown
-    CooldownService.StartCooldown(player, slot, ability.Cooldown)
+    -- Extract optional combo step for M1 (1, 2, 3, 4)
+    local comboStep = 1
+    if clientData and type(clientData) == "table" and type(clientData.ComboStep) == "number" then
+        comboStep = math.clamp(math.floor(clientData.ComboStep), 1, 4)
+    end
+
+    -- M1 has a shorter internal cooldown (0.28s) to allow fluid combo chaining, while move 4 finisher adds slightly more
+    local cooldown = if slot == "M1" then (if comboStep == 4 then 0.75 else 0.28) else ability.Cooldown
+    CooldownService.StartCooldown(player, slot, cooldown)
 
     -- Notify client to trigger local animation and start visual cooldown timer
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if remotes then
         local abilityRemote = remotes:FindFirstChild(GameConfig.REMOTES.ABILITY_EVENT) :: RemoteEvent?
         if abilityRemote then
-            abilityRemote:FireClient(player, slot, ability.Cooldown, ability.AnimationId, ability.AnimationMarker)
+            abilityRemote:FireClient(player, slot, cooldown, ability.AnimationId, ability.AnimationMarker)
         end
     end
 
     -- Route to Element Handler
     local handler = elementHandlers[element]
     if handler then
-        local methodName = if slot == "M1" then "CastM1" else ("CastMove" .. slot)
-        if handler[methodName] then
-            handler[methodName](player, char, rootPart)
+        if slot == "M1" and handler.CastM1 then
+            handler.CastM1(player, char, rootPart, comboStep)
+        else
+            local methodName = "CastMove" .. slot
+            if handler[methodName] then
+                handler[methodName](player, char, rootPart)
+            end
         end
     end
 end

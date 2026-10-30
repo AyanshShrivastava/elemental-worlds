@@ -55,9 +55,9 @@ EnsureWorkspaceFolder("SpawnLocations")
 EnsureWorkspaceFolder("Map")
 
 -- 3. Remote Event Listeners
-castAbilityEvent.OnServerEvent:Connect(function(player: Player, slot: any)
+castAbilityEvent.OnServerEvent:Connect(function(player: Player, slot: any, clientData: any)
     if type(slot) == "string" then
-        CombatService.ProcessCast(player, slot)
+        CombatService.ProcessCast(player, slot, clientData)
     end
 end)
 

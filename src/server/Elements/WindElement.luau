@@ -17,14 +17,19 @@ local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectSe
 
 local WindElement = {}
 
--- M1: Compressed Wind
-function WindElement.CastM1(player: Player, character: Model, rootPart: BasePart)
+-- M1: Compressed Wind (4-hit combo support)
+function WindElement.CastM1(player: Player, character: Model, rootPart: BasePart, comboStep: number?)
     local ability = AbilityConfig.GetAbility("Wind", "M1")
     if not ability then return end
 
+    local step = comboStep or 1
+    local isFinisher = (step == 4)
+    local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
+    local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
-        HitboxService.ApplyDamage(player, target, ability.BaseDamage, rootPart.CFrame.LookVector * 15)
+        HitboxService.ApplyDamage(player, target, damage, knockback, step)
     end
 end
 

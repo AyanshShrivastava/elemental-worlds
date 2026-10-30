@@ -1,12 +1,18 @@
 --!strict
 --[[
-    Elemental Worlds: Client VFX & Sound Controller
-    Executes client-side effects (e.g., Blind, screen shakes, color flashes) triggered by server events.
+    Elemental Worlds: Client Master VFX Controller
+    Listens to server VFX & Combat events to orchestrate particle bursts, 3D damage numbers,
+    spatial sounds, and screen shakes without causing server replication lag.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local VFXHelper = require(ReplicatedStorage.Shared.Modules.VFXHelper)
+
 local UIController = require(script.Parent.UIController)
+local SoundController = require(script.Parent.SoundController)
+local CameraShakeController = require(script.Parent.CameraShakeController)
+local DamageNumbersController = require(script.Parent.DamageNumbersController)
 
 local VFXController = {}
 
@@ -20,6 +26,25 @@ function VFXController.Init()
             if vfxType == "Blind" then
                 local duration = (data and data.Duration) or 2.0
                 UIController.TriggerBlind(duration)
+            elseif vfxType == "ImpactBurst" and data and data.Position then
+                local element = data.Element or "Fire"
+                VFXHelper.CreateImpactBurst(data.Position, element, data.Count or 30)
+                SoundController.PlaySound3D("Punch", data.Position, 0.8)
+                CameraShakeController.Shake(data.Shake or 0.25)
+            elseif vfxType == "Shockwave" and data and data.Position then
+                local element = data.Element or "Fire"
+                VFXHelper.CreateShockwave(data.Position, data.Radius or 20, data.Duration or 0.4, element)
+                SoundController.PlaySound3D("Explosion", data.Position, 0.9)
+                CameraShakeController.Shake(data.Shake or 0.4)
+            elseif vfxType == "SlashArc" and data and data.CFrame then
+                local element = data.Element or "Fire"
+                VFXHelper.CreateSlashArc(data.CFrame, element, data.Scale or 1.0)
+                SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.7)
+            elseif vfxType == "DamageNumber" and data and data.Position and data.Damage then
+                local element = data.Element or "Fire"
+                DamageNumbersController.SpawnDamageNumber(data.Position, data.Damage, element, data.IsCrit or false)
+            elseif vfxType == "ComboHit" and data and data.Count then
+                UIController.RegisterComboHit(data.Count)
             end
         end)
     end

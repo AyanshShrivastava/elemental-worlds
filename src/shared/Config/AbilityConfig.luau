@@ -2,7 +2,8 @@
 --[[
     Elemental Worlds: Master Ability Configuration
     Defines all 36 abilities across the 7 elements.
-    All cooldowns, ranges, damage values, and animation markers are centrally defined here.
+    Enriched with verified audio SFX IDs, VFX identifiers, screen shake values,
+    animation markers, and configurable damage & cooldown values.
 ]]
 
 export type DamageCategory = "None" | "Low" | "Mid" | "High" | "Crazy"
@@ -22,6 +23,9 @@ export type AbilityData = {
     CanCastWhileStunned: boolean?,
     AnimationId: string,
     AnimationMarker: string,
+    SFXId: string,
+    VFXType: string,
+    ScreenShake: number,
     Description: string,
 }
 
@@ -37,8 +41,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 10,
             ConeAngle = 75,
-            AnimationId = "rbxassetid://0", -- Replace with custom animation ID
+            AnimationId = "rbxassetid://522635514", -- Default Tool Slash
             AnimationMarker = "Hit",
+            SFXId = "rbxassetid://8560439519",
+            VFXType = "SlashArc",
+            ScreenShake = 0.15,
             Description = "A short-range flame dagger strike directly in front of the caster.",
         },
         ["1"] = {
@@ -53,6 +60,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Launch",
+            SFXId = "rbxassetid://5898090542",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.35,
             Description = "Launches a fireball forward. Bursts on impact or near miss, damaging targets in blast radius.",
         },
         ["2"] = {
@@ -68,6 +78,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 15.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Summon",
+            SFXId = "rbxassetid://1839806527",
+            VFXType = "Shockwave",
+            ScreenShake = 0.2,
             Description = "Summons a small fire creature NPC with 25% of summoner max HP that attacks valid enemies.",
         },
         ["3"] = {
@@ -82,6 +95,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "BeamStrike",
+            SFXId = "rbxassetid://2042692050",
+            VFXType = "Shockwave",
+            ScreenShake = 0.5,
             Description = "Teleports behind a valid target, firing a powerful beam with knockback. Uses Goldi's chant.",
         },
         ["4"] = {
@@ -97,6 +113,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 10.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "DomainCast",
+            SFXId = "rbxassetid://6296105178",
+            VFXType = "Domain",
+            ScreenShake = 0.65,
             Description = "Rises above ground to form a 10s circular Fire Domain that traps and burns targets inside.",
         },
     },
@@ -112,8 +131,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 12,
             ConeAngle = 75,
-            AnimationId = "rbxassetid://0",
+            AnimationId = "rbxassetid://522635514",
             AnimationMarker = "Throw",
+            SFXId = "rbxassetid://9075321955",
+            VFXType = "SlashArc",
+            ScreenShake = 0.12,
             Description = "Throws water from both hands forward for low damage.",
         },
         ["1"] = {
@@ -128,6 +150,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 70,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Strike",
+            SFXId = "rbxassetid://7346569653",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.35,
             Description = "Summons a giant water hand that crashes down on targets in the forward direction.",
         },
         ["2"] = {
@@ -142,6 +167,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Release",
+            SFXId = "rbxassetid://3802269741",
+            VFXType = "Shockwave",
+            ScreenShake = 0.45,
             Description = "Throws a rapidly spinning water sphere with a powerful fictional impact.",
         },
         ["3"] = {
@@ -157,6 +185,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 5.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Transform",
+            SFXId = "rbxassetid://3356359494",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.3,
             Description = "Transforms into a water dragon for up to 5s. If hit, transformation ends and bursts droplets.",
         },
         ["4"] = {
@@ -171,6 +202,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 80,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Punches",
+            SFXId = "rbxassetid://8560439519",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.7,
             Description = "Unleashes extremely fast water-infused punches directly in front.",
         },
     },
@@ -186,8 +220,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 11,
             ConeAngle = 75,
-            AnimationId = "rbxassetid://0",
+            AnimationId = "rbxassetid://522635514",
             AnimationMarker = "Slash",
+            SFXId = "rbxassetid://6241709963",
+            VFXType = "SlashArc",
+            ScreenShake = 0.15,
             Description = "Close-range earth sword attack for low damage.",
         },
         ["1"] = {
@@ -203,6 +240,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 6.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "RaiseWall",
+            SFXId = "rbxassetid://2042692050",
+            VFXType = "Shockwave",
+            ScreenShake = 0.4,
             Description = "Erects a stone wall that blocks attacks and obstacles for 6 seconds.",
         },
         ["2"] = {
@@ -217,6 +257,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Hurl",
+            SFXId = "rbxassetid://3802269741",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.45,
             Description = "Launches a giant boulder forward that crushes targets in its path.",
         },
         ["3"] = {
@@ -231,6 +274,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 75,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "EarthPunch",
+            SFXId = "rbxassetid://7346569653",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.3,
             Description = "A punch that becomes earth-infused at the final moment of impact.",
         },
         ["4"] = {
@@ -245,6 +291,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "TerraFinisher",
+            SFXId = "rbxassetid://6296105178",
+            VFXType = "Shockwave",
+            ScreenShake = 0.8,
             Description = "Cinematic two-character sequence: launch target up, teleport behind, descend, finish with earth dagger.",
         },
     },
@@ -260,8 +309,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 25,
             ConeAngle = 60,
-            AnimationId = "rbxassetid://0",
+            AnimationId = "rbxassetid://522638767", -- Tool Lunge
             AnimationMarker = "RayFire",
+            SFXId = "rbxassetid://1840218341",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.15,
             Description = "Basic dim light ray fired in targeted direction.",
         },
         ["1"] = {
@@ -276,6 +328,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 50,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "BeamFire",
+            SFXId = "rbxassetid://3356359494",
+            VFXType = "Shockwave",
+            ScreenShake = 0.35,
             Description = "Stronger amplified light beam piercing through targets in front.",
         },
         ["2"] = {
@@ -290,6 +345,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "MirrorBounce",
+            SFXId = "rbxassetid://1839806527",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.45,
             Description = "Summons multiple mirrors, bouncing a concentrated ray between them before slamming target.",
         },
         ["3"] = {
@@ -305,6 +363,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 2.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "Flash",
+            SFXId = "rbxassetid://1840218341",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.25,
             Description = "Fires a flash ray that deals light damage and briefly blinds the target for 2 seconds.",
         },
         ["4"] = {
@@ -319,6 +380,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "DivineBlast",
+            SFXId = "rbxassetid://6296105178",
+            VFXType = "Shockwave",
+            ScreenShake = 0.75,
             Description = "Charges and massively amplifies light, releasing an immense shaped attack.",
         },
     },
@@ -334,8 +398,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 15,
             ConeAngle = 70,
-            AnimationId = "rbxassetid://0",
+            AnimationId = "rbxassetid://522635514",
             AnimationMarker = "BoltFire",
+            SFXId = "rbxassetid://6230938036",
+            VFXType = "SlashArc",
+            ScreenShake = 0.15,
             Description = "Fires compressed wind shaped like a lightning bolt forward.",
         },
         ["1"] = {
@@ -350,6 +417,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "VortexThrow",
+            SFXId = "rbxassetid://536642316",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.3,
             Description = "Throws a small tornado forward that pushes and damages targets.",
         },
         ["2"] = {
@@ -365,6 +435,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 4.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "CycloneSpin",
+            SFXId = "rbxassetid://2042692050",
+            VFXType = "Shockwave",
+            ScreenShake = 0.5,
             Description = "Large cyclone that pulls valid targets inward while dealing sustained damage.",
         },
         ["3"] = {
@@ -380,6 +453,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 5.0,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "SpeedBuff",
+            SFXId = "rbxassetid://6230938036",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.1,
             Description = "Greatly increases movement speed for 5 seconds for repositioning and escape.",
         },
         ["4"] = {
@@ -394,6 +470,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "DeathSpeedDash",
+            SFXId = "rbxassetid://6296105178",
+            VFXType = "Shockwave",
+            ScreenShake = 0.8,
             Description = "Cinematic sequence: lifts target, dives, shatters rocks, rides rock, finishes with lightning wind dash.",
         },
     },
@@ -409,8 +488,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 16,
             ConeAngle = 60,
-            AnimationId = "rbxassetid://0",
+            AnimationId = "rbxassetid://522638767",
             AnimationMarker = "GlitchDash",
+            SFXId = "rbxassetid://8560439519",
+            VFXType = "SlashArc",
+            ScreenShake = 0.2,
             Description = "Dashes forward leaving a glitch trail. Hits build the Error Meter (+5% per hit).",
         },
         ["1"] = {
@@ -425,6 +507,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 70,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "WallDash",
+            SFXId = "rbxassetid://3802269741",
+            VFXType = "Shockwave",
+            ScreenShake = 0.6,
             Description = "Creates a glitched wall in right hand and dashes forward, dealing crazy damage on hit.",
         },
         ["2"] = {
@@ -439,6 +524,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 70,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "GlitchBall",
+            SFXId = "rbxassetid://2042692050",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.55,
             Description = "Eyes glow, throws a glitched ball dealing very high AoE damage and heavy knockback.",
         },
         ["3"] = {
@@ -455,6 +543,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             CanCastWhileStunned = true,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "GlitchVanish",
+            SFXId = "rbxassetid://3356359494",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.1,
             Description = "Become invisible for 5s, immune to damage and stuns. Can activate while stunned or animating.",
         },
         ["4"] = {
@@ -471,6 +562,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ErrorMeterCost = 50,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "DistortionCast",
+            SFXId = "rbxassetid://6296105178",
+            VFXType = "Domain",
+            ScreenShake = 0.75,
             Description = "Requires 50% Error Meter. Teleports nearby targets to a glitched realm for 7s of crazy damage.",
         },
         ["5"] = {
@@ -487,6 +581,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ErrorMeterCost = 100,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "UnparalleledCast",
+            SFXId = "rbxassetid://1839806527",
+            VFXType = "Shockwave",
+            ScreenShake = 0.7,
             Description = "Requires 100% Error Meter. Glitches nearby valid targets, freezing movement completely for 5s.",
         },
     },
@@ -502,8 +599,11 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Cooldown = 1.0,
             Range = 10,
             ConeAngle = 75,
-            AnimationId = "rbxassetid://0",
+            AnimationId = "rbxassetid://522635514",
             AnimationMarker = "TimePunchHit",
+            SFXId = "rbxassetid://7346569653",
+            VFXType = "SlashArc",
+            ScreenShake = 0.22,
             Description = "Blue-aura punch delivering heavy time-infused damage.",
         },
         ["1"] = {
@@ -519,6 +619,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Duration = 0.5,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "TimeTeleport",
+            SFXId = "rbxassetid://6230938036",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.4,
             Description = "Stops target in time for 0.5s, teleports behind them, and lands a hard punch.",
         },
         ["2"] = {
@@ -533,6 +636,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             ConeAngle = 70,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "InjectionStrike",
+            SFXId = "rbxassetid://3356359494",
+            VFXType = "Shockwave",
+            ScreenShake = 0.5,
             Description = "Freezes time and overwhelms target with 2 years of information in 0.2s using abstract VFX.",
         },
         ["3"] = {
@@ -549,6 +655,9 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             CanCastWhileStunned = true,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "UntouchableCast",
+            SFXId = "rbxassetid://1840218341",
+            VFXType = "ImpactBurst",
+            ScreenShake = 0.1,
             Description = "Stops incoming attacks from reaching user for 4s. Others move normally. Usable while stunned.",
         },
         ["4"] = {
@@ -556,25 +665,25 @@ local AbilityConfig: { [string]: { [string]: AbilityData } } = {
             Name = "Virtual Kill",
             Element = "Time",
             Slot = "4",
-            BaseDamage = 99999, -- Instant KO finisher under balance rules
+            BaseDamage = 99999,
             DamageCategory = "Crazy",
-            Cooldown = 150.0, -- Configurable 150 seconds (2.5 mins) as requested
+            Cooldown = 150.0,
             Range = 20,
             ConeAngle = 60,
             AnimationId = "rbxassetid://0",
             AnimationMarker = "VirtualKillFinisher",
+            SFXId = "rbxassetid://6296105178",
+            VFXType = "Shockwave",
+            ScreenShake = 0.9,
             Description = "Ultimate time-based finisher with 150s cooldown. Instantly KOs a valid target in range.",
         },
     },
 }
 
--- Helper function to retrieve ability by Element and Slot
 function AbilityConfig.GetAbility(element: string, slot: string): AbilityData?
-    local elementGroup = AbilityConfig[element]
-    if not elementGroup then
-        return nil
-    end
-    return elementGroup[slot]
+    local group = AbilityConfig[element]
+    if not group then return nil end
+    return group[slot]
 end
 
 return table.freeze(AbilityConfig)

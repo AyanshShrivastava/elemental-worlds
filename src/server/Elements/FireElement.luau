@@ -19,14 +19,19 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 
 local FireElement = {}
 
--- M1: Flame Dagger
-function FireElement.CastM1(player: Player, character: Model, rootPart: BasePart)
+-- M1: Flame Dagger (4-hit combo support)
+function FireElement.CastM1(player: Player, character: Model, rootPart: BasePart, comboStep: number?)
     local ability = AbilityConfig.GetAbility("Fire", "M1")
     if not ability then return end
 
+    local step = comboStep or 1
+    local isFinisher = (step == 4)
+    local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
+    local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
-        HitboxService.ApplyDamage(player, target, ability.BaseDamage, rootPart.CFrame.LookVector * 10)
+        HitboxService.ApplyDamage(player, target, damage, knockback, step)
     end
 end
 
