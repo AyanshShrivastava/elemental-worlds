@@ -96,13 +96,7 @@ if remotes then
         end)
     end
 
-    -- VFX triggers from server
-    local vfxEvent = remotes:WaitForChild(GameConfig.REMOTES.VFX_TRIGGER, 10) :: RemoteEvent?
-    if vfxEvent then
-        vfxEvent.OnClientEvent:Connect(function(vfxType, position, color)
-            VFXController.PlayVFX(vfxType, position, color)
-        end)
-    end
+    -- VFXController.Init() already subscribes to VFX_TRIGGER with full payload decoding
 end
 
 print("[Elemental Worlds] Client initialized — HUD, Admin Suite, Spin Gacha, Shop, Map, VFX, and all listeners ready.")

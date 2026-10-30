@@ -1,12 +1,12 @@
 --!strict
 --[[
-    Elemental Worlds: In-Game Gamepass & Robux Shop UI
+    Elemental Worlds: In-Game Gamepass & Robux Shop UI (Blox Fruits Modern Design)
     Features:
-    - Two tabs: GAMEPASSES and SPIN BUNDLES
-    - Card layout with perk description and price
-    - Animated modal open/close
-    - Purchase prompt integration (MarketplaceService)
-    - Shows "COMING SOON" for unset IDs (guides you to Creator Hub)
+    - Blox Fruits style categorized shop: GAMEPASSES & SPIN BUNDLES
+    - Sleek dark obsidian cards with electric indigo/cyan accents
+    - Integrated purchase prompting via MarketplaceService
+    - Hover highlights, animated transitions, clean typography
+    - NO gold or rainbow styling
 ]]
 
 local Players = game:GetService("Players")
@@ -24,6 +24,22 @@ local ShopUIController = {}
 
 local shopGui: ScreenGui? = nil
 local shopModal: Frame? = nil
+local activeTab = "GamePasses"
+local scrollContainer: ScrollingFrame? = nil
+
+-- Modern Blox Fruits Style Color Tokens
+local PALETTE = {
+    BG_MAIN         = Color3.fromRGB(12, 16, 26),
+    BG_CARD         = Color3.fromRGB(18, 24, 38),
+    BG_CARD_HOVER   = Color3.fromRGB(26, 34, 54),
+    BORDER_DEFAULT  = Color3.fromRGB(42, 52, 75),
+    BORDER_ACCENT   = Color3.fromRGB(115, 90, 245),
+    BTN_PRIMARY     = Color3.fromRGB(115, 90, 245),
+    BTN_HOVER       = Color3.fromRGB(135, 110, 255),
+    TEXT_PRIMARY    = Color3.fromRGB(245, 248, 255),
+    TEXT_MUTED      = Color3.fromRGB(135, 145, 170),
+    PRICE_TAG       = Color3.fromRGB(80, 215, 255),
+}
 
 local function MakeRounded(inst: GuiObject, r: number)
     local c = Instance.new("UICorner")
@@ -39,14 +55,172 @@ local function MakeStroke(inst: GuiObject, color: Color3, thickness: number): UI
     return s
 end
 
--- Perk color by type
-local PERK_COLORS = {
-    DoubleExp     = Color3.fromRGB(46, 200, 110),
-    DoubleCharges = Color3.fromRGB(80, 160, 255),
-    LuckySpins    = Color3.fromRGB(255, 180, 0),
-    VIPMaster     = Color3.fromRGB(255, 215, 0),
-    SpeedBoost    = Color3.fromRGB(100, 230, 255),
-}
+-- Renders item cards into the scroll container
+local function PopulateCards()
+    if not scrollContainer then return end
+
+    for _, child in scrollContainer:GetChildren() do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+
+    if activeTab == "GamePasses" then
+        local passes = {
+            ShopConfig.GAMEPASSES.DoubleExp,
+            ShopConfig.GAMEPASSES.DoubleCharges,
+            ShopConfig.GAMEPASSES.LuckySpins,
+            ShopConfig.GAMEPASSES.VIPMaster,
+            ShopConfig.GAMEPASSES.SpeedBoost,
+        }
+
+        scrollContainer.CanvasSize = UDim2.new(0, 0, 0, #passes * 88)
+
+        for _, pass in passes do
+            local card = Instance.new("Frame")
+            card.Size = UDim2.new(1, -10, 0, 80)
+            card.BackgroundColor3 = PALETTE.BG_CARD
+            card.Parent = scrollContainer
+            MakeRounded(card, 8)
+            local stroke = MakeStroke(card, PALETTE.BORDER_DEFAULT, 1.2)
+
+            -- Left accent bar
+            local accentBar = Instance.new("Frame")
+            accentBar.Size = UDim2.new(0, 4, 1, 0)
+            accentBar.BackgroundColor3 = PALETTE.BORDER_ACCENT
+            accentBar.BorderSizePixel = 0
+            accentBar.Parent = card
+            MakeRounded(accentBar, 4)
+
+            -- Pass Name
+            local nameLbl = Instance.new("TextLabel")
+            nameLbl.Size = UDim2.new(1, -150, 0, 24)
+            nameLbl.Position = UDim2.new(0, 16, 0, 10)
+            nameLbl.BackgroundTransparency = 1
+            nameLbl.Font = Enum.Font.GothamBlack
+            nameLbl.TextSize = 14
+            nameLbl.TextColor3 = PALETTE.TEXT_PRIMARY
+            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+            nameLbl.Text = pass.Name
+            nameLbl.Parent = card
+
+            -- Description
+            local descLbl = Instance.new("TextLabel")
+            descLbl.Size = UDim2.new(1, -150, 0, 36)
+            descLbl.Position = UDim2.new(0, 16, 0, 34)
+            descLbl.BackgroundTransparency = 1
+            descLbl.Font = Enum.Font.GothamMedium
+            descLbl.TextSize = 11
+            descLbl.TextColor3 = PALETTE.TEXT_MUTED
+            descLbl.TextXAlignment = Enum.TextXAlignment.Left
+            descLbl.TextWrapped = true
+            descLbl.Text = pass.Description
+            descLbl.Parent = card
+
+            -- Buy Button
+            local buyBtn = Instance.new("TextButton")
+            buyBtn.Size = UDim2.new(0, 115, 0, 36)
+            buyBtn.Position = UDim2.new(1, -125, 0.5, -18)
+            buyBtn.BackgroundColor3 = PALETTE.BTN_PRIMARY
+            buyBtn.Font = Enum.Font.GothamBlack
+            buyBtn.TextSize = 12
+            buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            buyBtn.Text = "R$ " .. tostring(pass.Price)
+            buyBtn.AutoButtonColor = false
+            buyBtn.Parent = card
+            MakeRounded(buyBtn, 6)
+
+            buyBtn.MouseEnter:Connect(function()
+                TweenService:Create(buyBtn, TweenInfo.new(0.12), { BackgroundColor3 = PALETTE.BTN_HOVER }):Play()
+            end)
+            buyBtn.MouseLeave:Connect(function()
+                TweenService:Create(buyBtn, TweenInfo.new(0.12), { BackgroundColor3 = PALETTE.BTN_PRIMARY }):Play()
+            end)
+            buyBtn.MouseButton1Click:Connect(function()
+                if pass.Id and pass.Id > 0 then
+                    MarketplaceService:PromptGamePassPurchase(localPlayer, pass.Id)
+                else
+                    SoundController.PlayUI("hover")
+                end
+            end)
+
+            card.MouseEnter:Connect(function()
+                TweenService:Create(card, TweenInfo.new(0.12), { BackgroundColor3 = PALETTE.BG_CARD_HOVER }):Play()
+                TweenService:Create(stroke, TweenInfo.new(0.12), { Color = PALETTE.BORDER_ACCENT }):Play()
+            end)
+            card.MouseLeave:Connect(function()
+                TweenService:Create(card, TweenInfo.new(0.12), { BackgroundColor3 = PALETTE.BG_CARD }):Play()
+                TweenService:Create(stroke, TweenInfo.new(0.12), { Color = PALETTE.BORDER_DEFAULT }):Play()
+            end)
+        end
+    else
+        -- Spin Bundles
+        local products = {
+            ShopConfig.PRODUCTS.Spins_1,
+            ShopConfig.PRODUCTS.Spins_5,
+            ShopConfig.PRODUCTS.Spins_10,
+        }
+
+        scrollContainer.CanvasSize = UDim2.new(0, 0, 0, #products * 88)
+
+        for _, prod in products do
+            local card = Instance.new("Frame")
+            card.Size = UDim2.new(1, -10, 0, 80)
+            card.BackgroundColor3 = PALETTE.BG_CARD
+            card.Parent = scrollContainer
+            MakeRounded(card, 8)
+            local stroke = MakeStroke(card, PALETTE.BORDER_DEFAULT, 1.2)
+
+            local accentBar = Instance.new("Frame")
+            accentBar.Size = UDim2.new(0, 4, 1, 0)
+            accentBar.BackgroundColor3 = PALETTE.PRICE_TAG
+            accentBar.BorderSizePixel = 0
+            accentBar.Parent = card
+            MakeRounded(accentBar, 4)
+
+            local nameLbl = Instance.new("TextLabel")
+            nameLbl.Size = UDim2.new(1, -150, 0, 24)
+            nameLbl.Position = UDim2.new(0, 16, 0, 10)
+            nameLbl.BackgroundTransparency = 1
+            nameLbl.Font = Enum.Font.GothamBlack
+            nameLbl.TextSize = 14
+            nameLbl.TextColor3 = PALETTE.TEXT_PRIMARY
+            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+            nameLbl.Text = prod.Name
+            nameLbl.Parent = card
+
+            local descLbl = Instance.new("TextLabel")
+            descLbl.Size = UDim2.new(1, -150, 0, 36)
+            descLbl.Position = UDim2.new(0, 16, 0, 34)
+            descLbl.BackgroundTransparency = 1
+            descLbl.Font = Enum.Font.GothamMedium
+            descLbl.TextSize = 11
+            descLbl.TextColor3 = PALETTE.TEXT_MUTED
+            descLbl.TextXAlignment = Enum.TextXAlignment.Left
+            descLbl.TextWrapped = true
+            descLbl.Text = prod.Description
+            descLbl.Parent = card
+
+            local buyBtn = Instance.new("TextButton")
+            buyBtn.Size = UDim2.new(0, 115, 0, 36)
+            buyBtn.Position = UDim2.new(1, -125, 0.5, -18)
+            buyBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 245)
+            buyBtn.Font = Enum.Font.GothamBlack
+            buyBtn.TextSize = 12
+            buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            buyBtn.Text = "R$ " .. tostring(prod.Price)
+            buyBtn.AutoButtonColor = false
+            buyBtn.Parent = card
+            MakeRounded(buyBtn, 6)
+
+            buyBtn.MouseButton1Click:Connect(function()
+                if prod.Id and prod.Id > 0 then
+                    MarketplaceService:PromptProductPurchase(localPlayer, prod.Id)
+                else
+                    SoundController.PlayUI("hover")
+                end
+            end)
+        end
+    end
+end
 
 function ShopUIController.Init()
     shopGui = Instance.new("ScreenGui")
@@ -58,348 +232,146 @@ function ShopUIController.Init()
     -- HUD Toggle Button
     local shopToggleBtn = Instance.new("TextButton")
     shopToggleBtn.Name = "ShopHUDButton"
-    shopToggleBtn.Size = UDim2.new(0, 130, 0, 40)
-    shopToggleBtn.Position = UDim2.new(0, 14, 0.59, 0)
-    shopToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 28, 16)
+    shopToggleBtn.Size = UDim2.new(0, 130, 0, 38)
+    shopToggleBtn.Position = UDim2.new(0, 20, 0.53, 0)
+    shopToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 32)
     shopToggleBtn.Font = Enum.Font.GothamBlack
-    shopToggleBtn.TextSize = 13
-    shopToggleBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
+    shopToggleBtn.TextSize = 12
+    shopToggleBtn.TextColor3 = PALETTE.PRICE_TAG
     shopToggleBtn.Text = "ROBUX SHOP"
+    shopToggleBtn.AutoButtonColor = false
     shopToggleBtn.Parent = shopGui
-    MakeRounded(shopToggleBtn, 10)
-    MakeStroke(shopToggleBtn, Color3.fromRGB(255, 215, 0), 2)
+    MakeRounded(shopToggleBtn, 8)
+    MakeStroke(shopToggleBtn, PALETTE.PRICE_TAG, 1.8)
 
     shopToggleBtn.MouseEnter:Connect(function()
-        TweenService:Create(shopToggleBtn, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(65, 46, 22) }):Play()
+        TweenService:Create(shopToggleBtn, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(24, 30, 48) }):Play()
+        SoundController.PlayUI("hover")
     end)
     shopToggleBtn.MouseLeave:Connect(function()
-        TweenService:Create(shopToggleBtn, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(40, 28, 16) }):Play()
+        TweenService:Create(shopToggleBtn, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(15, 20, 32) }):Play()
     end)
 
     -- Shop Modal Window
     shopModal = Instance.new("Frame")
     shopModal.Name = "ShopModalWindow"
-    shopModal.Size = UDim2.new(0, 580, 0, 500)
-    shopModal.Position = UDim2.new(0.5, -290, 0.5, -250)
-    shopModal.BackgroundColor3 = Color3.fromRGB(14, 12, 22)
-    shopModal.BackgroundTransparency = 0.04
+    shopModal.Size = UDim2.new(0, 580, 0, 480)
+    shopModal.Position = UDim2.new(0.5, -290, 0.5, -240)
+    shopModal.BackgroundColor3 = PALETTE.BG_MAIN
+    shopModal.BackgroundTransparency = 0.05
     shopModal.Visible = false
-    shopModal.ZIndex = 15
+    shopModal.ZIndex = 25
     shopModal.Parent = shopGui
-    MakeRounded(shopModal, 16)
-    MakeStroke(shopModal, Color3.fromRGB(255, 215, 0), 2.5)
+    MakeRounded(shopModal, 12)
+    MakeStroke(shopModal, PALETTE.BORDER_ACCENT, 2.0)
 
     -- Title Bar
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 52)
-    titleBar.BackgroundColor3 = Color3.fromRGB(22, 18, 38)
-    titleBar.ZIndex = 16
+    titleBar.Size = UDim2.new(1, 0, 0, 48)
+    titleBar.BackgroundColor3 = Color3.fromRGB(18, 22, 36)
+    titleBar.ZIndex = 26
     titleBar.Parent = shopModal
-    MakeRounded(titleBar, 16)
+    MakeRounded(titleBar, 12)
 
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, -60, 1, 0)
     titleLabel.Position = UDim2.new(0, 18, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Font = Enum.Font.GothamBlack
-    titleLabel.TextSize = 20
-    titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    titleLabel.TextSize = 16
+    titleLabel.TextColor3 = PALETTE.TEXT_PRIMARY
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Text = "ELEMENTAL WORLDS SHOP"
-    titleLabel.ZIndex = 17
+    titleLabel.Text = "ELEMENTAL SHOP"
+    titleLabel.ZIndex = 27
     titleLabel.Parent = titleBar
 
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -42, 0.5, -15)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+    closeBtn.Position = UDim2.new(1, -40, 0.5, -15)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 60)
     closeBtn.Font = Enum.Font.GothamBlack
-    closeBtn.TextSize = 14
+    closeBtn.TextSize = 13
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Text = "X"
-    closeBtn.ZIndex = 17
+    closeBtn.ZIndex = 27
     closeBtn.Parent = titleBar
-    MakeRounded(closeBtn, 8)
+    MakeRounded(closeBtn, 6)
 
-    -- Tab Bar
+    -- Tab Bar (Blox Fruits Style Clean Navigation)
     local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, -20, 0, 38)
-    tabBar.Position = UDim2.new(0, 10, 0, 56)
+    tabBar.Size = UDim2.new(1, -36, 0, 36)
+    tabBar.Position = UDim2.new(0, 18, 0, 56)
     tabBar.BackgroundTransparency = 1
-    tabBar.ZIndex = 16
+    tabBar.ZIndex = 26
     tabBar.Parent = shopModal
 
-    local tabLayout = Instance.new("UIListLayout")
-    tabLayout.FillDirection = Enum.FillDirection.Horizontal
-    tabLayout.Padding = UDim.new(0, 6)
-    tabLayout.Parent = tabBar
+    local tabPasses = Instance.new("TextButton")
+    tabPasses.Size = UDim2.new(0.5, -4, 1, 0)
+    tabPasses.BackgroundColor3 = PALETTE.BORDER_ACCENT
+    tabPasses.Font = Enum.Font.GothamBlack
+    tabPasses.TextSize = 12
+    tabPasses.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tabPasses.Text = "GAMEPASSES"
+    tabPasses.ZIndex = 27
+    tabPasses.Parent = tabBar
+    MakeRounded(tabPasses, 6)
 
-    -- Content Area
-    local contentArea = Instance.new("Frame")
-    contentArea.Size = UDim2.new(1, -20, 1, -110)
-    contentArea.Position = UDim2.new(0, 10, 0, 100)
-    contentArea.BackgroundColor3 = Color3.fromRGB(20, 17, 34)
-    contentArea.ZIndex = 16
-    contentArea.Parent = shopModal
-    MakeRounded(contentArea, 10)
+    local tabSpins = Instance.new("TextButton")
+    tabSpins.Size = UDim2.new(0.5, -4, 1, 0)
+    tabSpins.Position = UDim2.new(0.5, 4, 0, 0)
+    tabSpins.BackgroundColor3 = PALETTE.BG_CARD
+    tabSpins.Font = Enum.Font.GothamBlack
+    tabSpins.TextSize = 12
+    tabSpins.TextColor3 = PALETTE.TEXT_MUTED
+    tabSpins.Text = "SPIN BUNDLES"
+    tabSpins.ZIndex = 27
+    tabSpins.Parent = tabBar
+    MakeRounded(tabSpins, 6)
 
-    -- ==================== TAB 1: GAMEPASSES ====================
-    local passesTab = Instance.new("ScrollingFrame")
-    passesTab.Size = UDim2.new(1, -16, 1, -16)
-    passesTab.Position = UDim2.new(0, 8, 0, 8)
-    passesTab.BackgroundTransparency = 1
-    passesTab.ScrollBarThickness = 5
-    passesTab.ScrollBarImageColor3 = Color3.fromRGB(255, 215, 0)
-    passesTab.Visible = true
-    passesTab.ZIndex = 17
-    passesTab.Parent = contentArea
+    -- Scroll Area
+    scrollContainer = Instance.new("ScrollingFrame")
+    scrollContainer.Size = UDim2.new(1, -36, 1, -110)
+    scrollContainer.Position = UDim2.new(0, 18, 0, 98)
+    scrollContainer.BackgroundTransparency = 1
+    scrollContainer.ScrollBarThickness = 5
+    scrollContainer.ScrollBarImageColor3 = PALETTE.BORDER_ACCENT
+    scrollContainer.ZIndex = 26
+    scrollContainer.Parent = shopModal
 
-    local passesLayout = Instance.new("UIListLayout")
-    passesLayout.Padding = UDim.new(0, 8)
-    passesLayout.Parent = passesTab
+    local scrollLayout = Instance.new("UIListLayout")
+    scrollLayout.Padding = UDim.new(0, 8)
+    scrollLayout.Parent = scrollContainer
 
-    -- Calculate canvas height
-    local passCount = 0
-    for _ in ShopConfig.GAMEPASSES do passCount += 1 end
-    passesTab.CanvasSize = UDim2.new(0, 0, 0, passCount * 88)
-
-    for passKey, pass in ShopConfig.GAMEPASSES do
-        local perkColor = PERK_COLORS[pass.PerkType] or Color3.fromRGB(180, 180, 200)
-
-        local card = Instance.new("Frame")
-        card.Size = UDim2.new(1, -10, 0, 80)
-        card.BackgroundColor3 = Color3.fromRGB(24, 22, 40)
-        card.ZIndex = 18
-        card.Parent = passesTab
-        MakeRounded(card, 10)
-        MakeStroke(card, Color3.fromRGB(50, 46, 75), 1.5)
-
-        -- Left accent bar
-        local accent = Instance.new("Frame")
-        accent.Size = UDim2.new(0, 5, 1, 0)
-        accent.BackgroundColor3 = perkColor
-        accent.ZIndex = 19
-        accent.Parent = card
-        MakeRounded(accent, 4)
-
-        local nameL = Instance.new("TextLabel")
-        nameL.Size = UDim2.new(0, 260, 0, 24)
-        nameL.Position = UDim2.new(0, 16, 0, 8)
-        nameL.BackgroundTransparency = 1
-        nameL.Font = Enum.Font.GothamBlack
-        nameL.TextSize = 15
-        nameL.TextColor3 = Color3.fromRGB(240, 238, 255)
-        nameL.TextXAlignment = Enum.TextXAlignment.Left
-        nameL.Text = pass.Name
-        nameL.ZIndex = 19
-        nameL.Parent = card
-
-        local descL = Instance.new("TextLabel")
-        descL.Size = UDim2.new(0, 300, 0, 36)
-        descL.Position = UDim2.new(0, 16, 0, 34)
-        descL.BackgroundTransparency = 1
-        descL.Font = Enum.Font.GothamMedium
-        descL.TextSize = 11
-        descL.TextColor3 = Color3.fromRGB(155, 153, 175)
-        descL.TextXAlignment = Enum.TextXAlignment.Left
-        descL.TextWrapped = true
-        descL.Text = pass.Description
-        descL.ZIndex = 19
-        descL.Parent = card
-
-        -- Perk Badge
-        local perkBadge = Instance.new("TextLabel")
-        perkBadge.Size = UDim2.new(0, 100, 0, 22)
-        perkBadge.Position = UDim2.new(1, -210, 0, 12)
-        perkBadge.BackgroundColor3 = perkColor
-        perkBadge.BackgroundTransparency = 0.3
-        perkBadge.Font = Enum.Font.GothamBold
-        perkBadge.TextSize = 10
-        perkBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-        perkBadge.Text = pass.PerkDetail or pass.PerkType
-        perkBadge.ZIndex = 19
-        perkBadge.Parent = card
-        MakeRounded(perkBadge, 6)
-
-        -- Buy Button
-        local buyBtn = Instance.new("TextButton")
-        buyBtn.Size = UDim2.new(0, 100, 0, 40)
-        buyBtn.Position = UDim2.new(1, -112, 0.5, -20)
-        buyBtn.BackgroundColor3 = perkColor
-        buyBtn.Font = Enum.Font.GothamBlack
-        buyBtn.TextSize = 14
-        buyBtn.TextColor3 = Color3.fromRGB(15, 12, 25)
-        buyBtn.Text = "R$ " .. tostring(pass.Price)
-        buyBtn.ZIndex = 19
-        buyBtn.Parent = card
-        MakeRounded(buyBtn, 8)
-
-        -- Hover animation
-        buyBtn.MouseEnter:Connect(function()
-            TweenService:Create(buyBtn, TweenInfo.new(0.1), { Size = UDim2.new(0, 106, 0, 44) }):Play()
-        end)
-        buyBtn.MouseLeave:Connect(function()
-            TweenService:Create(buyBtn, TweenInfo.new(0.1), { Size = UDim2.new(0, 100, 0, 40) }):Play()
-        end)
-
-        local capturedPass = pass
-        buyBtn.MouseButton1Click:Connect(function()
-            SoundController.PlayUI("click")
-            if capturedPass.Id and capturedPass.Id > 0 then
-                MarketplaceService:PromptGamePassPurchase(localPlayer, capturedPass.Id)
-            else
-                -- ID not set yet — guide user
-                print(string.format("[ShopUI] Pass '%s' not configured yet. Create it in Creator Hub > Monetization > Game Passes.", capturedPass.Name))
-            end
-        end)
-    end
-
-    -- ==================== TAB 2: SPIN BUNDLES ====================
-    local bundlesTab = Instance.new("ScrollingFrame")
-    bundlesTab.Size = UDim2.new(1, -16, 1, -16)
-    bundlesTab.Position = UDim2.new(0, 8, 0, 8)
-    bundlesTab.BackgroundTransparency = 1
-    bundlesTab.ScrollBarThickness = 5
-    bundlesTab.ScrollBarImageColor3 = Color3.fromRGB(80, 210, 255)
-    bundlesTab.Visible = false
-    bundlesTab.ZIndex = 17
-    bundlesTab.Parent = contentArea
-
-    local bundlesLayout = Instance.new("UIListLayout")
-    bundlesLayout.Padding = UDim.new(0, 8)
-    bundlesLayout.Parent = bundlesTab
-
-    local productCount = 0
-    for _ in ShopConfig.PRODUCTS do productCount += 1 end
-    bundlesTab.CanvasSize = UDim2.new(0, 0, 0, productCount * 88)
-
-    for _, product in ShopConfig.PRODUCTS do
-        local card = Instance.new("Frame")
-        card.Size = UDim2.new(1, -10, 0, 80)
-        card.BackgroundColor3 = Color3.fromRGB(18, 22, 40)
-        card.ZIndex = 18
-        card.Parent = bundlesTab
-        MakeRounded(card, 10)
-        MakeStroke(card, Color3.fromRGB(40, 100, 200), 1.5)
-
-        local accent = Instance.new("Frame")
-        accent.Size = UDim2.new(0, 5, 1, 0)
-        accent.BackgroundColor3 = Color3.fromRGB(80, 180, 255)
-        accent.ZIndex = 19
-        accent.Parent = card
-        MakeRounded(accent, 4)
-
-        local nameL = Instance.new("TextLabel")
-        nameL.Size = UDim2.new(0, 240, 0, 24)
-        nameL.Position = UDim2.new(0, 16, 0, 8)
-        nameL.BackgroundTransparency = 1
-        nameL.Font = Enum.Font.GothamBlack
-        nameL.TextSize = 15
-        nameL.TextColor3 = Color3.fromRGB(80, 210, 255)
-        nameL.TextXAlignment = Enum.TextXAlignment.Left
-        nameL.Text = product.Name
-        nameL.ZIndex = 19
-        nameL.Parent = card
-
-        local descL = Instance.new("TextLabel")
-        descL.Size = UDim2.new(0, 300, 0, 34)
-        descL.Position = UDim2.new(0, 16, 0, 36)
-        descL.BackgroundTransparency = 1
-        descL.Font = Enum.Font.GothamMedium
-        descL.TextSize = 11
-        descL.TextColor3 = Color3.fromRGB(140, 155, 180)
-        descL.TextXAlignment = Enum.TextXAlignment.Left
-        descL.TextWrapped = true
-        descL.Text = product.Description
-        descL.ZIndex = 19
-        descL.Parent = card
-
-        local buyBtn = Instance.new("TextButton")
-        buyBtn.Size = UDim2.new(0, 100, 0, 40)
-        buyBtn.Position = UDim2.new(1, -112, 0.5, -20)
-        buyBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 255)
-        buyBtn.Font = Enum.Font.GothamBlack
-        buyBtn.TextSize = 14
-        buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        buyBtn.Text = "R$ " .. tostring(product.Price)
-        buyBtn.ZIndex = 19
-        buyBtn.Parent = card
-        MakeRounded(buyBtn, 8)
-
-        buyBtn.MouseEnter:Connect(function()
-            TweenService:Create(buyBtn, TweenInfo.new(0.1), { Size = UDim2.new(0, 106, 0, 44) }):Play()
-        end)
-        buyBtn.MouseLeave:Connect(function()
-            TweenService:Create(buyBtn, TweenInfo.new(0.1), { Size = UDim2.new(0, 100, 0, 40) }):Play()
-        end)
-
-        local capturedProduct = product
-        buyBtn.MouseButton1Click:Connect(function()
-            SoundController.PlayUI("click")
-            if capturedProduct.Id and capturedProduct.Id > 0 then
-                MarketplaceService:PromptProductPurchase(localPlayer, capturedProduct.Id)
-            else
-                print(string.format("[ShopUI] Product '%s' not configured yet. Create it in Creator Hub > Monetization > Developer Products.", capturedProduct.Name))
-            end
-        end)
-    end
-
-    -- ==================== TAB BUTTONS ====================
-    local tabs = {
-        { name = "GAMEPASSES", content = passesTab },
-        { name = "SPIN BUNDLES", content = bundlesTab },
-    }
-
-    for i, tab in tabs do
-        local tb = Instance.new("TextButton")
-        tb.Size = UDim2.new(0, 140, 1, 0)
-        tb.BackgroundColor3 = (i == 1) and Color3.fromRGB(55, 42, 90) or Color3.fromRGB(24, 20, 42)
-        tb.Font = Enum.Font.GothamBold
-        tb.TextSize = 13
-        tb.TextColor3 = Color3.fromRGB(220, 218, 240)
-        tb.Text = tab.name
-        tb.LayoutOrder = i
-        tb.ZIndex = 17
-        tb.Parent = tabBar
-        MakeRounded(tb, 8)
-
-        local capturedTb = tb
-        local capturedContent = tab.content
-        tb.MouseButton1Click:Connect(function()
-            for _, tb2 in tabBar:GetChildren() do
-                if tb2:IsA("TextButton") then
-                    TweenService:Create(tb2, TweenInfo.new(0.12), {
-                        BackgroundColor3 = Color3.fromRGB(24, 20, 42),
-                    }):Play()
-                end
-            end
-            TweenService:Create(capturedTb, TweenInfo.new(0.12), {
-                BackgroundColor3 = Color3.fromRGB(55, 42, 90),
-            }):Play()
-            passesTab.Visible = (capturedContent == passesTab)
-            bundlesTab.Visible = (capturedContent == bundlesTab)
-        end)
-    end
-
-    -- Toggle modal
-    local function ToggleShop()
-        if not shopModal then return end
-        if shopModal.Visible then
-            TweenService:Create(shopModal, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 0, 0, 0),
-                Position = UDim2.new(0.5, 0, 0.5, 0),
-            }):Play()
-            task.delay(0.2, function()
-                if shopModal then shopModal.Visible = false end
-            end)
+    local function SwitchTab(tabName: string)
+        activeTab = tabName
+        if activeTab == "GamePasses" then
+            tabPasses.BackgroundColor3 = PALETTE.BORDER_ACCENT
+            tabPasses.TextColor3 = Color3.fromRGB(255, 255, 255)
+            tabSpins.BackgroundColor3 = PALETTE.BG_CARD
+            tabSpins.TextColor3 = PALETTE.TEXT_MUTED
         else
-            shopModal.Visible = true
-            shopModal.Size = UDim2.new(0, 0, 0, 0)
-            shopModal.Position = UDim2.new(0.5, 0, 0.5, 0)
-            TweenService:Create(shopModal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 580, 0, 500),
-                Position = UDim2.new(0.5, -290, 0.5, -250),
+            tabSpins.BackgroundColor3 = PALETTE.BORDER_ACCENT
+            tabSpins.TextColor3 = Color3.fromRGB(255, 255, 255)
+            tabPasses.BackgroundColor3 = PALETTE.BG_CARD
+            tabPasses.TextColor3 = PALETTE.TEXT_MUTED
+        end
+        PopulateCards()
+    end
+
+    tabPasses.MouseButton1Click:Connect(function() SwitchTab("GamePasses") end)
+    tabSpins.MouseButton1Click:Connect(function() SwitchTab("Spins") end)
+
+    local function ToggleShop()
+        shopModal.Visible = not shopModal.Visible
+        if shopModal.Visible then
+            SoundController.PlayUI("open")
+            PopulateCards()
+            shopModal.Position = UDim2.new(0.5, -290, 0.5, -220)
+            TweenService:Create(shopModal, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, -290, 0.5, -240),
             }):Play()
+        else
+            SoundController.PlayUI("close")
         end
     end
 

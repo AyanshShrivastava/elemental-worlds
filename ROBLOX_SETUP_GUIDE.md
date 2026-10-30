@@ -39,7 +39,7 @@ elemental-worlds/
 │   │       ├── AdminService.luau           — Slash command admin system
 │   │       ├── MapService.luau             — Procedural world generation
 │   │       ├── MonetizationService.luau    — Gamepass + product handling
-│   │       ├── CreatorPerksService.luau    — Crown, rainbow aura, VIP aura
+│   │       ├── CreatorPerksService.luau    — Modern prestige badge, astral aura, VIP badge
 │   │       ├── RaidService.luau            — Raid lobby and progression
 │   │       └── StatusEffectService.luau    — Burn, freeze, stun management
 │   ├── shared/                 — ModuleScripts accessible by both client & server
@@ -94,7 +94,7 @@ Then in Studio, open the Rojo plugin and click **Connect**.
 | `DoubleExp` | 2x EXP Booster | 249 | All EXP gains ×2 |
 | `DoubleCharges` | 2x Charges Booster | 199 | All Charge gains ×2 |
 | `LuckySpins` | Lucky Element Spins | 399 | Secret element rate ×2 |
-| `VIPMaster` | VIP: Element Master | 499 | +200 HP, Gold tag, VIP aura |
+| `VIPMaster` | VIP: Element Master | 499 | +200 HP, VIP badge, Azure aura |
 | `SpeedBoost` | Speed Demon | 149 | Move speed +20% |
 
 5. After creating each pass, copy its **Pass ID** from the URL or settings page

@@ -50,4 +50,14 @@ function VFXController.Init()
     end
 end
 
+function VFXController.PlayVFX(vfxType: string, position: Vector3?, element: string?)
+    local elem = element or "Fire"
+    local pos = position or Vector3.new(0, 0, 0)
+    if vfxType == "ImpactBurst" then
+        VFXHelper.CreateImpactBurst(pos, elem, 30)
+    elseif vfxType == "Shockwave" then
+        VFXHelper.CreateShockwave(pos, 20, 0.4, elem)
+    end
+end
+
 return table.freeze(VFXController)

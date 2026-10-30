@@ -86,7 +86,7 @@ function RNGSystem.TryClaimSecretAllocation(player: Player): ElementType?
     PlayerDataService.SetElement(player, secretElement)
     PlayerDataService.SaveProfile(player)
 
-    BroadcastAnnouncement(string.format("★ SPECIAL ALLOCATION: [%s] received %s (Slot #%d/%d)!", player.Name, string.upper(secretElement), secretAllocationCount, GameConfig.SECRET_ALLOCATION_MAX_PLAYERS))
+    BroadcastAnnouncement(string.format("[SPECIAL ALLOCATION] [%s] received %s (Slot #%d/%d)!", player.Name, string.upper(secretElement), secretAllocationCount, GameConfig.SECRET_ALLOCATION_MAX_PLAYERS))
     return secretElement
 end
 

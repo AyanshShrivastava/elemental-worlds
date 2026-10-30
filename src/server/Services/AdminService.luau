@@ -14,6 +14,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local AdminConfig = require(ReplicatedStorage.Shared.Config.AdminConfig)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RNGSystem = require(script.Parent.RNGSystem)
+local RaidService = require(script.Parent.RaidService)
 
 local AdminService = {}
 
@@ -209,6 +210,27 @@ function AdminService.ExecuteCommand(sender: Player, message: string): boolean
         local validElements = { Fire = true, Aqua = true, Earth = true, Light = true, Wind = true, Error = true, Time = true }
         if target and elemName and validElements[elemName] then
             PlayerDataService.SetElement(target, elemName :: GameConfig.ElementType)
+        end
+        return true
+    elseif cmd == "/givespins" then
+        local target = FindPlayerByName(tokens[2] or "")
+        local amount = tonumber(tokens[3]) or 1
+        if target then
+            PlayerDataService.AddSpinTickets(target, amount)
+        end
+        return true
+    elseif cmd == "/heal" then
+        local target = FindPlayerByName(tokens[2] or "")
+        if target and target.Character then
+            local hum = target.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.Health = hum.MaxHealth
+            end
+        end
+        return true
+    elseif cmd == "/raid" then
+        if tokens[2] == "start" then
+            RaidService.StartRaid(sender)
         end
         return true
     elseif cmd == "/announce" then

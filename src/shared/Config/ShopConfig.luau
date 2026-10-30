@@ -58,10 +58,10 @@ local ShopConfig = {
             Id = 0,  -- Set after creating in Creator Hub
             Name = "VIP: Element Master",
             Price = 499,
-            Description = "Exclusive gold chat tag, +200 max health, VIP ambient aura, and priority server slots.",
+            Description = "Exclusive VIP prestige badge, +200 max health, Royal Azure ambient aura, and priority server slots.",
             PerkType = "VIPMaster",
             Icon = "rbxassetid://6296105178",
-            PerkDetail = "+200 HP + Gold Tag + VIP Aura",
+            PerkDetail = "+200 HP + VIP Badge + Azure Aura",
         },
         SpeedBoost = {
             Id = 0,  -- Set after creating in Creator Hub

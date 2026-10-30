@@ -19,11 +19,56 @@
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local RaidService = require(script.Parent.RaidService)
 
 local MapService = {}
+
+-- Configures high-end modern anime lighting (Blox Fruits style)
+local function SetupAnimeLighting()
+    Lighting.ClockTime = 14.5
+    Lighting.GeographicLatitude = 40
+    Lighting.Brightness = 2.2
+    Lighting.GlobalShadows = true
+    Lighting.Ambient = Color3.fromRGB(80, 85, 100)
+    Lighting.OutdoorAmbient = Color3.fromRGB(110, 120, 140)
+
+    -- ColorCorrection for anime punch
+    local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+    if not cc then
+        cc = Instance.new("ColorCorrectionEffect")
+        cc.Name = "AnimeColorCorrection"
+        cc.Parent = Lighting
+    end
+    cc.Brightness = 0.02
+    cc.Contrast = 0.12
+    cc.Saturation = 0.16
+    cc.TintColor = Color3.fromRGB(255, 252, 248)
+
+    -- Bloom for elemental abilities
+    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+    if not bloom then
+        bloom = Instance.new("BloomEffect")
+        bloom.Name = "AnimeBloom"
+        bloom.Parent = Lighting
+    end
+    bloom.Intensity = 0.55
+    bloom.Size = 22
+    bloom.Threshold = 1.1
+
+    -- SunRays
+    local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
+    if not sunRays then
+        sunRays = Instance.new("SunRaysEffect")
+        sunRays.Name = "AnimeSunRays"
+        sunRays.Parent = Lighting
+    end
+    sunRays.Intensity = 0.12
+    sunRays.Spread = 0.8
+end
 
 -- World spawn positions
 local WORLD_SPAWNS: { [string]: CFrame } = {
@@ -108,18 +153,20 @@ local function CreateWorldSign(text: string, pos: Vector3, parent: Instance)
     lbl.Text = text
     lbl.Font = Enum.Font.GothamBlack
     lbl.TextScaled = true
-    lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
-    lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    lbl.TextStrokeTransparency = 0.3
+    lbl.TextColor3 = Color3.fromRGB(245, 248, 255)
+    lbl.TextStrokeColor3 = Color3.fromRGB(15, 18, 30)
+    lbl.TextStrokeTransparency = 0.2
     lbl.Parent = sg
 
     local signStroke = Instance.new("UIStroke")
-    signStroke.Color = Color3.fromRGB(180, 50, 255)
+    signStroke.Color = Color3.fromRGB(130, 95, 255)
     signStroke.Thickness = 2
     signStroke.Parent = sign
 end
 
 function MapService.BuildWorld1()
+    SetupAnimeLighting()
+
     local mapFolder = Workspace:FindFirstChild("Map")
     if not mapFolder then
         mapFolder = Instance.new("Folder")
@@ -475,6 +522,21 @@ function MapService.BuildWorld1()
         end
     end)
 
+    -- Raid Portal Interaction Prompt
+    local portalPrompt = Instance.new("ProximityPrompt")
+    portalPrompt.ActionText = "Initiate Raid"
+    portalPrompt.ObjectText = "Elemental Portal"
+    portalPrompt.HoldDuration = 1.0
+    portalPrompt.MaxActivationDistance = 18
+    portalPrompt.RequiresLineOfSight = false
+    portalPrompt.Parent = portalEnergy
+
+    portalPrompt.Triggered:Connect(function(player)
+        if not RaidService.IsActive() then
+            RaidService.StartRaid(player)
+        end
+    end)
+
     -- ==================== WORLD FRAGMENTS (Collectables) ====================
     local function SpawnWorldFragment(id: string, name: string, pos: Vector3)
         local fragModel = Instance.new("Model")
@@ -483,7 +545,7 @@ function MapService.BuildWorld1()
         local gem = Instance.new("Part")
         gem.Name = "FragmentGem"
         gem.Size = Vector3.new(3.5, 5, 3.5)
-        gem.Color = Color3.fromRGB(255, 215, 0)
+        gem.Color = Color3.fromRGB(0, 220, 255)
         gem.Material = Enum.Material.Neon
         gem.Anchored = true
         gem.CanCollide = false
@@ -495,14 +557,14 @@ function MapService.BuildWorld1()
         inner.Name = "InnerOrb"
         inner.Size = Vector3.new(2, 2, 2)
         inner.Shape = Enum.PartType.Ball
-        inner.Color = Color3.fromRGB(255, 255, 180)
+        inner.Color = Color3.fromRGB(180, 245, 255)
         inner.Material = Enum.Material.Neon
         inner.Anchored = true
         inner.CanCollide = false
         inner.CFrame = CFrame.new(pos)
         inner.Parent = fragModel
 
-        AddNeonLight(gem, Color3.fromRGB(255, 215, 0), 25, 3)
+        AddNeonLight(gem, Color3.fromRGB(0, 220, 255), 25, 3)
 
         local prompt = Instance.new("ProximityPrompt")
         prompt.ActionText = "Collect Fragment"

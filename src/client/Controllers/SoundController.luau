@@ -89,4 +89,28 @@ function SoundController.PlaySound2D(soundCategory: string, volume: number?)
     Debris:AddItem(sound, 4)
 end
 
+-- Plays tactile UI sounds (hover, click, modal open/close, success)
+local UI_SFX: { [string]: string } = {
+    hover = "rbxassetid://6895079853",
+    click = "rbxassetid://6895079853",
+    open = "rbxassetid://6895079853",
+    close = "rbxassetid://6895079853",
+    success = "rbxassetid://1840218341",
+    spin_start = "rbxassetid://3356359494",
+}
+
+function SoundController.PlayUI(action: string)
+    local soundId = UI_SFX[action] or UI_SFX.click
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = if action == "hover" then 0.25 else 0.5
+    sound.PlaybackSpeed = if action == "hover" then 1.2 else 1.0
+    sound.Parent = SoundService
+    sound:Play()
+    sound.Ended:Once(function()
+        sound:Destroy()
+    end)
+    Debris:AddItem(sound, 2)
+end
+
 return table.freeze(SoundController)

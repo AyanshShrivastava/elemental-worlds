@@ -247,6 +247,14 @@ function PlayerDataService.GrantGamePass(player: Player, passKey: string)
     PlayerDataService.SyncClient(player)
 end
 
+function PlayerDataService.AddSpinTickets(player: Player, amount: number)
+    local profile = profiles[player.UserId]
+    if not profile then return end
+
+    profile.SpinTickets = math.max(0, profile.SpinTickets + amount)
+    PlayerDataService.SyncClient(player)
+end
+
 -- Sync state to client
 function PlayerDataService.SyncClient(player: Player)
     local profile = profiles[player.UserId]

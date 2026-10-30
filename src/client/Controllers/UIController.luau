@@ -1,23 +1,21 @@
 --!strict
 --[[
-    Elemental Worlds: Master Anime Combat HUD & UI Controller
-    Features:
-    - Dual-layer health bar with damage chip catch-up
-    - Animated element crest badge with themed colors
-    - Radial cooldown sweep with live countdown
-    - Floating combo counter with bounce elastic
-    - Error meter with neon pulsing strip
-    - World map panel with world unlock status
-    - Fragment collection notification
-    - Stats sidebar (level, charges, element)
-    - Announcement banner system
-    - Blind flash overlay (Light ability)
-    - Minimap indicator (top-right region label)
+    Elemental Worlds: Master Anime Combat HUD (Blox Fruits Modern Design)
+    
+    Aesthetic rules:
+    - NO gold or rainbow cycling
+    - Deep obsidian-navy cards (Color3.fromRGB(12, 16, 24))
+    - Dual Stats: Emerald Health Bar + Electric Cyan Energy Bar (Blox Fruits signature)
+    - Hotbar supporting [Z], [X], [C], [V], and [Q] Dash + M1
+    - Cooldown swipe with bold countdown and off-cooldown flash
+    - Floating combo counter with elastic bounce
+    - Clean side menu buttons (MENU, SPIN, SHOP, CREATOR SUITE)
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
@@ -28,449 +26,479 @@ local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
 
 local UIController = {}
 
--- Element Theme Colors
-local ELEMENT_THEMES = {
-    Fire  = { Primary = Color3.fromRGB(255, 70, 20),  Accent = Color3.fromRGB(255, 165, 40),  Glow = Color3.fromRGB(255, 100, 0) },
-    Aqua  = { Primary = Color3.fromRGB(20, 155, 255), Accent = Color3.fromRGB(130, 225, 255),  Glow = Color3.fromRGB(0, 180, 255) },
-    Earth = { Primary = Color3.fromRGB(155, 105, 55), Accent = Color3.fromRGB(205, 165, 95),  Glow = Color3.fromRGB(180, 130, 60) },
-    Light = { Primary = Color3.fromRGB(255, 230, 60), Accent = Color3.fromRGB(255, 255, 175),  Glow = Color3.fromRGB(255, 240, 100) },
-    Wind  = { Primary = Color3.fromRGB(90, 235, 165), Accent = Color3.fromRGB(185, 255, 215),  Glow = Color3.fromRGB(120, 255, 190) },
-    Error = { Primary = Color3.fromRGB(255, 0, 130),  Accent = Color3.fromRGB(0, 255, 255),  Glow = Color3.fromRGB(200, 0, 200) },
-    Time  = { Primary = Color3.fromRGB(60, 125, 255), Accent = Color3.fromRGB(175, 210, 255),  Glow = Color3.fromRGB(80, 150, 255) },
+-- Modern Blox Fruits Color Tokens
+local PALETTE = {
+    BG_MAIN         = Color3.fromRGB(12, 16, 26),
+    BG_CARD         = Color3.fromRGB(18, 24, 38),
+    BG_SLOT         = Color3.fromRGB(15, 20, 34),
+    BORDER_DEFAULT  = Color3.fromRGB(45, 55, 80),
+    BORDER_ACCENT   = Color3.fromRGB(115, 90, 245),
+    TEXT_PRIMARY    = Color3.fromRGB(245, 248, 255),
+    TEXT_MUTED      = Color3.fromRGB(135, 145, 170),
+    HP_GREEN        = Color3.fromRGB(46, 204, 113),
+    HP_ORANGE       = Color3.fromRGB(230, 126, 34),
+    HP_RED          = Color3.fromRGB(231, 76, 60),
+    HP_CHIP         = Color3.fromRGB(140, 30, 30),
+    ENERGY_CYAN     = Color3.fromRGB(0, 165, 255),
+    ENERGY_DARK     = Color3.fromRGB(10, 60, 110),
 }
 
--- UI Element References
+-- Curated Element Accents (No gold, clean vibrant anime tones)
+local ELEMENT_THEMES = {
+    Fire  = { Primary = Color3.fromRGB(255, 75, 30),  Accent = Color3.fromRGB(255, 130, 50) },
+    Aqua  = { Primary = Color3.fromRGB(0, 160, 255),  Accent = Color3.fromRGB(100, 215, 255) },
+    Earth = { Primary = Color3.fromRGB(150, 110, 65), Accent = Color3.fromRGB(200, 160, 110) },
+    Light = { Primary = Color3.fromRGB(240, 220, 90), Accent = Color3.fromRGB(255, 255, 180) },
+    Wind  = { Primary = Color3.fromRGB(60, 215, 150), Accent = Color3.fromRGB(160, 255, 210) },
+    Error = { Primary = Color3.fromRGB(255, 20, 140), Accent = Color3.fromRGB(0, 255, 240) },
+    Time  = { Primary = Color3.fromRGB(120, 80, 255), Accent = Color3.fromRGB(190, 160, 255) },
+}
+
+-- GUI References
 local screenGui: ScreenGui? = nil
-local healthFillForeground: Frame? = nil
-local healthFillDamageChip: Frame? = nil
+local healthFill: Frame? = nil
+local healthChip: Frame? = nil
 local healthText: TextLabel? = nil
+local energyFill: Frame? = nil
+local energyText: TextLabel? = nil
 local levelBadgeText: TextLabel? = nil
+local elementTagText: TextLabel? = nil
+local elementTagFrame: Frame? = nil
+local spinTicketText: TextLabel? = nil
+local fragmentsText: TextLabel? = nil
 local chargesText: TextLabel? = nil
-local elementCrestBadge: TextLabel? = nil
-local elementStroke: UIStroke? = nil
-local errorMeterContainer: Frame? = nil
-local errorMeterFill: Frame? = nil
-local errorMeterPercentText: TextLabel? = nil
-local comboCounterText: TextLabel? = nil
+local comboLabel: TextLabel? = nil
 local announcementBanner: Frame? = nil
 local announcementLabel: TextLabel? = nil
-local blindOverlay: Frame? = nil
 local fragmentNotif: Frame? = nil
 local fragmentLabel: TextLabel? = nil
 local regionLabel: TextLabel? = nil
-local spinTicketLabel: TextLabel? = nil
+local blindOverlay: Frame? = nil
+local errorMeterContainer: Frame? = nil
+local errorMeterFill: Frame? = nil
+local errorMeterText: TextLabel? = nil
 
-local abilitySlotButtons: { [string]: {
+local abilityButtons: { [string]: {
     Button: TextButton,
     CooldownOverlay: Frame,
     CooldownText: TextLabel,
     NameLabel: TextLabel,
-    SlotStroke: UIStroke,
     KeyLabel: TextLabel,
+    Stroke: UIStroke,
 } } = {}
 
-local currentMaxHealth = 100
+-- State
 local currentHealth = 100
-local currentComboCount = 0
+local currentMaxHealth = 100
+local currentEnergy = 500
+local maxEnergy = 500
+local currentCombo = 0
 local lastComboTime = 0.0
 
-local function MakeShadow(parent: GuiObject, blur: number?)
-    local shadow = Instance.new("UIStroke")
-    shadow.Color = Color3.fromRGB(0, 0, 0)
-    shadow.Thickness = blur or 1.5
-    shadow.Transparency = 0.6
-    shadow.Parent = parent
-    return shadow
+local function MakeCorner(inst: GuiObject, r: number)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r)
+    c.Parent = inst
 end
 
-local function MakeRoundedFrame(name: string, size: UDim2, pos: UDim2, color: Color3, parent: Instance, radius: number?, alpha: number?): Frame
-    local f = Instance.new("Frame")
-    f.Name = name
-    f.Size = size
-    f.Position = pos
-    f.BackgroundColor3 = color
-    f.BackgroundTransparency = alpha or 0
-    f.BorderSizePixel = 0
-    f.Parent = parent
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, radius or 10)
-    corner.Parent = f
-
-    return f
+local function MakeStroke(inst: GuiObject, color: Color3, thickness: number): UIStroke
+    local s = Instance.new("UIStroke")
+    s.Color = color
+    s.Thickness = thickness
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = inst
+    return s
 end
 
+-- ==================== CREATE HUD ====================
 function UIController.CreateHUD()
     if screenGui then return end
 
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ElementalWorlds_AnimeHUD"
+    screenGui.Name = "ElementalWorlds_BloxFruitsHUD"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.IgnoreGuiInset = false
     screenGui.Parent = playerGui
 
-    -- ==================== 1. TOP STATUS BAR ====================
-    local topBg = MakeRoundedFrame("TopStatusPanel",
-        UDim2.new(0, 420, 0, 90),
-        UDim2.new(0.5, -210, 0, 14),
-        Color3.fromRGB(12, 10, 20), screenGui, 14, 0.15)
+    -- ==================== 1. PLAYER STATS CARD (Bottom-Left) ====================
+    local statsCard = Instance.new("Frame")
+    statsCard.Name = "PlayerStatsCard"
+    statsCard.Size = UDim2.new(0, 360, 0, 110)
+    statsCard.Position = UDim2.new(0, 20, 1, -135)
+    statsCard.BackgroundColor3 = PALETTE.BG_MAIN
+    statsCard.BackgroundTransparency = 0.12
+    statsCard.Parent = screenGui
+    MakeCorner(statsCard, 10)
+    MakeStroke(statsCard, PALETTE.BORDER_DEFAULT, 1.8)
 
-    elementStroke = Instance.new("UIStroke")
-    elementStroke.Color = Color3.fromRGB(255, 70, 20)
-    elementStroke.Thickness = 2.5
-    elementStroke.Parent = topBg
+    -- Top Row: Level Pill & Element Badge & Currency
+    local topRow = Instance.new("Frame")
+    topRow.Size = UDim2.new(1, -20, 0, 26)
+    topRow.Position = UDim2.new(0, 10, 0, 8)
+    topRow.BackgroundTransparency = 1
+    topRow.Parent = statsCard
 
-    -- Level Diamond Badge
-    local levelDiamond = Instance.new("Frame")
-    levelDiamond.Name = "LevelBadge"
-    levelDiamond.Size = UDim2.new(0, 40, 0, 40)
-    levelDiamond.Position = UDim2.new(0, 14, 0.5, -20)
-    levelDiamond.BackgroundColor3 = Color3.fromRGB(20, 18, 32)
-    levelDiamond.Rotation = 45
-    levelDiamond.Parent = topBg
-
-    local diaCorner = Instance.new("UICorner")
-    diaCorner.CornerRadius = UDim.new(0, 5)
-    diaCorner.Parent = levelDiamond
-
-    local diaStroke = Instance.new("UIStroke")
-    diaStroke.Color = Color3.fromRGB(255, 215, 0)
-    diaStroke.Thickness = 1.8
-    diaStroke.Parent = levelDiamond
+    -- Level Pill
+    local levelPill = Instance.new("Frame")
+    levelPill.Size = UDim2.new(0, 75, 1, 0)
+    levelPill.BackgroundColor3 = PALETTE.BG_CARD
+    levelPill.Parent = topRow
+    MakeCorner(levelPill, 6)
+    MakeStroke(levelPill, PALETTE.BORDER_DEFAULT, 1.2)
 
     levelBadgeText = Instance.new("TextLabel")
     levelBadgeText.Size = UDim2.new(1, 0, 1, 0)
-    levelBadgeText.Rotation = -45
     levelBadgeText.BackgroundTransparency = 1
     levelBadgeText.Font = Enum.Font.GothamBlack
-    levelBadgeText.TextSize = 14
-    levelBadgeText.TextColor3 = Color3.fromRGB(255, 220, 60)
-    levelBadgeText.Text = "1"
-    levelBadgeText.Parent = levelDiamond
+    levelBadgeText.TextSize = 12
+    levelBadgeText.TextColor3 = PALETTE.TEXT_PRIMARY
+    levelBadgeText.Text = "Lv. 1"
+    levelBadgeText.Parent = levelPill
 
-    -- Element Crest
-    elementCrestBadge = Instance.new("TextLabel")
-    elementCrestBadge.Name = "ElementCrest"
-    elementCrestBadge.Size = UDim2.new(0, 140, 0, 22)
-    elementCrestBadge.Position = UDim2.new(0, 64, 0, 10)
-    elementCrestBadge.BackgroundTransparency = 1
-    elementCrestBadge.Font = Enum.Font.GothamBlack
-    elementCrestBadge.TextSize = 17
-    elementCrestBadge.TextColor3 = Color3.fromRGB(255, 70, 20)
-    elementCrestBadge.TextXAlignment = Enum.TextXAlignment.Left
-    elementCrestBadge.Text = "FIRE ELEMENT"
-    elementCrestBadge.Parent = topBg
+    -- Element Badge
+    elementTagFrame = Instance.new("Frame")
+    elementTagFrame.Size = UDim2.new(0, 110, 1, 0)
+    elementTagFrame.Position = UDim2.new(0, 82, 0, 0)
+    elementTagFrame.BackgroundColor3 = PALETTE.BG_CARD
+    elementTagFrame.Parent = topRow
+    MakeCorner(elementTagFrame, 6)
+    local elemStroke = MakeStroke(elementTagFrame, PALETTE.BORDER_ACCENT, 1.2)
 
-    -- Charges Counter
-    chargesText = Instance.new("TextLabel")
-    chargesText.Name = "ChargesText"
-    chargesText.Size = UDim2.new(0, 180, 0, 22)
-    chargesText.Position = UDim2.new(1, -190, 0, 10)
-    chargesText.BackgroundTransparency = 1
-    chargesText.Font = Enum.Font.GothamBold
-    chargesText.TextSize = 13
-    chargesText.TextColor3 = Color3.fromRGB(110, 215, 255)
-    chargesText.TextXAlignment = Enum.TextXAlignment.Right
-    chargesText.Text = "Charges: 0 / 10000"
-    chargesText.Parent = topBg
+    elementTagText = Instance.new("TextLabel")
+    elementTagText.Size = UDim2.new(1, 0, 1, 0)
+    elementTagText.BackgroundTransparency = 1
+    elementTagText.Font = Enum.Font.GothamBold
+    elementTagText.TextSize = 11
+    elementTagText.TextColor3 = PALETTE.BORDER_ACCENT
+    elementTagText.Text = "FIRE"
+    elementTagText.Parent = elementTagFrame
 
-    -- Spin Ticket Count
-    spinTicketLabel = Instance.new("TextLabel")
-    spinTicketLabel.Name = "SpinTickets"
-    spinTicketLabel.Size = UDim2.new(0, 160, 0, 20)
-    spinTicketLabel.Position = UDim2.new(1, -170, 0, 36)
-    spinTicketLabel.BackgroundTransparency = 1
-    spinTicketLabel.Font = Enum.Font.GothamBold
-    spinTicketLabel.TextSize = 12
-    spinTicketLabel.TextColor3 = Color3.fromRGB(255, 200, 40)
-    spinTicketLabel.TextXAlignment = Enum.TextXAlignment.Right
-    spinTicketLabel.Text = "Spin Tickets: 1"
-    spinTicketLabel.Parent = topBg
+    -- Spins & Charges
+    spinTicketText = Instance.new("TextLabel")
+    spinTicketText.Size = UDim2.new(0, 140, 1, 0)
+    spinTicketText.Position = UDim2.new(1, -140, 0, 0)
+    spinTicketText.BackgroundTransparency = 1
+    spinTicketText.Font = Enum.Font.GothamBold
+    spinTicketText.TextSize = 11
+    spinTicketText.TextColor3 = PALETTE.TEXT_MUTED
+    spinTicketText.TextXAlignment = Enum.TextXAlignment.Right
+    spinTicketText.Text = "Spins: 1 | Charges: 0"
+    spinTicketText.Parent = topRow
 
-    -- Dual-Layer Health Bar
-    local healthBg = MakeRoundedFrame("HealthBg",
-        UDim2.new(1, -76, 0, 22),
-        UDim2.new(0, 64, 0, 44),
-        Color3.fromRGB(22, 20, 32), topBg, 6, 0)
+    -- Health Bar (Emerald Green with damage chip underneath)
+    local hpTrack = Instance.new("Frame")
+    hpTrack.Name = "HealthTrack"
+    hpTrack.Size = UDim2.new(1, -20, 0, 24)
+    hpTrack.Position = UDim2.new(0, 10, 0, 42)
+    hpTrack.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
+    hpTrack.Parent = statsCard
+    MakeCorner(hpTrack, 6)
+    MakeStroke(hpTrack, Color3.fromRGB(30, 40, 55), 1.2)
 
-    healthFillDamageChip = MakeRoundedFrame("DamageChip",
-        UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-        Color3.fromRGB(255, 220, 80), healthBg, 6, 0)
+    healthChip = Instance.new("Frame")
+    healthChip.Name = "HealthChip"
+    healthChip.Size = UDim2.new(1, 0, 1, 0)
+    healthChip.BackgroundColor3 = PALETTE.HP_CHIP
+    healthChip.BorderSizePixel = 0
+    healthChip.Parent = hpTrack
+    MakeCorner(healthChip, 6)
 
-    healthFillForeground = MakeRoundedFrame("HPForeground",
-        UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-        Color3.fromRGB(40, 215, 110), healthBg, 6, 0)
+    healthFill = Instance.new("Frame")
+    healthFill.Name = "HealthFill"
+    healthFill.Size = UDim2.new(1, 0, 1, 0)
+    healthFill.BackgroundColor3 = PALETTE.HP_GREEN
+    healthFill.BorderSizePixel = 0
+    healthFill.Parent = hpTrack
+    MakeCorner(healthFill, 6)
 
     healthText = Instance.new("TextLabel")
-    healthText.Size = UDim2.new(1, 0, 1, 0)
+    healthText.Size = UDim2.new(1, -12, 1, 0)
+    healthText.Position = UDim2.new(0, 6, 0, 0)
     healthText.BackgroundTransparency = 1
     healthText.Font = Enum.Font.GothamBlack
     healthText.TextSize = 11
-    healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    healthText.TextColor3 = PALETTE.TEXT_PRIMARY
     healthText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     healthText.TextStrokeTransparency = 0.3
+    healthText.TextXAlignment = Enum.TextXAlignment.Center
     healthText.Text = "100 / 100"
-    healthText.Parent = healthBg
+    healthText.Parent = hpTrack
 
-    -- Level subtitle
-    local levelSubtitle = Instance.new("TextLabel")
-    levelSubtitle.Name = "LevelSub"
-    levelSubtitle.Size = UDim2.new(0, 140, 0, 18)
-    levelSubtitle.Position = UDim2.new(0, 64, 0, 68)
-    levelSubtitle.BackgroundTransparency = 1
-    levelSubtitle.Font = Enum.Font.GothamBold
-    levelSubtitle.TextSize = 11
-    levelSubtitle.TextColor3 = Color3.fromRGB(160, 155, 180)
-    levelSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-    levelSubtitle.Text = "Elemental Warrior"
-    levelSubtitle.Parent = topBg
+    -- Energy Bar (Blox Fruits Electric Cyan)
+    local energyTrack = Instance.new("Frame")
+    energyTrack.Name = "EnergyTrack"
+    energyTrack.Size = UDim2.new(1, -20, 0, 20)
+    energyTrack.Position = UDim2.new(0, 10, 0, 74)
+    energyTrack.BackgroundColor3 = Color3.fromRGB(8, 20, 36)
+    energyTrack.Parent = statsCard
+    MakeCorner(energyTrack, 6)
+    MakeStroke(energyTrack, Color3.fromRGB(20, 50, 80), 1.2)
 
-    -- ==================== 2. ERROR METER ====================
-    errorMeterContainer = MakeRoundedFrame("ErrorMeterContainer",
-        UDim2.new(0, 320, 0, 24),
-        UDim2.new(0.5, -160, 0, 116),
-        Color3.fromRGB(18, 8, 28), screenGui, 7, 0.1)
-    errorMeterContainer.Visible = false
+    energyFill = Instance.new("Frame")
+    energyFill.Name = "EnergyFill"
+    energyFill.Size = UDim2.new(1, 0, 1, 0)
+    energyFill.BackgroundColor3 = PALETTE.ENERGY_CYAN
+    energyFill.BorderSizePixel = 0
+    energyFill.Parent = energyTrack
+    MakeCorner(energyFill, 6)
 
-    local errStroke = Instance.new("UIStroke")
-    errStroke.Color = Color3.fromRGB(255, 0, 130)
-    errStroke.Thickness = 2
-    errStroke.Parent = errorMeterContainer
+    energyText = Instance.new("TextLabel")
+    energyText.Size = UDim2.new(1, -12, 1, 0)
+    energyText.Position = UDim2.new(0, 6, 0, 0)
+    energyText.BackgroundTransparency = 1
+    energyText.Font = Enum.Font.GothamBlack
+    energyText.TextSize = 10
+    energyText.TextColor3 = PALETTE.TEXT_PRIMARY
+    energyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    energyText.TextStrokeTransparency = 0.4
+    energyText.TextXAlignment = Enum.TextXAlignment.Center
+    energyText.Text = "500 / 500"
+    energyText.Parent = energyTrack
 
-    errorMeterFill = MakeRoundedFrame("ErrorFill",
-        UDim2.new(0, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-        Color3.fromRGB(255, 0, 130), errorMeterContainer, 7, 0)
+    -- Smooth energy regeneration loop
+    task.spawn(function()
+        while true do
+            if currentEnergy < maxEnergy then
+                currentEnergy = math.min(maxEnergy, currentEnergy + 15)
+                UIController.SetEnergy(currentEnergy, maxEnergy)
+            end
+            task.wait(0.2)
+        end
+    end)
 
-    errorMeterPercentText = Instance.new("TextLabel")
-    errorMeterPercentText.Size = UDim2.new(1, 0, 1, 0)
-    errorMeterPercentText.BackgroundTransparency = 1
-    errorMeterPercentText.Font = Enum.Font.GothamBlack
-    errorMeterPercentText.TextSize = 12
-    errorMeterPercentText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    errorMeterPercentText.TextStrokeTransparency = 0.4
-    errorMeterPercentText.Text = "ERROR METER: 0%"
-    errorMeterPercentText.Parent = errorMeterContainer
+    -- ==================== 2. BLOX FRUITS ABILITY HOTBAR (Bottom-Center) ====================
+    local hotbar = Instance.new("Frame")
+    hotbar.Name = "AbilityHotbar"
+    hotbar.Size = UDim2.new(0, 480, 0, 78)
+    hotbar.Position = UDim2.new(0.5, -190, 1, -98)
+    hotbar.BackgroundTransparency = 1
+    hotbar.Parent = screenGui
 
-    -- ==================== 3. COMBO COUNTER ====================
-    comboCounterText = Instance.new("TextLabel")
-    comboCounterText.Name = "ComboCounter"
-    comboCounterText.Size = UDim2.new(0, 220, 0, 50)
-    comboCounterText.Position = UDim2.new(0.1, 0, 0.44, 0)
-    comboCounterText.BackgroundTransparency = 1
-    comboCounterText.Font = Enum.Font.GothamBlack
-    comboCounterText.TextSize = 32
-    comboCounterText.TextColor3 = Color3.fromRGB(255, 200, 40)
-    comboCounterText.TextStrokeColor3 = Color3.fromRGB(15, 12, 25)
-    comboCounterText.TextStrokeTransparency = 0.1
-    comboCounterText.TextXAlignment = Enum.TextXAlignment.Left
-    comboCounterText.Visible = false
-    comboCounterText.Text = "3 HITS"
-    comboCounterText.Parent = screenGui
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = hotbar
 
-    -- ==================== 4. ABILITY HOTBAR ====================
-    local hotbarFrame = Instance.new("Frame")
-    hotbarFrame.Name = "AbilityHotbar"
-    hotbarFrame.Size = UDim2.new(0, 490, 0, 84)
-    hotbarFrame.Position = UDim2.new(0.5, -245, 1, -104)
-    hotbarFrame.BackgroundTransparency = 1
-    hotbarFrame.Parent = screenGui
-
-    local hotbarLayout = Instance.new("UIListLayout")
-    hotbarLayout.FillDirection = Enum.FillDirection.Horizontal
-    hotbarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    hotbarLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    hotbarLayout.Padding = UDim.new(0, 8)
-    hotbarLayout.Parent = hotbarFrame
-
-    local slotKeys: { { slot: string, key: string } } = {
-        { slot = "M1", key = "Q" },
-        { slot = "1", key = "1" },
-        { slot = "2", key = "2" },
-        { slot = "3", key = "3" },
-        { slot = "4", key = "4" },
-        { slot = "5", key = "5" },
+    -- Hotbar slots matching Blox Fruits anime RPG conventions
+    local slots = {
+        { slot = "M1", key = "M1", name = "Basic Attack" },
+        { slot = "1",  key = "Z",  name = "Move 1" },
+        { slot = "2",  key = "X",  name = "Move 2" },
+        { slot = "3",  key = "C",  name = "Move 3" },
+        { slot = "4",  key = "V",  name = "Move 4" },
+        { slot = "5",  key = "B",  name = "Secret" },
     }
 
-    for _, info in slotKeys do
-        local slot = info.slot
+    for _, slotInfo in slots do
+        local slot = slotInfo.slot
         local btn = Instance.new("TextButton")
         btn.Name = "Slot_" .. slot
-        btn.Size = UDim2.new(0, 68, 0, 76)
-        btn.BackgroundColor3 = Color3.fromRGB(18, 16, 28)
+        btn.Size = UDim2.new(0, 70, 0, 70)
+        btn.BackgroundColor3 = PALETTE.BG_SLOT
         btn.Text = ""
         btn.AutoButtonColor = false
-        btn.Parent = hotbarFrame
+        btn.Parent = hotbar
+        MakeCorner(btn, 8)
+        local btnStroke = MakeStroke(btn, PALETTE.BORDER_DEFAULT, 1.8)
 
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 12)
-        btnCorner.Parent = btn
-
-        local btnStroke = Instance.new("UIStroke")
-        btnStroke.Color = Color3.fromRGB(70, 68, 95)
-        btnStroke.Thickness = 2.2
-        btnStroke.Parent = btn
-
-        local keyBadge = Instance.new("TextLabel")
-        keyBadge.Name = "KeyBadge"
+        -- Keybind Badge [Z], [X], [C], [V]
+        local keyBadge = Instance.new("Frame")
         keyBadge.Size = UDim2.new(0, 22, 0, 18)
-        keyBadge.Position = UDim2.new(0, 4, 0, 4)
-        keyBadge.BackgroundColor3 = Color3.fromRGB(35, 33, 50)
-        keyBadge.Font = Enum.Font.GothamBold
-        keyBadge.TextSize = 10
-        keyBadge.TextColor3 = Color3.fromRGB(200, 200, 220)
-        keyBadge.Text = info.key
+        keyBadge.Position = UDim2.new(0, 5, 0, 5)
+        keyBadge.BackgroundColor3 = PALETTE.BG_CARD
         keyBadge.Parent = btn
+        MakeCorner(keyBadge, 4)
 
-        local kbCorner = Instance.new("UICorner")
-        kbCorner.CornerRadius = UDim.new(0, 4)
-        kbCorner.Parent = keyBadge
+        local keyText = Instance.new("TextLabel")
+        keyText.Size = UDim2.new(1, 0, 1, 0)
+        keyText.BackgroundTransparency = 1
+        keyText.Font = Enum.Font.GothamBlack
+        keyText.TextSize = 10
+        keyText.TextColor3 = PALETTE.BORDER_ACCENT
+        keyText.Text = slotInfo.key
+        keyText.Parent = keyBadge
 
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Name = "AbilityName"
-        nameLabel.Size = UDim2.new(1, -6, 0, 40)
-        nameLabel.Position = UDim2.new(0, 3, 0, 28)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextSize = 10
-        nameLabel.TextWrapped = true
-        nameLabel.TextColor3 = Color3.fromRGB(200, 198, 220)
-        nameLabel.Text = "Ability"
-        nameLabel.Parent = btn
+        -- Ability Name
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Name = "AbilityName"
+        nameLbl.Size = UDim2.new(1, -8, 0, 36)
+        nameLbl.Position = UDim2.new(0, 4, 1, -40)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextSize = 10
+        nameLbl.TextWrapped = true
+        nameLbl.TextColor3 = PALETTE.TEXT_PRIMARY
+        nameLbl.Text = slotInfo.name
+        nameLbl.Parent = btn
 
-        -- Cooldown overlay (fills from top)
-        local cdOverlay = MakeRoundedFrame("CooldownOverlay",
-            UDim2.new(1, 0, 0, 0),
-            UDim2.new(0, 0, 1, 0),
-            Color3.fromRGB(5, 4, 12), btn, 12, 0.3)
+        -- Translucent vertical wipe cooldown overlay
+        local cdOverlay = Instance.new("Frame")
+        cdOverlay.Name = "CooldownOverlay"
+        cdOverlay.Size = UDim2.new(1, 0, 0, 0)
+        cdOverlay.Position = UDim2.new(0, 0, 1, 0)
         cdOverlay.AnchorPoint = Vector2.new(0, 1)
+        cdOverlay.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
+        cdOverlay.BackgroundTransparency = 0.25
         cdOverlay.Visible = false
+        cdOverlay.Parent = btn
+        MakeCorner(cdOverlay, 8)
 
         local cdText = Instance.new("TextLabel")
         cdText.Size = UDim2.new(1, 0, 1, 0)
         cdText.BackgroundTransparency = 1
         cdText.Font = Enum.Font.GothamBlack
-        cdText.TextSize = 20
-        cdText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        cdText.TextSize = 18
+        cdText.TextColor3 = PALETTE.TEXT_PRIMARY
         cdText.Text = ""
         cdText.Parent = cdOverlay
 
-        -- Hover & click animations
+        -- Hover and click animations
         btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 73, 0, 81)
-            }):Play()
+            TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 74, 0, 74), BackgroundColor3 = PALETTE.BG_CARD }):Play()
             SoundController.PlayUI("hover")
         end)
         btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 68, 0, 76)
-            }):Play()
+            TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 70, 0, 70), BackgroundColor3 = PALETTE.BG_SLOT }):Play()
         end)
         btn.MouseButton1Click:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 62, 0, 70)
-            }):Play()
-            task.delay(0.06, function()
-                TweenService:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                    Size = UDim2.new(0, 68, 0, 76)
-                }):Play()
-            end)
             local combatController = require(script.Parent.CombatController)
             combatController.Cast(slot)
         end)
 
-        abilitySlotButtons[slot] = {
+        abilityButtons[slot] = {
             Button = btn,
             CooldownOverlay = cdOverlay,
             CooldownText = cdText,
-            NameLabel = nameLabel,
-            SlotStroke = btnStroke,
-            KeyLabel = keyBadge,
+            NameLabel = nameLbl,
+            KeyLabel = keyText,
+            Stroke = btnStroke,
         }
     end
 
-    -- ==================== 5. ANNOUNCEMENT BANNER ====================
-    announcementBanner = MakeRoundedFrame("AnnouncementBanner",
-        UDim2.new(0, 680, 0, 50),
-        UDim2.new(0.5, -340, 0, 148),
-        Color3.fromRGB(10, 8, 22), screenGui, 12, 0.15)
-    announcementBanner.Visible = false
+    -- ==================== 3. ERROR METER (For Secret Error Element) ====================
+    errorMeterContainer = Instance.new("Frame")
+    errorMeterContainer.Name = "ErrorMeter"
+    errorMeterContainer.Size = UDim2.new(0, 320, 0, 22)
+    errorMeterContainer.Position = UDim2.new(0.5, -160, 1, -128)
+    errorMeterContainer.BackgroundColor3 = Color3.fromRGB(16, 10, 24)
+    errorMeterContainer.Visible = false
+    errorMeterContainer.Parent = screenGui
+    MakeCorner(errorMeterContainer, 6)
+    MakeStroke(errorMeterContainer, Color3.fromRGB(255, 20, 140), 1.5)
 
-    local abStroke = Instance.new("UIStroke")
-    abStroke.Color = Color3.fromRGB(255, 215, 0)
-    abStroke.Thickness = 2
-    abStroke.Parent = announcementBanner
+    errorMeterFill = Instance.new("Frame")
+    errorMeterFill.Size = UDim2.new(0, 0, 1, 0)
+    errorMeterFill.BackgroundColor3 = Color3.fromRGB(255, 20, 140)
+    errorMeterFill.BorderSizePixel = 0
+    errorMeterFill.Parent = errorMeterContainer
+    MakeCorner(errorMeterFill, 6)
+
+    errorMeterText = Instance.new("TextLabel")
+    errorMeterText.Size = UDim2.new(1, 0, 1, 0)
+    errorMeterText.BackgroundTransparency = 1
+    errorMeterText.Font = Enum.Font.GothamBlack
+    errorMeterText.TextSize = 11
+    errorMeterText.TextColor3 = PALETTE.TEXT_PRIMARY
+    errorMeterText.Text = "ERROR METER: 0%"
+    errorMeterText.Parent = errorMeterContainer
+
+    -- ==================== 4. BLOX FRUITS COMBO COUNTER ====================
+    comboLabel = Instance.new("TextLabel")
+    comboLabel.Name = "BloxFruitsCombo"
+    comboLabel.Size = UDim2.new(0, 240, 0, 48)
+    comboLabel.Position = UDim2.new(0.12, 0, 0.45, 0)
+    comboLabel.BackgroundTransparency = 1
+    comboLabel.Font = Enum.Font.GothamBlack
+    comboLabel.TextSize = 34
+    comboLabel.TextColor3 = PALETTE.TEXT_PRIMARY
+    comboLabel.TextStrokeColor3 = Color3.fromRGB(15, 20, 32)
+    comboLabel.TextStrokeTransparency = 0.2
+    comboLabel.TextXAlignment = Enum.TextXAlignment.Left
+    comboLabel.Visible = false
+    comboLabel.Text = "COMBO x3"
+    comboLabel.Parent = screenGui
+
+    -- ==================== 5. ANNOUNCEMENT BANNER ====================
+    announcementBanner = Instance.new("Frame")
+    announcementBanner.Name = "AnnouncementBanner"
+    announcementBanner.Size = UDim2.new(0, 620, 0, 44)
+    announcementBanner.Position = UDim2.new(0.5, -310, 0, 36)
+    announcementBanner.BackgroundColor3 = PALETTE.BG_MAIN
+    announcementBanner.BackgroundTransparency = 0.12
+    announcementBanner.Visible = false
+    announcementBanner.Parent = screenGui
+    MakeCorner(announcementBanner, 8)
+    MakeStroke(announcementBanner, PALETTE.BORDER_ACCENT, 1.8)
 
     announcementLabel = Instance.new("TextLabel")
-    announcementLabel.Name = "AnnounceText"
     announcementLabel.Size = UDim2.new(1, -20, 1, 0)
     announcementLabel.Position = UDim2.new(0, 10, 0, 0)
     announcementLabel.BackgroundTransparency = 1
     announcementLabel.Font = Enum.Font.GothamBlack
-    announcementLabel.TextSize = 16
-    announcementLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    announcementLabel.TextStrokeTransparency = 0.4
+    announcementLabel.TextSize = 14
+    announcementLabel.TextColor3 = PALETTE.TEXT_PRIMARY
     announcementLabel.Text = ""
     announcementLabel.Parent = announcementBanner
 
     -- ==================== 6. FRAGMENT NOTIFICATION ====================
-    fragmentNotif = MakeRoundedFrame("FragmentNotif",
-        UDim2.new(0, 380, 0, 60),
-        UDim2.new(1, -400, 0.5, -30),
-        Color3.fromRGB(255, 215, 0), screenGui, 12, 0.1)
+    fragmentNotif = Instance.new("Frame")
+    fragmentNotif.Name = "FragmentNotif"
+    fragmentNotif.Size = UDim2.new(0, 340, 0, 52)
+    fragmentNotif.Position = UDim2.new(1, -360, 0.5, -26)
+    fragmentNotif.BackgroundColor3 = PALETTE.BG_MAIN
+    fragmentNotif.BackgroundTransparency = 0.12
     fragmentNotif.Visible = false
-
-    local fragStroke = Instance.new("UIStroke")
-    fragStroke.Color = Color3.fromRGB(255, 255, 100)
-    fragStroke.Thickness = 2.5
-    fragStroke.Parent = fragmentNotif
+    fragmentNotif.Parent = screenGui
+    MakeCorner(fragmentNotif, 8)
+    MakeStroke(fragmentNotif, PALETTE.ENERGY_CYAN, 2.0)
 
     fragmentLabel = Instance.new("TextLabel")
     fragmentLabel.Size = UDim2.new(1, -16, 1, 0)
     fragmentLabel.Position = UDim2.new(0, 8, 0, 0)
     fragmentLabel.BackgroundTransparency = 1
-    fragmentLabel.Font = Enum.Font.GothamBlack
-    fragmentLabel.TextSize = 16
-    fragmentLabel.TextColor3 = Color3.fromRGB(20, 15, 30)
+    fragmentLabel.Font = Enum.Font.GothamBold
+    fragmentLabel.TextSize = 13
+    fragmentLabel.TextColor3 = PALETTE.TEXT_PRIMARY
     fragmentLabel.TextXAlignment = Enum.TextXAlignment.Left
-    fragmentLabel.Text = "Fragment Collected!"
     fragmentLabel.TextWrapped = true
+    fragmentLabel.Text = "Fragment Discovered!"
     fragmentLabel.Parent = fragmentNotif
 
-    -- ==================== 7. REGION INDICATOR (top-right) ====================
-    local regionBg = MakeRoundedFrame("RegionBg",
-        UDim2.new(0, 200, 0, 34),
-        UDim2.new(1, -216, 0, 14),
-        Color3.fromRGB(12, 10, 22), screenGui, 8, 0.2)
-
-    local regionStroke = Instance.new("UIStroke")
-    regionStroke.Color = Color3.fromRGB(100, 100, 140)
-    regionStroke.Thickness = 1.5
-    regionStroke.Parent = regionBg
+    -- ==================== 7. REGION BADGE (Top-Right) ====================
+    local regionFrame = Instance.new("Frame")
+    regionFrame.Size = UDim2.new(0, 200, 0, 32)
+    regionFrame.Position = UDim2.new(1, -220, 0, 16)
+    regionFrame.BackgroundColor3 = PALETTE.BG_MAIN
+    regionFrame.BackgroundTransparency = 0.15
+    regionFrame.Parent = screenGui
+    MakeCorner(regionFrame, 6)
+    MakeStroke(regionFrame, PALETTE.BORDER_DEFAULT, 1.2)
 
     regionLabel = Instance.new("TextLabel")
-    regionLabel.Size = UDim2.new(1, -10, 1, 0)
-    regionLabel.Position = UDim2.new(0, 5, 0, 0)
+    regionLabel.Size = UDim2.new(1, -16, 1, 0)
+    regionLabel.Position = UDim2.new(0, 8, 0, 0)
     regionLabel.BackgroundTransparency = 1
     regionLabel.Font = Enum.Font.GothamBold
-    regionLabel.TextSize = 13
-    regionLabel.TextColor3 = Color3.fromRGB(180, 175, 200)
+    regionLabel.TextSize = 12
+    regionLabel.TextColor3 = PALETTE.TEXT_MUTED
     regionLabel.TextXAlignment = Enum.TextXAlignment.Right
     regionLabel.Text = "Ember Highlands"
-    regionLabel.Parent = regionBg
+    regionLabel.Parent = regionFrame
 
-    -- ==================== 8. BLIND OVERLAY ====================
+    -- Blind Flash Overlay
     blindOverlay = Instance.new("Frame")
     blindOverlay.Name = "BlindOverlay"
     blindOverlay.Size = UDim2.new(1, 0, 1, 0)
     blindOverlay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     blindOverlay.BackgroundTransparency = 1
-    blindOverlay.ZIndex = 60
+    blindOverlay.ZIndex = 80
     blindOverlay.Parent = screenGui
 end
 
--- ========== HEALTH ==========
+-- ==================== HEALTH UPDATES ====================
 function UIController.SetHealth(newHealth: number, maxHealth: number)
     currentHealth = math.clamp(newHealth, 0, maxHealth)
     currentMaxHealth = maxHealth
@@ -481,18 +509,19 @@ function UIController.SetHealth(newHealth: number, maxHealth: number)
         healthText.Text = string.format("%d / %d", math.round(currentHealth), math.round(currentMaxHealth))
     end
 
-    if healthFillForeground then
-        healthFillForeground.Size = UDim2.new(ratio, 0, 1, 0)
-        -- Color shift: green > yellow > red
-        healthFillForeground.BackgroundColor3 = (ratio > 0.5)
-            and Color3.fromRGB(40, 215, 110)
-            or (ratio > 0.25 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(220, 50, 50))
+    if healthFill then
+        healthFill.Size = UDim2.new(ratio, 0, 1, 0)
+        -- Dynamic shift: Emerald green > Orange > Crimson
+        healthFill.BackgroundColor3 = (ratio > 0.5)
+            and PALETTE.HP_GREEN
+            or (ratio > 0.25 and PALETTE.HP_ORANGE or PALETTE.HP_RED)
     end
 
-    if healthFillDamageChip then
-        task.delay(0.3, function()
-            if healthFillDamageChip then
-                TweenService:Create(healthFillDamageChip, TweenInfo.new(0.55, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+    -- Catch-up damage chip
+    if healthChip then
+        task.delay(0.25, function()
+            if healthChip then
+                TweenService:Create(healthChip, TweenInfo.new(0.5, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
                     Size = UDim2.new(ratio, 0, 1, 0),
                 }):Play()
             end
@@ -500,38 +529,59 @@ function UIController.SetHealth(newHealth: number, maxHealth: number)
     end
 end
 
--- ========== COMBO ==========
+-- ==================== ENERGY / STAMINA ====================
+function UIController.SetEnergy(newEnergy: number, maxEng: number)
+    currentEnergy = math.clamp(newEnergy, 0, maxEng)
+    maxEnergy = maxEng
+
+    local ratio = math.clamp(currentEnergy / maxEnergy, 0, 1)
+    if energyFill then
+        energyFill.Size = UDim2.new(ratio, 0, 1, 0)
+    end
+    if energyText then
+        energyText.Text = string.format("%d / %d", math.round(currentEnergy), math.round(maxEnergy))
+    end
+end
+
+function UIController.ConsumeEnergy(amount: number): boolean
+    if currentEnergy >= amount then
+        currentEnergy -= amount
+        UIController.SetEnergy(currentEnergy, maxEnergy)
+        return true
+    end
+    return false
+end
+
+-- ==================== COMBO COUNTER ====================
 function UIController.RegisterComboHit(count: number)
-    currentComboCount = count
+    currentCombo = count
     lastComboTime = os.clock()
 
-    if comboCounterText then
-        local labels = { "HIT", "NICE", "GREAT", "BEAST", "GODLY" }
-        local label = labels[math.min(count, #labels)] or "GODLY"
-        comboCounterText.Text = string.format("%d %s", count, label)
-        comboCounterText.Visible = true
-        comboCounterText.TextSize = 42
-        TweenService:Create(comboCounterText, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            TextSize = 32,
+    if comboLabel then
+        comboLabel.Text = string.format("COMBO x%d", count)
+        comboLabel.Visible = true
+        comboLabel.TextSize = 42
+        comboLabel.TextColor3 = if count >= 4 then PALETTE.BORDER_ACCENT else PALETTE.TEXT_PRIMARY
+
+        TweenService:Create(comboLabel, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            TextSize = 34,
         }):Play()
 
-        task.delay(1.6, function()
-            if os.clock() - lastComboTime >= 1.5 then
-                if comboCounterText then
-                    TweenService:Create(comboCounterText, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
-                    task.delay(0.35, function()
-                        if comboCounterText then
-                            comboCounterText.Visible = false
-                            comboCounterText.TextTransparency = 0
-                        end
-                    end)
+        task.delay(1.5, function()
+            if os.clock() - lastComboTime >= 1.4 then
+                if comboLabel then
+                    local t = TweenService:Create(comboLabel, TweenInfo.new(0.25), { TextTransparency = 1 })
+                    t:Play()
+                    t.Completed:Wait()
+                    comboLabel.Visible = false
+                    comboLabel.TextTransparency = 0
                 end
             end
         end)
     end
 end
 
--- ========== UPDATE STATS ==========
+-- ==================== STATS SYNC ====================
 function UIController.UpdateStats(data: {
     Level: number,
     Charges: number,
@@ -541,58 +591,55 @@ function UIController.UpdateStats(data: {
     SpinTickets: number?,
 })
     if levelBadgeText then
-        levelBadgeText.Text = tostring(data.Level)
+        levelBadgeText.Text = "Lv. " .. tostring(data.Level)
     end
-    if chargesText then
-        chargesText.Text = string.format("Charges: %d / %d", data.Charges, GameConfig.MAX_CHARGES)
-    end
-    if spinTicketLabel and data.SpinTickets then
-        spinTicketLabel.Text = string.format("Spin Tickets: %d", data.SpinTickets)
+
+    if spinTicketText then
+        spinTicketText.Text = string.format("Spins: %d | Charges: %d", data.SpinTickets or 0, data.Charges)
     end
 
     local theme = ELEMENT_THEMES[data.Element] or ELEMENT_THEMES.Fire
-    if elementCrestBadge then
-        elementCrestBadge.Text = string.upper(data.Element) .. " ELEMENT"
-        elementCrestBadge.TextColor3 = theme.Primary
+    if elementTagText then
+        elementTagText.Text = string.upper(data.Element)
+        elementTagText.TextColor3 = theme.Primary
     end
-    if elementStroke then
-        TweenService:Create(elementStroke, TweenInfo.new(0.4), { Color = theme.Primary }):Play()
-    end
-
-    for _, btnData in abilitySlotButtons do
-        TweenService:Create(btnData.SlotStroke, TweenInfo.new(0.3), { Color = theme.Primary }):Play()
-    end
-
-    -- Error meter
-    if errorMeterContainer and errorMeterFill and errorMeterPercentText then
-        local isError = (data.Element == "Error")
-        errorMeterContainer.Visible = isError
-        if isError then
-            local ratio = math.clamp(data.ErrorMeter / 100, 0, 1)
-            TweenService:Create(errorMeterFill, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-                Size = UDim2.new(ratio, 0, 1, 0),
-            }):Play()
-            errorMeterPercentText.Text = string.format("ERROR METER: %d%%", math.round(data.ErrorMeter))
+    if elementTagFrame then
+        local stroke = elementTagFrame:FindFirstChildOfClass("UIStroke")
+        if stroke then
+            stroke.Color = theme.Primary
         end
     end
 
-    if abilitySlotButtons["5"] then
-        abilitySlotButtons["5"].Button.Visible = (data.Element == "Error")
-    end
-
-    for slot, btnData in abilitySlotButtons do
+    -- Update slot labels and borders
+    for slot, btnData in abilityButtons do
         local ability = AbilityConfig.GetAbility(data.Element, slot)
         if ability then
             btnData.NameLabel.Text = ability.Name
         end
+        TweenService:Create(btnData.Stroke, TweenInfo.new(0.3), { Color = theme.Primary }):Play()
+    end
+
+    -- Error meter
+    if errorMeterContainer and errorMeterFill and errorMeterText then
+        local isError = (data.Element == "Error")
+        errorMeterContainer.Visible = isError
+        if isError then
+            local ratio = math.clamp(data.ErrorMeter / 100, 0, 1)
+            TweenService:Create(errorMeterFill, TweenInfo.new(0.25), { Size = UDim2.new(ratio, 0, 1, 0) }):Play()
+            errorMeterText.Text = string.format("ERROR METER: %d%%", math.round(data.ErrorMeter))
+        end
+    end
+
+    if abilityButtons["5"] then
+        abilityButtons["5"].Button.Visible = (data.Element == "Error")
     end
 
     UIController.SetHealth(currentHealth, data.MaxHealth)
 end
 
--- ========== COOLDOWN ==========
+-- ==================== COOLDOWN TIMER & READY FLASH ====================
 function UIController.StartCooldown(slot: string, durationSeconds: number)
-    local btnData = abilitySlotButtons[slot]
+    local btnData = abilityButtons[slot]
     if not btnData then return end
 
     local overlay = btnData.CooldownOverlay
@@ -610,6 +657,13 @@ function UIController.StartCooldown(slot: string, durationSeconds: number)
             if remaining <= 0 then
                 overlay.Visible = false
                 cdText.Text = ""
+
+                -- Off-cooldown flash effect!
+                local origColor = btnData.Stroke.Color
+                TweenService:Create(btnData.Stroke, TweenInfo.new(0.08), { Color = Color3.fromRGB(255, 255, 255), Thickness = 3.2 }):Play()
+                task.delay(0.15, function()
+                    TweenService:Create(btnData.Stroke, TweenInfo.new(0.2), { Color = origColor, Thickness = 1.8 }):Play()
+                end)
                 break
             end
 
@@ -620,65 +674,57 @@ function UIController.StartCooldown(slot: string, durationSeconds: number)
     end)
 end
 
--- ========== ANNOUNCEMENT ==========
+-- ==================== ANNOUNCEMENTS ====================
 function UIController.ShowAnnouncement(text: string)
     if not announcementBanner or not announcementLabel then return end
 
     announcementLabel.Text = text
     announcementBanner.Visible = true
-    announcementBanner.BackgroundTransparency = 0.15
+    announcementBanner.BackgroundTransparency = 0.12
     announcementLabel.TextTransparency = 0
 
-    task.delay(4.5, function()
+    task.delay(4.0, function()
         if announcementBanner then
-            TweenService:Create(announcementBanner, TweenInfo.new(0.8), {
-                BackgroundTransparency = 1,
-            }):Play()
-            TweenService:Create(announcementLabel, TweenInfo.new(0.8), {
-                TextTransparency = 1,
-            }):Play()
-            task.delay(0.85, function()
-                if announcementBanner then
-                    announcementBanner.Visible = false
-                    announcementLabel.TextTransparency = 0
-                end
-            end)
+            local t = TweenService:Create(announcementBanner, TweenInfo.new(0.6), { BackgroundTransparency = 1 })
+            TweenService:Create(announcementLabel, TweenInfo.new(0.6), { TextTransparency = 1 }):Play()
+            t:Play()
+            t.Completed:Wait()
+            announcementBanner.Visible = false
+            announcementLabel.TextTransparency = 0
         end
     end)
 end
 
--- ========== FRAGMENT NOTIFICATION ==========
+-- ==================== FRAGMENT NOTIFICATION ====================
 function UIController.ShowFragmentCollected(fragmentName: string)
     if not fragmentNotif or not fragmentLabel then return end
 
-    fragmentLabel.Text = "FRAGMENT COLLECTED\n" .. fragmentName
+    fragmentLabel.Text = "[FRAGMENT DISCOVERED]\n" .. fragmentName
     fragmentNotif.Visible = true
-    fragmentNotif.Position = UDim2.new(1, -10, 0.5, -30)
+    fragmentNotif.Position = UDim2.new(1, 10, 0.5, -26)
 
-    TweenService:Create(fragmentNotif, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(1, -400, 0.5, -30),
+    TweenService:Create(fragmentNotif, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -360, 0.5, -26),
     }):Play()
 
     task.delay(3.5, function()
         if fragmentNotif then
-            TweenService:Create(fragmentNotif, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                Position = UDim2.new(1, -10, 0.5, -30),
-            }):Play()
-            task.delay(0.45, function()
-                if fragmentNotif then fragmentNotif.Visible = false end
-            end)
+            local t = TweenService:Create(fragmentNotif, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, 10, 0.5, -26),
+            })
+            t:Play()
+            t.Completed:Wait()
+            fragmentNotif.Visible = false
         end
     end)
 end
 
--- ========== REGION LABEL ==========
 function UIController.SetRegion(regionName: string)
     if regionLabel then
         regionLabel.Text = regionName
     end
 end
 
--- ========== BLIND FLASH ==========
 function UIController.TriggerBlind(durationSeconds: number)
     if not blindOverlay then return end
     blindOverlay.BackgroundTransparency = 0

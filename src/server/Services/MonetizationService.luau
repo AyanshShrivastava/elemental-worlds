@@ -118,8 +118,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo): Enum.ProductPurchaseD
             if not profile then
                 return Enum.ProductPurchaseDecision.NotProcessedYet
             end
-            profile.SpinTickets += productData.SpinsAwarded
-            PlayerDataService.SyncClient(player)
+            PlayerDataService.AddSpinTickets(player, productData.SpinsAwarded)
 
             local remotes = ReplicatedStorage:FindFirstChild("Remotes")
             if remotes then
