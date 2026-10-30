@@ -1,8 +1,15 @@
 --!strict
 --[[
     Elemental Worlds: Master Client Entry Point
-    Initializes Anime HUD, Creator Dashboard, Spin Gacha UI, Monetization Shop,
-    Camera Shake, 3D Damage Numbers, Tactile Audio, and Network Event Listeners.
+    Initializes: Anime HUD, Creator Dashboard, Spin Gacha UI, Monetization Shop,
+    World Map Panel, Camera Shake, 3D Damage Numbers, Tactile Audio, and Network Event Listeners.
+    
+    Load order:
+    1. Core systems (CameraShake, Sound)
+    2. HUD (UIController)
+    3. Combat & Mobile input
+    4. Specialized UIs (Admin, Spin, Shop, Map)
+    5. Network listener hooks
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,16 +27,16 @@ local ShopUIController = require(script.Parent.Controllers.ShopUIController)
 
 local localPlayer = Players.LocalPlayer
 
--- 1. Initialize Core Systems
+-- 1. Core Systems
 CameraShakeController.Init()
 UIController.CreateHUD()
 
--- 2. Link Cooldown callback
+-- 2. Link Combat cooldown callback to HUD
 CombatController.SetCooldownCallback(function(slot, duration)
     UIController.StartCooldown(slot, duration)
 end)
 
--- 3. Initialize Interactive Panels & Controllers
+-- 3. Initialize all subsystems
 CombatController.Init()
 MobileController.Init()
 VFXController.Init()
@@ -37,7 +44,7 @@ AdminPanelController.Init()
 SpinUIController.Init()
 ShopUIController.Init()
 
--- 4. Health tracking for dual-layer health bar
+-- 4. Character health tracking
 local function OnCharacterAdded(character: Model)
     local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
     if humanoid then
@@ -54,21 +61,48 @@ end
 localPlayer.CharacterAdded:Connect(OnCharacterAdded)
 
 -- 5. Network listeners
-local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+local remotes = ReplicatedStorage:WaitForChild("Remotes", 15)
 if remotes then
-    local updateStatsEvent = remotes:WaitForChild(GameConfig.REMOTES.UPDATE_STATS, 5) :: RemoteEvent?
+    -- Stats sync
+    local updateStatsEvent = remotes:WaitForChild(GameConfig.REMOTES.UPDATE_STATS, 10) :: RemoteEvent?
     if updateStatsEvent then
         updateStatsEvent.OnClientEvent:Connect(function(data)
             UIController.UpdateStats(data)
         end)
     end
 
-    local globalAnnounceEvent = remotes:WaitForChild(GameConfig.REMOTES.GLOBAL_ANNOUNCEMENT, 5) :: RemoteEvent?
+    -- Global announcements
+    local globalAnnounceEvent = remotes:WaitForChild(GameConfig.REMOTES.GLOBAL_ANNOUNCEMENT, 10) :: RemoteEvent?
     if globalAnnounceEvent then
         globalAnnounceEvent.OnClientEvent:Connect(function(message)
             UIController.ShowAnnouncement(message)
         end)
     end
+
+    -- Fragment collection notification
+    local fragmentEvent = remotes:WaitForChild(GameConfig.REMOTES.FRAGMENT_COLLECTED, 10) :: RemoteEvent?
+    if fragmentEvent then
+        fragmentEvent.OnClientEvent:Connect(function(fragmentName)
+            UIController.ShowFragmentCollected(fragmentName)
+            UIController.ShowAnnouncement("World Fragment Discovered: " .. tostring(fragmentName))
+        end)
+    end
+
+    -- Element rolled result (handled by SpinUIController)
+    local elementRolledEvent = remotes:WaitForChild(GameConfig.REMOTES.ELEMENT_ROLLED, 10) :: RemoteEvent?
+    if elementRolledEvent then
+        elementRolledEvent.OnClientEvent:Connect(function(element)
+            SpinUIController.ShowRollResult(element)
+        end)
+    end
+
+    -- VFX triggers from server
+    local vfxEvent = remotes:WaitForChild(GameConfig.REMOTES.VFX_TRIGGER, 10) :: RemoteEvent?
+    if vfxEvent then
+        vfxEvent.OnClientEvent:Connect(function(vfxType, position, color)
+            VFXController.PlayVFX(vfxType, position, color)
+        end)
+    end
 end
 
-print("[Elemental Worlds] Client initialized with full Creator Suite, Spin Gacha, and Monetization Shop.")
+print("[Elemental Worlds] Client initialized — HUD, Admin Suite, Spin Gacha, Shop, Map, VFX, and all listeners ready.")

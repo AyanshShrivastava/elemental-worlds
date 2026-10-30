@@ -1,136 +1,217 @@
-# Elemental Worlds — Roblox Studio Setup & Designer Guide
+# Elemental Worlds — Complete Development Guide
 
-Welcome to the **Elemental Worlds** codebase! This guide is written specifically for you (the game designer) so you can easily link your maps, animations, sound effects, and VFX to the programming systems without needing to write complex Luau code.
+## Project Structure
 
----
-
-## 1. Project Structure in Roblox Studio
-
-When you sync with **Rojo** or place the files manually in Roblox Studio, they map to the following services:
-
-```text
-ReplicatedStorage/
-  └── Shared/
-        ├── Config/
-        │     ├── GameConfig.luau        (Level caps, formulas, RNG rates, owner ID)
-        │     ├── AbilityConfig.luau     (All 36 abilities, cooldowns, damage, animation IDs)
-        │     └── AdminConfig.luau       (Owner & Admin command permissions)
-        └── Modules/
-              ├── CombatHelper.luau      (Directional cone math, aim check, damage scaling)
-              ├── AnimationMarkerUtil.luau (Animation marker & fallback player)
-              └── StatusEffectTypes.luau (Invulnerability, stuns, domains)
-
-ServerScriptService/
-  └── ElementalWorlds/
-        ├── ServerMain.server.luau       (Master server script)
-        ├── Services/
-        │     ├── PlayerDataService.luau (Level 1-300, health scaling, charges, saving)
-        │     ├── CooldownService.luau   (Server-authoritative cooldown timer)
-        │     ├── HitboxService.luau     (Directional hit detection, nested NPC support)
-        │     ├── StatusEffectService.luau (Untouchable, GotGlitched, stuns, domains)
-        │     ├── RNGSystem.luau         (19.96% / 0.10% spins, 5k secret allocation)
-        │     ├── CombatService.luau     (Validates casts, checks Error meter & stuns)
-        │     ├── AdminService.luau      (Commands: /givelevel, /ban, /setrng, etc.)
-        │     └── RaidService.luau       (+3 Levels, +10 Charges on raid clear)
-        └── Elements/
-              ├── FireElement.luau       (Flame Dagger, Fireball, Infernal Beast, Fury, Domain)
-              ├── AquaElement.luau       (Water, Water Hand, Vortex, Dragon, Limitless Punches)
-              ├── EarthElement.luau      (Earth Sword, Earth Wall, Boulder, Earth Punch, Terra)
-              ├── LightElement.luau      (Dim Ray, Amplified, Mirrors, Blind, Divine Amplification)
-              ├── WindElement.luau       (Compressed Wind, Airy Vortex, Cyclone, Speed, Death Speed)
-              ├── ErrorElement.luau      (Glitched Dash, Chaotic, 404, Got Glitched, Spatial, Unparalleled)
-              └── TimeElement.luau       (Time Punch, Got Throwed, Injection, Untouchable, Virtual Kill)
-
-StarterPlayer/
-  └── StarterPlayerScripts/
-        └── ElementalWorldsClient/
-              ├── ClientMain.client.luau (Master client loader)
-              └── Controllers/
-                    ├── CombatController.luau (Input handling: Mouse, Keys 1-5, Touch)
-                    ├── UIController.luau     (Top HUD, Cooldown countdowns, Error Meter)
-                    ├── MobileController.luau (Right-side touch attack buttons)
-                    └── VFXController.luau    (Client-side screen shakes & Blind effects)
-
-Workspace/
-  ├── Map/               (Your build: Village, Forest, Mountains, Caves, Ruins)
-  ├── NPCs/              (All enemy NPCs, can be in nested folders!)
-  ├── VFX/               (Domain barriers, temporary visual models)
-  └── SpawnLocations/    (Player spawn points)
+```
+elemental-worlds/
+├── default.project.json        — Rojo project config (sync to Studio)
+├── src/
+│   ├── client/                 — LocalScripts (runs on each player's device)
+│   │   ├── ClientMain.client.luau      — Master client entry point
+│   │   └── Controllers/
+│   │       ├── UIController.luau           — Anime HUD, health bar, combo, cooldowns
+│   │       ├── CombatController.luau       — M1 combo, ability casting input
+│   │       ├── CameraShakeController.luau  — Trauma-based camera shake
+│   │       ├── MobileController.luau       — Mobile touch buttons
+│   │       ├── VFXController.luau          — Client-side VFX spawner
+│   │       ├── AdminPanelController.luau   — Creator/Admin panel (P key)
+│   │       ├── SpinUIController.luau       — Gacha spin UI
+│   │       ├── ShopUIController.luau       — Robux shop UI (passes + bundles)
+│   │       ├── ProceduralAnimController.luau— Run/idle animation blending
+│   │       ├── DamageNumbersController.luau — 3D floating damage numbers
+│   │       └── SoundController.luau        — Audio playback helper
+│   ├── server/                 — Scripts (runs on server only)
+│   │   ├── ServerMain.server.luau          — Master server entry point
+│   │   ├── Elements/                       — Element ability implementations
+│   │   │   ├── FireElement.luau
+│   │   │   ├── AquaElement.luau
+│   │   │   ├── EarthElement.luau
+│   │   │   ├── LightElement.luau
+│   │   │   ├── WindElement.luau
+│   │   │   ├── ErrorElement.luau
+│   │   │   └── TimeElement.luau
+│   │   └── Services/
+│   │       ├── PlayerDataService.luau      — Save/Load with DataStore + auto-save
+│   │       ├── CombatService.luau          — Server-side damage, hitboxes
+│   │       ├── CooldownService.luau        — Server-side cooldown tracking
+│   │       ├── HitboxService.luau          — Directional hitbox casting
+│   │       ├── RNGSystem.luau              — Element spin RNG with weights
+│   │       ├── AdminService.luau           — Slash command admin system
+│   │       ├── MapService.luau             — Procedural world generation
+│   │       ├── MonetizationService.luau    — Gamepass + product handling
+│   │       ├── CreatorPerksService.luau    — Crown, rainbow aura, VIP aura
+│   │       ├── RaidService.luau            — Raid lobby and progression
+│   │       └── StatusEffectService.luau    — Burn, freeze, stun management
+│   ├── shared/                 — ModuleScripts accessible by both client & server
+│   │   ├── Config/
+│   │   │   ├── GameConfig.luau             — Central constants, RNG, world defs
+│   │   │   ├── AbilityConfig.luau          — All 7 elements × 5 abilities
+│   │   │   ├── AdminConfig.luau            — Admin usernames, owner-only cmds
+│   │   │   └── ShopConfig.luau             — Gamepass & product definitions
+│   │   └── Modules/
+│   │       ├── CombatHelper.luau           — Damage calculation shared logic
+│   │       ├── VFXHelper.luau              — VFX spawning patterns
+│   │       ├── StatusEffectTypes.luau      — Type definitions for status effects
+│   │       └── AnimationMarkerUtil.luau    — Animation event helpers
+│   └── gui/                    — Static GUI assets (if any)
 ```
 
 ---
 
-## 2. How to Add Your Animations
+## Quick Setup in Roblox Studio
 
-Open `ReplicatedStorage/Shared/Config/AbilityConfig.luau`.
-Every ability has an entry like this:
+### Step 1: Install Rojo
+1. Download Rojo plugin for Studio: https://rojo.space/
+2. Install the VS Code extension or use CLI: `cargo install rojo` / download from releases
 
-```lua
-["1"] = {
-    Id = "Fire_1",
-    Name = "Scorching Fireball",
-    Element = "Fire",
-    Slot = "1",
-    BaseDamage = 35,
-    Cooldown = 6.0,
-    Range = 60,
-    ConeAngle = 60,
-    AnimationId = "rbxassetid://YOUR_ANIMATION_ID_HERE", -- <-- Paste your Animation Asset ID
-    AnimationMarker = "Launch",                          -- <-- Name of Keyframe marker in Animation
-},
+### Step 2: Sync Project
+```bash
+cd elemental-worlds/
+rojo serve
+```
+Then in Studio, open the Rojo plugin and click **Connect**.
+
+### Step 3: Configure the Place
+- Open Studio > **View > Properties**
+- Make sure:
+  - **HttpEnabled** = ON (for API calls if needed)
+  - **Studio Access to APIs** = ON for testing DataStores locally
+
+---
+
+## Gamepasses — REQUIRED SETUP
+
+> The API key does not have gamepass write permissions, so passes must be created manually.
+
+### How to Create Gamepasses:
+1. Go to: https://create.roblox.com/
+2. Find your experience: **Elemental Worlds**
+3. Navigate to **Monetization > Game Passes**
+4. Create each pass with the exact names and prices below:
+
+| Pass Key | Display Name | Price (R$) | Benefit |
+|----------|-------------|------------|---------|
+| `DoubleExp` | 2x EXP Booster | 249 | All EXP gains ×2 |
+| `DoubleCharges` | 2x Charges Booster | 199 | All Charge gains ×2 |
+| `LuckySpins` | Lucky Element Spins | 399 | Secret element rate ×2 |
+| `VIPMaster` | VIP: Element Master | 499 | +200 HP, Gold tag, VIP aura |
+| `SpeedBoost` | Speed Demon | 149 | Move speed +20% |
+
+5. After creating each pass, copy its **Pass ID** from the URL or settings page
+6. Update `GameConfig.luau` → `GAMEPASS_IDS` table with the real IDs
+7. Update `ShopConfig.luau` → `GAMEPASSES[passKey].Id` with the real IDs
+
+### How to Create Developer Products (Spin Tickets):
+1. Navigate to **Monetization > Developer Products**
+2. Create:
+
+| Product Key | Display Name | Price (R$) | Spins |
+|-------------|-------------|------------|-------|
+| `Spins_1` | 1x Element Spin | 49 | 1 |
+| `Spins_5` | 5x Element Spins | 199 | 5 |
+| `Spins_10` | 10x Element Spins Bundle | 349 | 10 |
+
+3. Update `GameConfig.PRODUCT_IDS` and `ShopConfig.PRODUCTS[key].Id` with real IDs
+
+---
+
+## Admin Commands
+
+> Type in chat or use the in-game Creator Panel (press **P** when logged in as coolzgamer9)
+
+### Owner-Only Commands
+| Command | Args | Description |
+|---------|------|-------------|
+| `/addadmin` | `<username>` | Grant admin to player |
+| `/removeadmin` | `<username>` | Revoke admin |
+| `/ban` | `<username>` | Permanent ban (session) |
+| `/unban` | `<username>` | Unban player |
+| `/kick` | `<username> [reason]` | Kick player |
+| `/kill` | `<username>` | Kill player |
+| `/tp` | `<username>` | Teleport to player |
+| `/bring` | `<username>` | Bring player to you |
+| `/setcharges` | `<username> <amount>` | Set charges |
+| `/resetrng` | — | Reset RNG system |
+
+### Admin + Owner Commands
+| Command | Args | Description |
+|---------|------|-------------|
+| `/givelevel` | `<username> <amount>` | Add levels |
+| `/removelevel` | `<username> <amount>` | Remove levels |
+| `/setlevel` | `<username> <level>` | Set exact level |
+| `/givecharges` | `<username> <amount>` | Add charges |
+| `/removecharges` | `<username> <amount>` | Remove charges |
+| `/giveelement` | `<username> <Element>` | Set element (Fire/Aqua/Earth/Light/Wind/Error/Time) |
+| `/announce` | `<message>` | Global server announcement |
+
+---
+
+## World Fragments
+
+Collect all 4 fragments in **Ember Highlands (World 1)** to unlock **Abyssal Depths (World 2)**:
+
+| Fragment | Location |
+|----------|----------|
+| Forest Whispers | Deep in the Forest region (~-240, 6, 0) |
+| Apex Peak | Summit of the Mountain (~420, 148, 0) |
+| Deep Crystal | Inside the Cave (~0, 8, 460) |
+| Ancient Terra | Ruins center (~-320, 6, -360) |
+
+---
+
+## Elements & Abilities
+
+| Element | Slot 1 (M1) | Slot 2 (1) | Slot 3 (2) | Slot 4 (3) | Slot 5 (4) |
+|---------|-------------|------------|------------|------------|------------|
+| Fire | Ember Fist | Fireball | Inferno Wave | Phoenix Dash | Magma Eruption |
+| Aqua | Tide Punch | Aqua Sphere | Tidal Wave | Water Prison | Tsunami |
+| Earth | Stone Fist | Boulder Throw | Earthquake | Stone Fortress | Earth Titan |
+| Light | Radiant Strike | Holy Beam | Flash | Blind | Divine Purge |
+| Wind | Gale Punch | Wind Slash | Vacuum Burst | Storm Step | Hurricane |
+| Error | Glitch Strike | Error Spike | System Crash | Data Corruption | Kernel Panic |
+| Time | Chrono Punch | Timestop | Rewind | Slow Field | Temporal Collapse |
+
+---
+
+## Spin Drop Rates
+
+| Element | Rate | Type |
+|---------|------|------|
+| Fire | 19.96% | Common |
+| Aqua | 19.96% | Common |
+| Earth | 19.96% | Common |
+| Light | 19.96% | Common |
+| Wind | 19.96% | Common |
+| Error | 0.10% | Secret |
+| Time | 0.10% | Secret |
+
+**Lucky Spins gamepass doubles secret rates** to 0.20% each.
+
+---
+
+## Save Data Schema
+
+Player profiles saved via `DataStoreService:GetDataStore("ElementalWorlds_PlayerData_v2")`:
+
+```
+{
+    Level: number (1-300),
+    Charges: number (0-10000),
+    Element: ElementType,
+    ClaimedSecretAllocation: boolean,
+    Fragments: { [fragmentId]: boolean },
+    UnlockedWorlds: { [worldId]: boolean },
+    GamePasses: { [passKey]: boolean },
+    SpinTickets: number,
+}
 ```
 
-> **Safety Fallback**: If you leave `AnimationId = "rbxassetid://0"` or your marker name isn't reached, the system will **automatically trigger the fallback timer** so the attack still executes smoothly and never gets stuck!
+Auto-saved every 90 seconds. Full save on player leave and server shutdown (BindToClose with 25s timeout).
 
 ---
 
-## 3. Map Placement & Folder Setup
+## GitHub Repository
 
-Create the following folders inside `Workspace`:
-- `Workspace/Map`
-  - Put all map geometry, buildings, roads, and landscape here.
-  - Can have subfolders: `Village`, `Forest`, `Mountains`, `Caves`, `Ruins`.
-- `Workspace/NPCs`
-  - Put your enemy and boss models here.
-  - Subfolders are **fully supported** (e.g. `Workspace/NPCs/ForestEnemies/Goblin`).
-  - Each NPC just needs a `Humanoid` and a `HumanoidRootPart`.
-- `Workspace/VFX`
-  - Holds temporary domain spheres and visual effects.
+https://github.com/AyanshShrivastava/elemental-worlds
 
----
-
-## 4. Owner & Admin Commands
-
-Your account (**coolzgamer9**, UserId **6225357795**) is hardcoded as the **Immutable Owner**:
-- You cannot be kicked, banned, or demoted by admins.
-- Type these in the in-game chat bar:
-
-### Owner-Only Commands:
-- `/setrng Fire 0.1` — Adjust spin rates in real-time.
-- `/resetrng` — Reset spin rates to standard 19.96% / 0.10%.
-- `/addadmin [username]` — Grant admin powers to a player.
-- `/removeadmin [username]` — Revoke admin powers.
-- `/ban [username]` — Ban a player from the game.
-- `/unban [username]` — Lift a player's ban.
-- `/kick [username]` — Kick a player from the server.
-- `/kill [username]` — Eliminate a player.
-- `/tp [username]` — Teleport to a player.
-- `/bring [username]` — Teleport a player to you.
-- `/setcharges [username] [amount]` — Set player charges (0 - 10,000).
-
-### Admin Commands (Admins & Owner):
-- `/givelevel [username] [amount]` — Add levels (+1 to +300).
-- `/removelevel [username] [amount]` — Deduct levels.
-- `/setlevel [username] [level]` — Set exact level.
-- `/givecharges [username] [amount]` — Add charges.
-- `/removecharges [username] [amount]` — Deduct charges.
-- `/giveelement [username] [Element]` — Give element (`Fire`, `Aqua`, `Earth`, `Light`, `Wind`, `Error`, `Time`).
-- `/announce [message]` — Broadcast a global banner announcement to all players.
-
----
-
-## 5. Mobile & Tablet Controls
-The UI automatically detects touch screens:
-- Shows a dedicated **Mobile Attack (M1)** button on the right side.
-- Ability buttons in the hotbar (M1, 1, 2, 3, 4, 5) are large touch targets.
-- Cooldowns display live countdown numbers over each button.
+All source code is managed with Rojo for seamless Studio synchronization.
