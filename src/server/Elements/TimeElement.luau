@@ -63,6 +63,7 @@ function TimeElement.CastMove1(player: Player, character: Model, rootPart: BaseP
                 Radius = 16,
                 Duration = 0.35,
                 Shake = 0.4,
+                SFXId = ability.SFXId,
             })
         end
     end)
@@ -79,6 +80,7 @@ function TimeElement.CastMove2(player: Player, character: Model, rootPart: BaseP
         Radius = 20,
         Duration = 0.4,
         Shake = 0.35,
+        SFXId = ability.SFXId,
     })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
@@ -124,6 +126,7 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                 Position = target.RootPart.Position,
                 Element = "Time",
                 Radius = 22,
+                SFXId = ability.SFXId,
             })
             VFXBroadcastService.Broadcast("Shockwave", {
                 Position = target.RootPart.Position,
@@ -131,6 +134,7 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                 Radius = 30,
                 Duration = 0.5,
                 Shake = 0.75,
+                SFXId = ability.SFXId,
             })
         end
     end)

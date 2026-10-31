@@ -60,6 +60,7 @@ function FireElement.CastMove1(player: Player, character: Model, rootPart: BaseP
             Radius = 16,
             Duration = 0.35,
             Shake = 0.35,
+            SFXId = ability.SFXId,
         })
 
         local burstCFrame = CFrame.new(impactPos)
@@ -152,6 +153,7 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
         Element = "Fire",
         Thickness = 1.8,
         Shake = 0.4,
+        SFXId = ability.SFXId,
     })
 
     task.delay(0.2, function()
@@ -180,6 +182,7 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
         Position = domainCenter,
         Radius = 18,
         Element = "Fire",
+        SFXId = ability.SFXId,
     })
     VFXBroadcastService.Broadcast("Shockwave", {
         Position = domainCenter,
@@ -187,6 +190,7 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
         Radius = domainRadius,
         Duration = 0.5,
         Shake = 0.55,
+        SFXId = ability.SFXId,
     })
 
     -- Visual Domain Boundary Part

@@ -173,6 +173,7 @@ function HitboxService.ApplyDamage(
                 Element = attackerElement,
                 Count = if isCrit then 45 else 25,
                 Shake = if isCrit then 0.4 else 0.2,
+                SFXId = if isCrit then "rbxassetid://17429233290" else "rbxassetid://17325540665",
             })
 
             -- Finisher Slash Arc
@@ -181,6 +182,7 @@ function HitboxService.ApplyDamage(
                     CFrame = target.RootPart.CFrame,
                     Element = attackerElement,
                     Scale = 1.3,
+                    SFXId = "rbxassetid://6230938036",
                 })
             end
 

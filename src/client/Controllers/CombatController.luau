@@ -182,7 +182,11 @@ function CombatController.Cast(slot: string)
         end
 
         -- 3. Instant tactile sound & screen shake
-        SoundController.PlaySound2D("Punch", 0.65)
+        if ability and ability.SFXId and ability.SFXId ~= "" then
+            SoundController.PlayAudioId2D(ability.SFXId, 0.7)
+        else
+            SoundController.PlaySound2D("Punch", 0.65)
+        end
         if comboStep == 4 then
             CameraShakeController.Shake(0.35)
         end
@@ -220,7 +224,11 @@ function CombatController.Cast(slot: string)
         end
 
         -- 3. Instant sound & camera shake
-        SoundController.PlaySound2D("MagicCast", 0.75)
+        if ability.SFXId and ability.SFXId ~= "" then
+            SoundController.PlayAudioId2D(ability.SFXId, 0.8)
+        else
+            SoundController.PlaySound2D("MagicCast", 0.75)
+        end
         CameraShakeController.Shake(ability.ScreenShake or 0.25)
 
         -- 4. Authoritative server dispatch

@@ -47,6 +47,7 @@ function AquaElement.CastMove1(player: Player, character: Model, rootPart: BaseP
         Radius = 14,
         Duration = 0.3,
         Shake = 0.35,
+        SFXId = ability.SFXId,
     })
 
     local targets = HitboxService.FindTargetsInCone(strikeCFrame, ability.Range, ability.ConeAngle, character)
@@ -78,6 +79,7 @@ function AquaElement.CastMove2(player: Player, character: Model, rootPart: BaseP
             Radius = 20,
             Duration = 0.45,
             Shake = 0.45,
+            SFXId = ability.SFXId,
         })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 18, 360, character)
@@ -122,6 +124,7 @@ function AquaElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                     Radius = 18,
                     Duration = 0.4,
                     Shake = 0.45,
+                    SFXId = ability.SFXId,
                 })
             end
 

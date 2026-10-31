@@ -45,6 +45,7 @@ function WindElement.CastMove1(player: Player, character: Model, rootPart: BaseP
         Radius = 16,
         Duration = 0.35,
         Shake = 0.35,
+        SFXId = ability.SFXId,
     })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
@@ -120,6 +121,7 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                     Position = tRoot.Position,
                     Element = "Wind",
                     Radius = 16,
+                    SFXId = ability.SFXId,
                 })
                 VFXBroadcastService.Broadcast("Shockwave", {
                     Position = tRoot.Position,
@@ -127,6 +129,7 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                     Radius = 24,
                     Duration = 0.45,
                     Shake = 0.6,
+                    SFXId = ability.SFXId,
                 })
             end
         end)

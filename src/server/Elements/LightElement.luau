@@ -46,6 +46,7 @@ function LightElement.CastMove1(player: Player, character: Model, rootPart: Base
         Element = "Light",
         Thickness = 1.4,
         Shake = 0.25,
+        SFXId = ability.SFXId,
     })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
@@ -72,6 +73,7 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
                 Position = target.RootPart.Position,
                 Element = "Light",
                 Radius = 12,
+                SFXId = ability.SFXId,
             })
             VFXBroadcastService.Broadcast("Shockwave", {
                 Position = target.RootPart.Position,
@@ -79,6 +81,7 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
                 Radius = 16,
                 Duration = 0.35,
                 Shake = 0.45,
+                SFXId = ability.SFXId,
             })
         end
     end)
@@ -113,6 +116,7 @@ function LightElement.CastMove4(player: Player, character: Model, rootPart: Base
             Element = "Light",
             Thickness = 3.6,
             Shake = 0.65,
+            SFXId = ability.SFXId,
         })
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = rootPart.Position,
@@ -120,6 +124,7 @@ function LightElement.CastMove4(player: Player, character: Model, rootPart: Base
             Radius = 22,
             Duration = 0.45,
             Shake = 0.5,
+            SFXId = ability.SFXId,
         })
 
         local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)

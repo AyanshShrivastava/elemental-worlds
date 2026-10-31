@@ -30,31 +30,51 @@ function VFXController.Init()
             elseif vfxType == "ImpactBurst" and data and data.Position then
                 local element = data.Element or "Fire"
                 VFXHelper.CreateImpactBurst(data.Position, element, data.Count or 32)
-                SoundController.PlaySound3D("Punch", data.Position, 0.8)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.85)
+                else
+                    SoundController.PlaySound3D("Punch", data.Position, 0.8)
+                end
                 CameraShakeController.Shake(data.Shake or 0.25)
 
             elseif vfxType == "Shockwave" and data and data.Position then
                 local element = data.Element or "Fire"
                 VFXHelper.CreateShockwave(data.Position, data.Radius or 22, data.Duration or 0.4, element)
-                SoundController.PlaySound3D("Explosion", data.Position, 0.9)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.95)
+                else
+                    SoundController.PlaySound3D("Explosion", data.Position, 0.9)
+                end
                 CameraShakeController.Shake(data.Shake or 0.45)
 
             elseif vfxType == "Crater" and data and data.Position then
                 local element = data.Element or "Earth"
                 VFXHelper.CreateCrater(data.Position, data.Radius or 14, element)
-                SoundController.PlaySound3D("Explosion", data.Position, 1.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 1.0)
+                else
+                    SoundController.PlaySound3D("Explosion", data.Position, 1.0)
+                end
                 CameraShakeController.Shake(data.Shake or 0.55)
 
             elseif vfxType == "Beam" and data and data.StartPos and data.EndPos then
                 local element = data.Element or "Light"
                 VFXHelper.CreateBeam(data.StartPos, data.EndPos, element, data.Thickness or 1.5)
-                SoundController.PlaySound3D("MagicCast", data.StartPos, 0.85)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.9)
+                else
+                    SoundController.PlaySound3D("MagicCast", data.StartPos, 0.85)
+                end
                 CameraShakeController.Shake(data.Shake or 0.3)
 
             elseif vfxType == "SlashArc" and data and data.CFrame then
                 local element = data.Element or "Fire"
                 VFXHelper.CreateSlashArc(data.CFrame, element, data.Scale or 1.0)
-                SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.7)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.CFrame.Position, 0.8)
+                else
+                    SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.7)
+                end
 
             elseif vfxType == "DamageNumber" and data and data.Position and data.Damage then
                 local element = data.Element or "Fire"

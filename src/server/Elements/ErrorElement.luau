@@ -52,6 +52,7 @@ function ErrorElement.CastMove1(player: Player, character: Model, rootPart: Base
         Position = rootPart.Position,
         Element = "Error",
         Radius = 14,
+        SFXId = ability.SFXId,
     })
     VFXBroadcastService.Broadcast("Shockwave", {
         Position = rootPart.Position,
@@ -59,6 +60,7 @@ function ErrorElement.CastMove1(player: Player, character: Model, rootPart: Base
         Radius = 20,
         Duration = 0.4,
         Shake = 0.45,
+        SFXId = ability.SFXId,
     })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
@@ -90,6 +92,7 @@ function ErrorElement.CastMove2(player: Player, character: Model, rootPart: Base
             Radius = 22,
             Duration = 0.45,
             Shake = 0.55,
+            SFXId = ability.SFXId,
         })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 20, 360, character)
@@ -127,6 +130,7 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
         Position = rootPart.Position,
         Element = "Error",
         Radius = 20,
+        SFXId = ability.SFXId,
     })
     VFXBroadcastService.Broadcast("Shockwave", {
         Position = rootPart.Position,
@@ -134,6 +138,7 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
         Radius = 30,
         Duration = 0.5,
         Shake = 0.65,
+        SFXId = ability.SFXId,
     })
 
     local duration = ability.Duration or 7.0

@@ -56,6 +56,7 @@ function EarthElement.CastMove1(player: Player, character: Model, rootPart: Base
         Position = wallPart.Position,
         Element = "Earth",
         Radius = 10,
+        SFXId = ability.SFXId,
     })
     VFXBroadcastService.Broadcast("Shockwave", {
         Position = wallPart.Position,
@@ -63,6 +64,7 @@ function EarthElement.CastMove1(player: Player, character: Model, rootPart: Base
         Radius = 14,
         Duration = 0.35,
         Shake = 0.3,
+        SFXId = ability.SFXId,
     })
 
     Debris:AddItem(wallPart, wallDuration)
@@ -89,6 +91,7 @@ function EarthElement.CastMove2(player: Player, character: Model, rootPart: Base
             Position = impactPos,
             Element = "Earth",
             Radius = 14,
+            SFXId = ability.SFXId,
         })
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = impactPos,
@@ -96,6 +99,7 @@ function EarthElement.CastMove2(player: Player, character: Model, rootPart: Base
             Radius = 20,
             Duration = 0.45,
             Shake = 0.5,
+            SFXId = ability.SFXId,
         })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 15, 360, character)
@@ -154,6 +158,7 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
                     Position = tRoot.Position,
                     Element = "Earth",
                     Radius = 18,
+                    SFXId = ability.SFXId,
                 })
                 VFXBroadcastService.Broadcast("Shockwave", {
                     Position = tRoot.Position,
@@ -161,6 +166,7 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
                     Radius = 26,
                     Duration = 0.5,
                     Shake = 0.65,
+                    SFXId = ability.SFXId,
                 })
             end
         end)
