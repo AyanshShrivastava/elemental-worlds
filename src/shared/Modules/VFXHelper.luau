@@ -1,14 +1,15 @@
 --!strict
 --[[
-    Elemental Worlds: Master VFX Helper Module (Blox Fruits Anime Combat)
+    Elemental Worlds: Master VFX Helper Module (Top-Tier Stylized Anime Combat)
+    Aesthetic: Modern Dark Cel-Shaded Anime Action (TSB / Blox Fruits inspired)
     Features:
-    - Real Roblox Creator Store Particle Textures (Anime Slashes, Stars, Smoke, Lightning)
-    - Stylized Impact Bursts with spark emitters and point lights
-    - Dynamic Shockwaves with expanding Neon Rings & Distortion Meshes
-    - Ground Impact Craters with outward-tilted rock fragments and smoke puffs
-    - Multi-layered Cylindrical Energy Beams (Core + Sheath)
-    - Swirling Elemental Auras with dynamic acceleration
-    - Directional Anime Slash Arcs with customizable scaling and angles
+    - Real Creator Store Particle Textures (Crescent slashes, 4-point stars, smoke puffs, lightning)
+    - Stylized Torus & Distortion Shockwave Meshes
+    - Multi-tiered Ground Impact Craters with rock debris meshes and glowing ground cracks
+    - Dual-Core Energy Beams with high-voltage neon pulsation
+    - 3-Tier Layered Impact Bursts (White core flash, star sparks, stylized dissipation smoke)
+    - Directional Anime Slash Arcs with trailing crescent particles
+    - Converging Energy Charge VFX for high-power ability wind-ups
 ]]
 
 local Workspace = game:GetService("Workspace")
@@ -17,53 +18,67 @@ local Debris = game:GetService("Debris")
 
 local VFXHelper = {}
 
--- Real Verified Roblox Anime VFX Asset IDs
+-- Real Verified Roblox Creator Store Asset IDs
 local ASSETS = {
     SLASH_TEXTURE     = "rbxassetid://4991873131", -- Anime crescent curve
     STAR_SPARKLE      = "rbxassetid://6034177218", -- Crisp anime 4-point star
     SMOKE_PUFF        = "rbxassetid://2520762076", -- Stylized dust / smoke
     LIGHTNING_STREAK  = "rbxassetid://446111271",  -- Electric discharge streak
     RING_MESH         = "rbxassetid://3270017",    -- Torus / Ring mesh
+    ROCK_MESH         = "rbxassetid://1290033",    -- Rock fragment mesh
 }
 
--- Curated Color Palettes for each Element
+-- Curated Harmonious Stylized Palettes (Strictly NO gold, NO rainbow)
 local ELEMENT_PALETTES = {
     Fire = {
-        Primary = Color3.fromRGB(255, 75, 30),
-        Secondary = Color3.fromRGB(255, 185, 45),
-        Dark = Color3.fromRGB(160, 20, 10),
+        Primary = Color3.fromRGB(255, 65, 20),
+        Secondary = Color3.fromRGB(255, 140, 25),
+        Dark = Color3.fromRGB(150, 15, 10),
+        Core = Color3.fromRGB(255, 240, 220),
     },
     Aqua = {
-        Primary = Color3.fromRGB(0, 165, 255),
-        Secondary = Color3.fromRGB(135, 230, 255),
-        Dark = Color3.fromRGB(10, 75, 170),
+        Primary = Color3.fromRGB(0, 195, 255),
+        Secondary = Color3.fromRGB(120, 230, 255),
+        Dark = Color3.fromRGB(15, 70, 180),
+        Core = Color3.fromRGB(230, 250, 255),
     },
     Earth = {
-        Primary = Color3.fromRGB(150, 110, 65),
-        Secondary = Color3.fromRGB(205, 165, 105),
-        Dark = Color3.fromRGB(75, 50, 25),
+        Primary = Color3.fromRGB(140, 95, 55),
+        Secondary = Color3.fromRGB(210, 170, 110),
+        Dark = Color3.fromRGB(65, 45, 25),
+        Core = Color3.fromRGB(255, 245, 230),
     },
     Light = {
-        Primary = Color3.fromRGB(255, 235, 90),
-        Secondary = Color3.fromRGB(255, 255, 220),
-        Dark = Color3.fromRGB(220, 175, 30),
+        Primary = Color3.fromRGB(255, 250, 140),
+        Secondary = Color3.fromRGB(255, 255, 230),
+        Dark = Color3.fromRGB(215, 180, 40),
+        Core = Color3.fromRGB(255, 255, 255),
     },
     Wind = {
-        Primary = Color3.fromRGB(60, 225, 155),
-        Secondary = Color3.fromRGB(180, 255, 220),
-        Dark = Color3.fromRGB(40, 160, 105),
+        Primary = Color3.fromRGB(60, 240, 180),
+        Secondary = Color3.fromRGB(180, 255, 230),
+        Dark = Color3.fromRGB(30, 150, 100),
+        Core = Color3.fromRGB(235, 255, 250),
     },
     Error = {
         Primary = Color3.fromRGB(255, 20, 140),
-        Secondary = Color3.fromRGB(0, 255, 240),
-        Dark = Color3.fromRGB(110, 0, 90),
+        Secondary = Color3.fromRGB(0, 240, 255),
+        Dark = Color3.fromRGB(120, 0, 95),
+        Core = Color3.fromRGB(255, 255, 255),
     },
     Time = {
-        Primary = Color3.fromRGB(130, 85, 255),
-        Secondary = Color3.fromRGB(210, 185, 255),
-        Dark = Color3.fromRGB(35, 20, 120),
+        Primary = Color3.fromRGB(90, 110, 255),
+        Secondary = Color3.fromRGB(190, 180, 255),
+        Dark = Color3.fromRGB(30, 35, 130),
+        Core = Color3.fromRGB(245, 240, 255),
     },
 }
+
+VFXHelper.ELEMENT_PALETTES = ELEMENT_PALETTES
+
+function VFXHelper.GetPalette(element: string)
+    return ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
+end
 
 local function GetVFXFolder(): Folder
     local folder = Workspace:FindFirstChild("VFX")
@@ -75,78 +90,134 @@ local function GetVFXFolder(): Folder
     return folder :: Folder
 end
 
--- ==================== 1. DYNAMIC EXPANDING SHOCKWAVE ====================
+-- ==================== 1. STYLIZED TORUS SHOCKWAVE ====================
 function VFXHelper.CreateShockwave(position: Vector3, maxRadius: number, duration: number, element: string)
     local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
     local vfxFolder = GetVFXFolder()
+    local d = duration or 0.38
+    local r = maxRadius or 22
 
-    -- Neon expanding cylinder
-    local ring = Instance.new("Part")
-    ring.Name = "VFX_Shockwave"
-    ring.Shape = Enum.PartType.Cylinder
-    ring.Size = Vector3.new(0.4, 2, 2)
-    ring.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
-    ring.Material = Enum.Material.Neon
-    ring.Color = palette.Primary
-    ring.Transparency = 0.2
-    ring.CanCollide = false
-    ring.Anchored = true
-    ring.Parent = vfxFolder
+    -- 1. Outer Torus Expanding Ring
+    local torus = Instance.new("Part")
+    torus.Name = "VFX_ShockwaveTorus"
+    torus.Size = Vector3.new(2, 2, 0.4)
+    torus.CFrame = CFrame.new(position) * CFrame.Angles(math.rad(90), 0, 0)
+    torus.Material = Enum.Material.Neon
+    torus.Color = palette.Primary
+    torus.Transparency = 0.15
+    torus.CanCollide = false
+    torus.Anchored = true
+    torus.Parent = vfxFolder
 
-    local targetSize = Vector3.new(0.05, maxRadius * 2, maxRadius * 2)
-    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out)
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshId = ASSETS.RING_MESH
+    mesh.Scale = Vector3.new(1, 1, 0.5)
+    mesh.Parent = torus
 
-    local tween = TweenService:Create(ring, tweenInfo, {
-        Size = targetSize,
+    local targetScale = Vector3.new(r * 0.45, r * 0.45, 0.8)
+    TweenService:Create(mesh, TweenInfo.new(d, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        Scale = targetScale,
+    }):Play()
+    TweenService:Create(torus, TweenInfo.new(d, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Transparency = 1,
-    })
-    tween:Play()
+    }):Play()
 
-    -- Inner distortion ring
-    local inner = Instance.new("Part")
-    inner.Name = "VFX_InnerRing"
-    inner.Shape = Enum.PartType.Cylinder
-    inner.Size = Vector3.new(0.2, 1, 1)
-    inner.CFrame = ring.CFrame
-    inner.Material = Enum.Material.Neon
-    inner.Color = palette.Secondary
-    inner.Transparency = 0.1
-    inner.CanCollide = false
-    inner.Anchored = true
-    inner.Parent = vfxFolder
+    -- 2. Inner Fast Expansion Disc
+    local disc = Instance.new("Part")
+    disc.Name = "VFX_InnerDisc"
+    disc.Shape = Enum.PartType.Cylinder
+    disc.Size = Vector3.new(0.2, 1, 1)
+    disc.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+    disc.Material = Enum.Material.Neon
+    disc.Color = palette.Secondary
+    disc.Transparency = 0.05
+    disc.CanCollide = false
+    disc.Anchored = true
+    disc.Parent = vfxFolder
 
-    local innerTween = TweenService:Create(inner, TweenInfo.new(duration * 0.85, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = Vector3.new(0.02, maxRadius * 1.5, maxRadius * 1.5),
+    TweenService:Create(disc, TweenInfo.new(d * 0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = Vector3.new(0.02, r * 1.6, r * 1.6),
         Transparency = 1,
-    })
-    innerTween:Play()
+    }):Play()
 
-    Debris:AddItem(ring, duration + 0.1)
-    Debris:AddItem(inner, duration + 0.1)
+    -- 3. Outer Dissipating Smoke Ring
+    local smokePart = Instance.new("Part")
+    smokePart.Size = Vector3.new(1, 1, 1)
+    smokePart.CFrame = CFrame.new(position)
+    smokePart.Transparency = 1
+    smokePart.Anchored = true
+    smokePart.CanCollide = false
+    smokePart.Parent = vfxFolder
+
+    local smoke = Instance.new("ParticleEmitter")
+    smoke.Texture = ASSETS.SMOKE_PUFF
+    smoke.Color = ColorSequence.new(palette.Secondary, Color3.fromRGB(45, 45, 55))
+    smoke.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0.7, 0.6),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    smoke.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1.8),
+        NumberSequenceKeypoint.new(1, 5.0),
+    })
+    smoke.Speed = NumberRange.new(r * 1.2, r * 2.2)
+    smoke.SpreadAngle = Vector2.new(180, 20)
+    smoke.Lifetime = NumberRange.new(d * 0.8, d * 1.4)
+    smoke.LightEmission = 0.4
+    smoke.LightInfluence = 0
+    smoke.Rate = 0
+    smoke.Parent = smokePart
+
+    smoke:Emit(20)
+
+    Debris:AddItem(torus, d + 0.1)
+    Debris:AddItem(disc, d + 0.1)
+    Debris:AddItem(smokePart, d * 1.5)
 end
 
--- ==================== 2. IMPACT BURST (With Real Anime Textures) ====================
+-- ==================== 2. MULTI-TIER IMPACT BURST ====================
 function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particleCount: number)
     local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
     local vfxFolder = GetVFXFolder()
+    local count = particleCount or 32
 
     local emitterPart = Instance.new("Part")
-    emitterPart.Name = "VFX_ImpactPart"
-    emitterPart.Size = Vector3.new(1, 1, 1)
+    emitterPart.Name = "VFX_ImpactCenter"
+    emitterPart.Size = Vector3.new(0.1, 0.1, 0.1)
     emitterPart.CFrame = CFrame.new(position)
     emitterPart.Transparency = 1
     emitterPart.CanCollide = false
     emitterPart.Anchored = true
     emitterPart.Parent = vfxFolder
 
-    -- Anime Star Spark Emitter
+    -- Core Flash Star
+    local coreFlash = Instance.new("Part")
+    coreFlash.Name = "VFX_CoreFlash"
+    coreFlash.Shape = Enum.PartType.Ball
+    coreFlash.Size = Vector3.new(3.5, 3.5, 3.5)
+    coreFlash.CFrame = CFrame.new(position)
+    coreFlash.Material = Enum.Material.Neon
+    coreFlash.Color = palette.Core
+    coreFlash.Transparency = 0
+    coreFlash.CanCollide = false
+    coreFlash.Anchored = true
+    coreFlash.Parent = vfxFolder
+
+    TweenService:Create(coreFlash, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = Vector3.new(0.1, 0.1, 0.1),
+        Transparency = 1,
+    }):Play()
+    Debris:AddItem(coreFlash, 0.15)
+
+    -- Anime Star Sparks
     local sparks = Instance.new("ParticleEmitter")
-    sparks.Name = "Sparks"
+    sparks.Name = "StarSparks"
     sparks.Texture = ASSETS.STAR_SPARKLE
     sparks.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.4, palette.Secondary),
-        ColorSequenceKeypoint.new(0.8, palette.Primary),
+        ColorSequenceKeypoint.new(0, palette.Core),
+        ColorSequenceKeypoint.new(0.35, palette.Secondary),
+        ColorSequenceKeypoint.new(0.75, palette.Primary),
         ColorSequenceKeypoint.new(1, palette.Dark),
     })
     sparks.Transparency = NumberSequence.new({
@@ -155,13 +226,13 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
         NumberSequenceKeypoint.new(1, 1),
     })
     sparks.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1.8),
-        NumberSequenceKeypoint.new(0.6, 1.2),
+        NumberSequenceKeypoint.new(0, 2.4),
+        NumberSequenceKeypoint.new(0.5, 1.6),
         NumberSequenceKeypoint.new(1, 0),
     })
-    sparks.Speed = NumberRange.new(22, 44)
+    sparks.Speed = NumberRange.new(24, 48)
     sparks.SpreadAngle = Vector2.new(180, 180)
-    sparks.Lifetime = NumberRange.new(0.3, 0.6)
+    sparks.Lifetime = NumberRange.new(0.28, 0.55)
     sparks.LightEmission = 1.0
     sparks.LightInfluence = 0
     sparks.Rate = 0
@@ -173,22 +244,22 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
     smoke.Texture = ASSETS.SMOKE_PUFF
     smoke.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, palette.Secondary),
-        ColorSequenceKeypoint.new(0.5, palette.Primary),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 40, 50)),
+        ColorSequenceKeypoint.new(0.4, palette.Primary),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 35, 45)),
     })
     smoke.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.2),
-        NumberSequenceKeypoint.new(0.7, 0.6),
+        NumberSequenceKeypoint.new(0, 0.15),
+        NumberSequenceKeypoint.new(0.7, 0.5),
         NumberSequenceKeypoint.new(1, 1),
     })
     smoke.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1.5),
-        NumberSequenceKeypoint.new(1, 4.0),
+        NumberSequenceKeypoint.new(0, 1.8),
+        NumberSequenceKeypoint.new(1, 4.5),
     })
-    smoke.Speed = NumberRange.new(8, 18)
+    smoke.Speed = NumberRange.new(10, 22)
     smoke.SpreadAngle = Vector2.new(180, 180)
-    smoke.Lifetime = NumberRange.new(0.4, 0.75)
-    smoke.LightEmission = 0.5
+    smoke.Lifetime = NumberRange.new(0.35, 0.7)
+    smoke.LightEmission = 0.6
     smoke.LightInfluence = 0
     smoke.Rate = 0
     smoke.Parent = emitterPart
@@ -196,32 +267,31 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
     -- Point Light Flash
     local flash = Instance.new("PointLight")
     flash.Color = palette.Secondary
-    flash.Range = 26
-    flash.Brightness = 5
+    flash.Range = 28
+    flash.Brightness = 6
     flash.Parent = emitterPart
 
-    TweenService:Create(flash, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TweenService:Create(flash, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Brightness = 0,
         Range = 0,
     }):Play()
 
-    local count = particleCount or 32
     sparks:Emit(count)
-    smoke:Emit(math.round(count * 0.4))
+    smoke:Emit(math.round(count * 0.45))
 
-    Debris:AddItem(emitterPart, 1.0)
+    Debris:AddItem(emitterPart, 0.8)
 end
 
--- ==================== 3. ANIME SLASH ARC ====================
+-- ==================== 3. DIRECTIONAL ANIME SLASH ARC ====================
 function VFXHelper.CreateSlashArc(cframe: CFrame, element: string, scale: number)
     local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
     local vfxFolder = GetVFXFolder()
 
     local s = scale or 1.0
     local slashPart = Instance.new("Part")
-    slashPart.Name = "VFX_SlashArc"
-    slashPart.Size = Vector3.new(7 * s, 0.2, 6 * s)
-    slashPart.CFrame = cframe * CFrame.new(0, 0, -3.5) * CFrame.Angles(0, math.rad(math.random(-20, 20)), math.rad(math.random(-15, 15)))
+    slashPart.Name = "VFX_SlashBlade"
+    slashPart.Size = Vector3.new(8 * s, 0.15, 7 * s)
+    slashPart.CFrame = cframe * CFrame.new(0, 0, -3.2) * CFrame.Angles(0, math.rad(math.random(-25, 25)), math.rad(math.random(-15, 15)))
     slashPart.Material = Enum.Material.Neon
     slashPart.Color = palette.Secondary
     slashPart.Transparency = 0.05
@@ -232,29 +302,29 @@ function VFXHelper.CreateSlashArc(cframe: CFrame, element: string, scale: number
     -- Particle curve on slash edge
     local slashEmitter = Instance.new("ParticleEmitter")
     slashEmitter.Texture = ASSETS.SLASH_TEXTURE
-    slashEmitter.Color = ColorSequence.new(palette.Primary, palette.Secondary)
+    slashEmitter.Color = ColorSequence.new(palette.Core, palette.Primary)
     slashEmitter.Transparency = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0),
         NumberSequenceKeypoint.new(1, 1),
     })
     slashEmitter.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 3 * s),
+        NumberSequenceKeypoint.new(0, 3.5 * s),
         NumberSequenceKeypoint.new(1, 0),
     })
-    slashEmitter.Lifetime = NumberRange.new(0.18, 0.25)
-    slashEmitter.Speed = NumberRange.new(10, 20)
+    slashEmitter.Lifetime = NumberRange.new(0.18, 0.28)
+    slashEmitter.Speed = NumberRange.new(14, 26)
     slashEmitter.LightEmission = 1.0
     slashEmitter.Rate = 0
     slashEmitter.Parent = slashPart
 
-    slashEmitter:Emit(8)
+    slashEmitter:Emit(10)
 
-    local tween = TweenService:Create(slashPart, TweenInfo.new(0.16, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-        Size = Vector3.new(12 * s, 0.05, 9 * s),
+    TweenService:Create(slashPart, TweenInfo.new(0.16, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        Size = Vector3.new(14 * s, 0.02, 10 * s),
         Transparency = 1,
-        CFrame = slashPart.CFrame * CFrame.new(0, 0, -2.5),
-    })
-    tween:Play()
+        CFrame = slashPart.CFrame * CFrame.new(0, 0, -3.5),
+    }):Play()
+
     Debris:AddItem(slashPart, 0.25)
 end
 
@@ -264,30 +334,49 @@ function VFXHelper.CreateCrater(position: Vector3, radius: number, element: stri
     local vfxFolder = GetVFXFolder()
 
     local r = radius or 14
-    local rockCount = 8
+    local rockCount = 10
 
-    -- Circular rock fragments tilted outwards
+    -- 1. Glowing Ground Energy Disc
+    local groundFloor = Instance.new("Part")
+    groundFloor.Name = "VFX_CraterGlowFloor"
+    groundFloor.Shape = Enum.PartType.Cylinder
+    groundFloor.Size = Vector3.new(0.1, r * 1.5, r * 1.5)
+    groundFloor.CFrame = CFrame.new(position + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    groundFloor.Material = Enum.Material.Neon
+    groundFloor.Color = palette.Primary
+    groundFloor.Transparency = 0.3
+    groundFloor.Anchored = true
+    groundFloor.CanCollide = false
+    groundFloor.Parent = vfxFolder
+
+    TweenService:Create(groundFloor, TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Transparency = 1,
+        Size = Vector3.new(0.01, r * 1.8, r * 1.8),
+    }):Play()
+    Debris:AddItem(groundFloor, 1.9)
+
+    -- 2. Circular Slate Rock Debris Tilted Outwards
     for i = 1, rockCount do
         local angle = (i / rockCount) * math.pi * 2
-        local x = math.cos(angle) * (r * 0.75)
-        local z = math.sin(angle) * (r * 0.75)
-        local rockPos = position + Vector3.new(x, 0.5, z)
+        local x = math.cos(angle) * (r * 0.72)
+        local z = math.sin(angle) * (r * 0.72)
+        local rockPos = position + Vector3.new(x, 0.4, z)
 
         local rock = Instance.new("Part")
         rock.Name = "VFX_CraterRock"
-        rock.Size = Vector3.new(r * 0.22, r * 0.35, r * 0.22)
-        rock.Color = Color3.fromRGB(65, 60, 55)
+        rock.Size = Vector3.new(r * 0.24, r * 0.4, r * 0.24)
+        rock.Color = Color3.fromRGB(55, 50, 48)
         rock.Material = Enum.Material.Slate
         rock.Anchored = true
         rock.CanCollide = false
-        rock.CFrame = CFrame.new(rockPos, position) * CFrame.Angles(math.rad(math.random(25, 45)), math.rad(math.random(-15, 15)), 0)
+        rock.CFrame = CFrame.new(rockPos, position) * CFrame.Angles(math.rad(math.random(28, 48)), math.rad(math.random(-18, 18)), 0)
         rock.Parent = vfxFolder
 
-        -- Submerge and destroy
-        task.delay(1.5, function()
+        -- Submerge and clean up
+        task.delay(1.4, function()
             if rock.Parent then
-                local sinkTween = TweenService:Create(rock, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                    CFrame = rock.CFrame * CFrame.new(0, -3, 0),
+                local sinkTween = TweenService:Create(rock, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    CFrame = rock.CFrame * CFrame.new(0, -3.5, 0),
                     Transparency = 1,
                 })
                 sinkTween:Play()
@@ -297,7 +386,7 @@ function VFXHelper.CreateCrater(position: Vector3, radius: number, element: stri
         end)
     end
 
-    -- Rising dust cloud
+    -- 3. Rising Stylized Dust / Shock Cloud
     local dustPart = Instance.new("Part")
     dustPart.Size = Vector3.new(1, 1, 1)
     dustPart.CFrame = CFrame.new(position)
@@ -308,27 +397,28 @@ function VFXHelper.CreateCrater(position: Vector3, radius: number, element: stri
 
     local dustEmitter = Instance.new("ParticleEmitter")
     dustEmitter.Texture = ASSETS.SMOKE_PUFF
-    dustEmitter.Color = ColorSequence.new(Color3.fromRGB(160, 150, 140))
+    dustEmitter.Color = ColorSequence.new(palette.Secondary, Color3.fromRGB(55, 55, 65))
     dustEmitter.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.3),
-        NumberSequenceKeypoint.new(0.7, 0.7),
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0.65, 0.6),
         NumberSequenceKeypoint.new(1, 1),
     })
     dustEmitter.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 2),
-        NumberSequenceKeypoint.new(1, 6),
+        NumberSequenceKeypoint.new(0, 2.5),
+        NumberSequenceKeypoint.new(1, 7.0),
     })
-    dustEmitter.Speed = NumberRange.new(12, 28)
-    dustEmitter.SpreadAngle = Vector2.new(180, 45)
-    dustEmitter.Lifetime = NumberRange.new(0.6, 1.1)
+    dustEmitter.Speed = NumberRange.new(14, 32)
+    dustEmitter.SpreadAngle = Vector2.new(180, 50)
+    dustEmitter.Lifetime = NumberRange.new(0.65, 1.2)
+    dustEmitter.LightEmission = 0.5
     dustEmitter.Rate = 0
     dustEmitter.Parent = dustPart
 
-    dustEmitter:Emit(25)
-    Debris:AddItem(dustPart, 1.5)
+    dustEmitter:Emit(28)
+    Debris:AddItem(dustPart, 1.6)
 end
 
--- ==================== 5. ENERGY BEAM (Dual Core + Sheath) ====================
+-- ==================== 5. HIGH-DENSITY DUAL-CORE BEAM ====================
 function VFXHelper.CreateBeam(startPos: Vector3, endPos: Vector3, element: string, thickness: number)
     local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
     local vfxFolder = GetVFXFolder()
@@ -336,14 +426,13 @@ function VFXHelper.CreateBeam(startPos: Vector3, endPos: Vector3, element: strin
     local dist = (endPos - startPos).Magnitude
     local midPos = (startPos + endPos) / 2
     local lookCF = CFrame.new(midPos, endPos) * CFrame.Angles(0, 0, math.rad(90))
-
     local th = thickness or 1.5
 
-    -- Outer Glowing Sheath
+    -- Outer Glowing Elemental Sheath
     local sheath = Instance.new("Part")
     sheath.Name = "VFX_BeamSheath"
     sheath.Shape = Enum.PartType.Cylinder
-    sheath.Size = Vector3.new(dist, th * 2, th * 2)
+    sheath.Size = Vector3.new(dist, th * 2.2, th * 2.2)
     sheath.CFrame = lookCF
     sheath.Material = Enum.Material.Neon
     sheath.Color = palette.Primary
@@ -352,20 +441,20 @@ function VFXHelper.CreateBeam(startPos: Vector3, endPos: Vector3, element: strin
     sheath.CanCollide = false
     sheath.Parent = vfxFolder
 
-    -- Inner Pure Core
+    -- Inner Superheated Core
     local core = Instance.new("Part")
     core.Name = "VFX_BeamCore"
     core.Shape = Enum.PartType.Cylinder
-    core.Size = Vector3.new(dist + 0.2, th * 0.9, th * 0.9)
+    core.Size = Vector3.new(dist + 0.3, th * 0.95, th * 0.95)
     core.CFrame = lookCF
     core.Material = Enum.Material.Neon
-    core.Color = Color3.fromRGB(255, 255, 255)
-    core.Transparency = 0.05
+    core.Color = palette.Core
+    core.Transparency = 0.02
     core.Anchored = true
     core.CanCollide = false
     core.Parent = vfxFolder
 
-    local fadeDuration = 0.3
+    local fadeDuration = 0.32
     TweenService:Create(sheath, TweenInfo.new(fadeDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = Vector3.new(dist, 0, 0),
         Transparency = 1,
@@ -379,7 +468,47 @@ function VFXHelper.CreateBeam(startPos: Vector3, endPos: Vector3, element: strin
     Debris:AddItem(core, fadeDuration + 0.05)
 end
 
--- ==================== 6. PERSISTENT ELEMENTAL AURA ====================
+-- ==================== 6. CONVERGING ENERGY CHARGE (Ultimate Wind-up) ====================
+function VFXHelper.CreateConvergingCharge(position: Vector3, element: string, duration: number)
+    local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
+    local vfxFolder = GetVFXFolder()
+    local d = duration or 0.5
+
+    local chargePart = Instance.new("Part")
+    chargePart.Name = "VFX_ConvergeCharge"
+    chargePart.Size = Vector3.new(0.1, 0.1, 0.1)
+    chargePart.CFrame = CFrame.new(position)
+    chargePart.Transparency = 1
+    chargePart.Anchored = true
+    chargePart.CanCollide = false
+    chargePart.Parent = vfxFolder
+
+    local emitter = Instance.new("ParticleEmitter")
+    emitter.Texture = ASSETS.STAR_SPARKLE
+    emitter.Color = ColorSequence.new(palette.Core, palette.Primary)
+    emitter.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0),
+        NumberSequenceKeypoint.new(0.8, 0.2),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    emitter.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1.8),
+        NumberSequenceKeypoint.new(1, 0.4),
+    })
+    emitter.Speed = NumberRange.new(-22, -14) -- Inward convergence towards center
+    emitter.SpreadAngle = Vector2.new(180, 180)
+    emitter.Lifetime = NumberRange.new(d * 0.7, d)
+    emitter.LightEmission = 1.0
+    emitter.Rate = 50
+    emitter.Parent = chargePart
+
+    task.delay(d, function()
+        emitter.Enabled = false
+    end)
+    Debris:AddItem(chargePart, d + 0.5)
+end
+
+-- ==================== 7. PERSISTENT ELEMENTAL AURA ====================
 function VFXHelper.AttachElementalAura(character: Model, element: string): Attachment?
     local rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
     if not rootPart then return nil end
@@ -397,27 +526,27 @@ function VFXHelper.AttachElementalAura(character: Model, element: string): Attac
     emitter.Name = "AuraEnergy"
     emitter.Texture = ASSETS.STAR_SPARKLE
     emitter.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0, palette.Core),
         ColorSequenceKeypoint.new(0.5, palette.Primary),
         ColorSequenceKeypoint.new(1, palette.Dark),
     })
     emitter.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.4),
-        NumberSequenceKeypoint.new(0.7, 0.2),
+        NumberSequenceKeypoint.new(0, 0.35),
+        NumberSequenceKeypoint.new(0.7, 0.15),
         NumberSequenceKeypoint.new(1, 1),
     })
     emitter.Size = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0.8),
-        NumberSequenceKeypoint.new(0.6, 1.4),
+        NumberSequenceKeypoint.new(0.6, 1.5),
         NumberSequenceKeypoint.new(1, 0.2),
     })
-    emitter.Speed = NumberRange.new(3, 6)
-    emitter.Acceleration = Vector3.new(0, 10, 0)
-    emitter.SpreadAngle = Vector2.new(25, 25)
-    emitter.Lifetime = NumberRange.new(0.6, 1.0)
-    emitter.LightEmission = 0.9
+    emitter.Speed = NumberRange.new(3, 7)
+    emitter.Acceleration = Vector3.new(0, 12, 0)
+    emitter.SpreadAngle = Vector2.new(30, 30)
+    emitter.Lifetime = NumberRange.new(0.5, 0.9)
+    emitter.LightEmission = 0.95
     emitter.LightInfluence = 0
-    emitter.Rate = 22
+    emitter.Rate = 24
     emitter.Parent = attach
 
     return attach

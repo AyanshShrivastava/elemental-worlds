@@ -154,6 +154,10 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
                 local slamKnock = Vector3.new(0, -30, 0)
                 HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamKnock)
 
+                VFXBroadcastService.Broadcast("ImpactFrame", {
+                    Duration = 0.08,
+                    Intensity = 1.3,
+                })
                 VFXBroadcastService.Broadcast("Crater", {
                     Position = tRoot.Position,
                     Element = "Earth",

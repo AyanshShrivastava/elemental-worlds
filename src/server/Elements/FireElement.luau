@@ -177,7 +177,16 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 8, 0)
     rootPart.Anchored = true
 
-    -- VFX: Massive eruption crater and shockwave
+    -- VFX: Converging charge wind-up, impact frame, massive eruption crater and shockwave
+    VFXBroadcastService.Broadcast("ImpactFrame", {
+        Duration = 0.08,
+        Intensity = 1.2,
+    })
+    VFXBroadcastService.Broadcast("ConvergingCharge", {
+        Position = domainCenter,
+        Element = "Fire",
+        Duration = 0.45,
+    })
     VFXBroadcastService.Broadcast("Crater", {
         Position = domainCenter,
         Radius = 18,

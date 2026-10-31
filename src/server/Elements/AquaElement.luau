@@ -118,6 +118,10 @@ function AquaElement.CastMove4(player: Player, character: Model, rootPart: BaseP
             end
 
             if i == totalHits then
+                VFXBroadcastService.Broadcast("ImpactFrame", {
+                    Duration = 0.08,
+                    Intensity = 1.2,
+                })
                 VFXBroadcastService.Broadcast("Shockwave", {
                     Position = rootPart.Position + (rootPart.CFrame.LookVector * 6),
                     Element = "Aqua",

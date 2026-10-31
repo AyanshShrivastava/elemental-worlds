@@ -1,11 +1,17 @@
 --!strict
 --[[
-    Elemental Worlds: Client Master VFX Controller (Blox Fruits Anime Combat)
-    Orchestrates high-fidelity particle bursts, dynamic craters, energy beams, 3D damage numbers,
-    spatial audio, and camera shakes with zero replication stutter.
+    Elemental Worlds: Master VFX Controller (Top-Tier Stylized Anime Combat)
+    Orchestrates high-fidelity anime effects:
+    - Anime Impact Frames (Negative Contrast / Monochrome Inversion flash)
+    - Stylized Torus shockwaves & multi-tier ground craters
+    - Dual-Core Energy Beams & Anime Crescent Slash Arcs
+    - Converging energy charge wind-ups
+    - 3D damage numbers, camera trauma shake, and spatial audio
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local VFXHelper = require(ReplicatedStorage.Shared.Modules.VFXHelper)
 
@@ -16,7 +22,52 @@ local DamageNumbersController = require(script.Parent.DamageNumbersController)
 
 local VFXController = {}
 
+-- Anime Impact Frame ColorCorrection in Lighting
+local impactCorrection: ColorCorrectionEffect? = nil
+
+local function EnsureImpactCorrection(): ColorCorrectionEffect
+    if not impactCorrection or not impactCorrection.Parent then
+        local existing = Lighting:FindFirstChild("AnimeImpactFrame") :: ColorCorrectionEffect?
+        if existing then
+            impactCorrection = existing
+        else
+            local cc = Instance.new("ColorCorrectionEffect")
+            cc.Name = "AnimeImpactFrame"
+            cc.Contrast = 0
+            cc.Brightness = 0
+            cc.Saturation = 0
+            cc.Enabled = false
+            cc.Parent = Lighting
+            impactCorrection = cc
+        end
+    end
+    return impactCorrection :: ColorCorrectionEffect
+end
+
+-- Triggers a stylized anime negative contrast impact flash
+function VFXController.TriggerImpactFrame(duration: number?, intensity: number?)
+    local cc = EnsureImpactCorrection()
+    local d = duration or 0.06
+    local int = intensity or 1.0
+
+    cc.Contrast = 1.8 * int
+    cc.Brightness = 0.3 * int
+    cc.Saturation = -1.0 -- Stylized anime high-contrast monochrome flash
+    cc.Enabled = true
+
+    task.delay(d, function()
+        if cc.Parent then
+            cc.Enabled = false
+            cc.Contrast = 0
+            cc.Brightness = 0
+            cc.Saturation = 0
+        end
+    end)
+end
+
 function VFXController.Init()
+    EnsureImpactCorrection()
+
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
     if not remotes then return end
 
@@ -27,6 +78,11 @@ function VFXController.Init()
                 local duration = (data and data.Duration) or 2.0
                 UIController.TriggerBlind(duration)
 
+            elseif vfxType == "ImpactFrame" then
+                local d = (data and data.Duration) or 0.06
+                local int = (data and data.Intensity) or 1.0
+                VFXController.TriggerImpactFrame(d, int)
+
             elseif vfxType == "ImpactBurst" and data and data.Position then
                 local element = data.Element or "Fire"
                 VFXHelper.CreateImpactBurst(data.Position, element, data.Count or 32)
@@ -35,11 +91,15 @@ function VFXController.Init()
                 else
                     SoundController.PlaySound3D("Punch", data.Position, 0.8)
                 end
+
+                if data.IsCrit then
+                    VFXController.TriggerImpactFrame(0.06, 1.0)
+                end
                 CameraShakeController.Shake(data.Shake or 0.25)
 
             elseif vfxType == "Shockwave" and data and data.Position then
                 local element = data.Element or "Fire"
-                VFXHelper.CreateShockwave(data.Position, data.Radius or 22, data.Duration or 0.4, element)
+                VFXHelper.CreateShockwave(data.Position, data.Radius or 22, data.Duration or 0.38, element)
                 if data.SFXId and data.SFXId ~= "" then
                     SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.95)
                 else
@@ -76,9 +136,16 @@ function VFXController.Init()
                     SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.7)
                 end
 
+            elseif vfxType == "ConvergingCharge" and data and data.Position then
+                local element = data.Element or "Fire"
+                VFXHelper.CreateConvergingCharge(data.Position, element, data.Duration or 0.5)
+
             elseif vfxType == "DamageNumber" and data and data.Position and data.Damage then
                 local element = data.Element or "Fire"
                 DamageNumbersController.SpawnDamageNumber(data.Position, data.Damage, element, data.IsCrit or false)
+                if data.IsCrit then
+                    VFXController.TriggerImpactFrame(0.05, 0.85)
+                end
 
             elseif vfxType == "ComboHit" and data and data.Count then
                 UIController.RegisterComboHit(data.Count)
@@ -93,9 +160,11 @@ function VFXController.PlayVFX(vfxType: string, position: Vector3?, element: str
     if vfxType == "ImpactBurst" then
         VFXHelper.CreateImpactBurst(pos, elem, 32)
     elseif vfxType == "Shockwave" then
-        VFXHelper.CreateShockwave(pos, 22, 0.4, elem)
+        VFXHelper.CreateShockwave(pos, 22, 0.38, elem)
     elseif vfxType == "Crater" then
         VFXHelper.CreateCrater(pos, 14, elem)
+    elseif vfxType == "ConvergingCharge" then
+        VFXHelper.CreateConvergingCharge(pos, elem, 0.5)
     end
 end
 

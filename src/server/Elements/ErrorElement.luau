@@ -126,6 +126,15 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
     PlayerDataService.AddErrorMeter(player, -50)
 
     -- Glitched realm activation VFX
+    VFXBroadcastService.Broadcast("ImpactFrame", {
+        Duration = 0.08,
+        Intensity = 1.3,
+    })
+    VFXBroadcastService.Broadcast("ConvergingCharge", {
+        Position = rootPart.Position,
+        Element = "Error",
+        Duration = 0.45,
+    })
     VFXBroadcastService.Broadcast("Crater", {
         Position = rootPart.Position,
         Element = "Error",
@@ -196,6 +205,19 @@ function ErrorElement.CastMove5(player: Player, character: Model, rootPart: Base
 
     -- Deduct full Error Meter
     PlayerDataService.AddErrorMeter(player, -100)
+
+    VFXBroadcastService.Broadcast("ImpactFrame", {
+        Duration = 0.1,
+        Intensity = 1.4,
+    })
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = rootPart.Position,
+        Element = "Error",
+        Radius = 35,
+        Duration = 0.6,
+        Shake = 0.7,
+        SFXId = ability.SFXId,
+    })
 
     local duration = ability.Duration or 5.0
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, 360, character)

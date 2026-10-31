@@ -25,6 +25,8 @@ local SoundController = require(script.Parent.SoundController)
 local CameraShakeController = require(script.Parent.CameraShakeController)
 local ProceduralAnimController = require(script.Parent.ProceduralAnimController)
 local UIController = require(script.Parent.UIController)
+local VFXController = require(script.Parent.VFXController)
+local VFXHelper = require(ReplicatedStorage.Shared.Modules.VFXHelper)
 
 local localPlayer = Players.LocalPlayer
 
@@ -80,9 +82,10 @@ local function PerformAnimeDash()
     local moveDir = humanoid.MoveDirection
     local dashDir = if moveDir.Magnitude > 0.1 then moveDir else rootPart.CFrame.LookVector
 
-    -- Instant tactile feedback: whoosh sound & FOV punch
-    SoundController.PlaySound2D("MagicCast", 0.85)
+    -- Instant tactile feedback: dash sound, sonic shockwave ring & FOV punch
+    SoundController.PlaySound2D("Dash", 0.9)
     CameraShakeController.Shake(0.18)
+    VFXHelper.CreateShockwave(rootPart.Position, 7, 0.22, currentElement)
 
     -- Dynamic camera FOV punch
     local cam = Workspace.CurrentCamera
@@ -104,13 +107,14 @@ local function PerformAnimeDash()
     linearVelocity.Attachment0 = attachment
     linearVelocity.Parent = rootPart
 
-    -- Visual motion trail line
+    -- Visual motion trail line styled with current element palette
+    local elemPalette = VFXHelper.GetPalette(currentElement)
     local trailPart = Instance.new("Part")
     trailPart.Size = Vector3.new(0.4, 0.4, (dashDir * 22).Magnitude)
     trailPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -6)
-    trailPart.Color = Color3.fromRGB(0, 195, 255)
+    trailPart.Color = elemPalette.Secondary
     trailPart.Material = Enum.Material.Neon
-    trailPart.Transparency = 0.25
+    trailPart.Transparency = 0.2
     trailPart.Anchored = true
     trailPart.CanCollide = false
     trailPart.Parent = Workspace:FindFirstChild("VFX") or Workspace
@@ -189,6 +193,7 @@ function CombatController.Cast(slot: string)
         end
         if comboStep == 4 then
             CameraShakeController.Shake(0.35)
+            VFXController.TriggerImpactFrame(0.06, 1.0)
         end
 
         -- 4. Authoritative server dispatch
@@ -223,13 +228,17 @@ function CombatController.Cast(slot: string)
             AnimationMarkerUtil.PlayWithMarker(humanoid, ability.AnimationId, ability.AnimationMarker or "Hit", 0.25, function() end)
         end
 
-        -- 3. Instant sound & camera shake
+        -- 3. Instant sound, camera shake & ultimate effects
         if ability.SFXId and ability.SFXId ~= "" then
             SoundController.PlayAudioId2D(ability.SFXId, 0.8)
         else
             SoundController.PlaySound2D("MagicCast", 0.75)
         end
         CameraShakeController.Shake(ability.ScreenShake or 0.25)
+        if slot == "4" then
+            VFXController.TriggerImpactFrame(0.08, 1.2)
+            VFXHelper.CreateConvergingCharge(char:GetPivot().Position, currentElement, 0.45)
+        end
 
         -- 4. Authoritative server dispatch
         if castAbilityEvent then

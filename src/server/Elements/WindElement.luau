@@ -117,6 +117,10 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                 local finalDashKnock = rootPart.CFrame.LookVector * 50 + Vector3.new(0, 15, 0)
                 HitboxService.ApplyDamage(player, target, ability.BaseDamage, finalDashKnock)
 
+                VFXBroadcastService.Broadcast("ImpactFrame", {
+                    Duration = 0.08,
+                    Intensity = 1.3,
+                })
                 VFXBroadcastService.Broadcast("Crater", {
                     Position = tRoot.Position,
                     Element = "Wind",

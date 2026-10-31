@@ -105,11 +105,22 @@ function LightElement.CastMove4(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Light", "4")
     if not ability then return end
 
+    -- Broadcast converging charge during 0.4s wind-up
+    VFXBroadcastService.Broadcast("ConvergingCharge", {
+        Position = rootPart.Position,
+        Element = "Light",
+        Duration = 0.4,
+    })
+
     -- Brief charge delay before releasing massive beam
     task.delay(0.4, function()
         if not character.Parent then return end
 
         local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+        VFXBroadcastService.Broadcast("ImpactFrame", {
+            Duration = 0.08,
+            Intensity = 1.25,
+        })
         VFXBroadcastService.Broadcast("Beam", {
             StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
             EndPos = beamEnd,

@@ -116,12 +116,22 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     -- Time freeze during execution
     StatusEffectService.ApplyEffect(target.Character, "TimeStopped", 1.0, player)
 
+    VFXBroadcastService.Broadcast("ConvergingCharge", {
+        Position = rootPart.Position,
+        Element = "Time",
+        Duration = 0.4,
+    })
+
     task.delay(0.4, function()
         if target.Character.Parent and target.Humanoid.Health > 0 then
             -- Instant KO under balance rules (deals max health as true damage)
             local killDamage = target.Humanoid.MaxHealth + 1000
             HitboxService.ApplyDamage(player, target, killDamage, rootPart.CFrame.LookVector * 50)
 
+            VFXBroadcastService.Broadcast("ImpactFrame", {
+                Duration = 0.1,
+                Intensity = 1.5,
+            })
             VFXBroadcastService.Broadcast("Crater", {
                 Position = target.RootPart.Position,
                 Element = "Time",
