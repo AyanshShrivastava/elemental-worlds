@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local WindElement = {}
 
@@ -37,6 +38,14 @@ end
 function WindElement.CastMove1(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Wind", "1")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = rootPart.Position + (rootPart.CFrame.LookVector * 10),
+        Element = "Wind",
+        Radius = 16,
+        Duration = 0.35,
+        Shake = 0.35,
+    })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
@@ -106,6 +115,19 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
             if target.Character.Parent and tHum.Health > 0 then
                 local finalDashKnock = rootPart.CFrame.LookVector * 50 + Vector3.new(0, 15, 0)
                 HitboxService.ApplyDamage(player, target, ability.BaseDamage, finalDashKnock)
+
+                VFXBroadcastService.Broadcast("Crater", {
+                    Position = tRoot.Position,
+                    Element = "Wind",
+                    Radius = 16,
+                })
+                VFXBroadcastService.Broadcast("Shockwave", {
+                    Position = tRoot.Position,
+                    Element = "Wind",
+                    Radius = 24,
+                    Duration = 0.45,
+                    Shake = 0.6,
+                })
             end
         end)
     end)

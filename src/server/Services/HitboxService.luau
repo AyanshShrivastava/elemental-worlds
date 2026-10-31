@@ -175,6 +175,15 @@ function HitboxService.ApplyDamage(
                 Shake = if isCrit then 0.4 else 0.2,
             })
 
+            -- Finisher Slash Arc
+            if isCrit then
+                vfxEvent:FireAllClients("SlashArc", {
+                    CFrame = target.RootPart.CFrame,
+                    Element = attackerElement,
+                    Scale = 1.3,
+                })
+            end
+
             -- Combo Hit Counter to attacker
             if attackerPlayer and comboStep then
                 vfxEvent:FireClient(attackerPlayer, "ComboHit", { Count = comboStep })

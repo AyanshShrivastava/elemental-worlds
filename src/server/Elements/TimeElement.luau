@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local TimeElement = {}
 
@@ -55,6 +56,14 @@ function TimeElement.CastMove1(player: Player, character: Model, rootPart: BaseP
         if target.Character.Parent and tHum.Health > 0 then
             local punchKnock = rootPart.CFrame.LookVector * 40 + Vector3.new(0, 10, 0)
             HitboxService.ApplyDamage(player, target, ability.BaseDamage, punchKnock)
+
+            VFXBroadcastService.Broadcast("Shockwave", {
+                Position = tRoot.Position,
+                Element = "Time",
+                Radius = 16,
+                Duration = 0.35,
+                Shake = 0.4,
+            })
         end
     end)
 end
@@ -63,6 +72,14 @@ end
 function TimeElement.CastMove2(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Time", "2")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = rootPart.Position,
+        Element = "Time",
+        Radius = 20,
+        Duration = 0.4,
+        Shake = 0.35,
+    })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
@@ -102,6 +119,19 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
             -- Instant KO under balance rules (deals max health as true damage)
             local killDamage = target.Humanoid.MaxHealth + 1000
             HitboxService.ApplyDamage(player, target, killDamage, rootPart.CFrame.LookVector * 50)
+
+            VFXBroadcastService.Broadcast("Crater", {
+                Position = target.RootPart.Position,
+                Element = "Time",
+                Radius = 22,
+            })
+            VFXBroadcastService.Broadcast("Shockwave", {
+                Position = target.RootPart.Position,
+                Element = "Time",
+                Radius = 30,
+                Duration = 0.5,
+                Shake = 0.75,
+            })
         end
     end)
 end

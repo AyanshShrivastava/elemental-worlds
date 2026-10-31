@@ -58,8 +58,23 @@ function MobileController.Init()
     m1Stroke.Thickness = 2.5
     m1Stroke.Parent = m1Button
 
-    m1Button.MouseButton1Click:Connect(function()
-        combatController.Cast("M1")
+    local function AnimatePress(btn: GuiButton, origSize: UDim2)
+        TweenService:Create(btn, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(origSize.X.Scale, math.round(origSize.X.Offset * 0.9), origSize.Y.Scale, math.round(origSize.Y.Offset * 0.9)),
+        }):Play()
+        task.delay(0.07, function()
+            TweenService:Create(btn, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = origSize,
+            }):Play()
+        end)
+    end
+
+    local origM1Size = m1Button.Size
+    m1Button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            AnimatePress(m1Button, origM1Size)
+            combatController.Cast("M1")
+        end
     end)
 
     -- Dash Button (Circular, Blox Fruits Flash Step)
@@ -84,10 +99,12 @@ function MobileController.Init()
     dashStroke.Thickness = 2.0
     dashStroke.Parent = dashButton
 
-    dashButton.MouseButton1Click:Connect(function()
-        -- Simulate Q keypress for Anime Dash
-        local UserInputServiceInternal = game:GetService("VirtualInputManager") or nil
-        combatController.Cast("Dash")
+    local origDashSize = dashButton.Size
+    dashButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            AnimatePress(dashButton, origDashSize)
+            combatController.Cast("Dash")
+        end
     end)
 end
 

@@ -68,6 +68,9 @@ if remotes then
     if updateStatsEvent then
         updateStatsEvent.OnClientEvent:Connect(function(data)
             UIController.UpdateStats(data)
+            if data and data.Element then
+                CombatController.SetCurrentElement(data.Element)
+            end
         end)
     end
 
@@ -93,6 +96,7 @@ if remotes then
     if elementRolledEvent then
         elementRolledEvent.OnClientEvent:Connect(function(element)
             SpinUIController.ShowRollResult(element)
+            CombatController.SetCurrentElement(element)
         end)
     end
 

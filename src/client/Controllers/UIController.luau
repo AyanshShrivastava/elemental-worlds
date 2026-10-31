@@ -355,7 +355,7 @@ function UIController.CreateHUD()
         cdText.Text = ""
         cdText.Parent = cdOverlay
 
-        -- Hover and click animations
+        -- Hover and tactile press animations
         btn.MouseEnter:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 74, 0, 74), BackgroundColor3 = PALETTE.BG_CARD }):Play()
             SoundController.PlayUI("hover")
@@ -363,9 +363,15 @@ function UIController.CreateHUD()
         btn.MouseLeave:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 70, 0, 70), BackgroundColor3 = PALETTE.BG_SLOT }):Play()
         end)
-        btn.MouseButton1Click:Connect(function()
-            local combatController = require(script.Parent.CombatController)
-            combatController.Cast(slot)
+        btn.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                TweenService:Create(btn, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 65, 0, 65) }):Play()
+                task.delay(0.08, function()
+                    TweenService:Create(btn, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(0, 70, 0, 70) }):Play()
+                end)
+                local combatController = require(script.Parent.CombatController)
+                combatController.Cast(slot)
+            end
         end)
 
         abilityButtons[slot] = {

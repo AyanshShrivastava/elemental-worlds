@@ -16,6 +16,7 @@ local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local FireElement = {}
 
@@ -53,6 +54,14 @@ function FireElement.CastMove1(player: Player, character: Model, rootPart: BaseP
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
         -- Burst AoE at impact/miss position
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = impactPos,
+            Element = "Fire",
+            Radius = 16,
+            Duration = 0.35,
+            Shake = 0.35,
+        })
+
         local burstCFrame = CFrame.new(impactPos)
         local blastRadius = 15
         local targets = HitboxService.FindTargetsInCone(burstCFrame, blastRadius, 360, character)
@@ -137,6 +146,14 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)
 
     -- Fire beam at target
+    VFXBroadcastService.Broadcast("Beam", {
+        StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
+        EndPos = target.RootPart.Position,
+        Element = "Fire",
+        Thickness = 1.8,
+        Shake = 0.4,
+    })
+
     task.delay(0.2, function()
         if target.Character.Parent and target.Humanoid.Health > 0 then
             local knockback = rootPart.CFrame.LookVector * 45 + Vector3.new(0, 15, 0)
@@ -157,6 +174,20 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     -- Rise above ground
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 8, 0)
     rootPart.Anchored = true
+
+    -- VFX: Massive eruption crater and shockwave
+    VFXBroadcastService.Broadcast("Crater", {
+        Position = domainCenter,
+        Radius = 18,
+        Element = "Fire",
+    })
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = domainCenter,
+        Element = "Fire",
+        Radius = domainRadius,
+        Duration = 0.5,
+        Shake = 0.55,
+    })
 
     -- Visual Domain Boundary Part
     local domainPart = Instance.new("Part")

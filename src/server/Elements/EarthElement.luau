@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local EarthElement = {}
 
@@ -50,6 +51,20 @@ function EarthElement.CastMove1(player: Player, character: Model, rootPart: Base
     wallPart.CanCollide = true
     wallPart.Parent = Workspace:FindFirstChild("Map") or Workspace
 
+    -- Visual eruption effects
+    VFXBroadcastService.Broadcast("Crater", {
+        Position = wallPart.Position,
+        Element = "Earth",
+        Radius = 10,
+    })
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = wallPart.Position,
+        Element = "Earth",
+        Radius = 14,
+        Duration = 0.35,
+        Shake = 0.3,
+    })
+
     Debris:AddItem(wallPart, wallDuration)
 end
 
@@ -68,6 +83,20 @@ function EarthElement.CastMove2(player: Player, character: Model, rootPart: Base
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        -- Visual boulder shatter impact
+        VFXBroadcastService.Broadcast("Crater", {
+            Position = impactPos,
+            Element = "Earth",
+            Radius = 14,
+        })
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = impactPos,
+            Element = "Earth",
+            Radius = 20,
+            Duration = 0.45,
+            Shake = 0.5,
+        })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 15, 360, character)
         for _, target in targets do
@@ -120,6 +149,19 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
             if target.Character.Parent and tHum.Health > 0 then
                 local slamKnock = Vector3.new(0, -30, 0)
                 HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamKnock)
+
+                VFXBroadcastService.Broadcast("Crater", {
+                    Position = tRoot.Position,
+                    Element = "Earth",
+                    Radius = 18,
+                })
+                VFXBroadcastService.Broadcast("Shockwave", {
+                    Position = tRoot.Position,
+                    Element = "Earth",
+                    Radius = 26,
+                    Duration = 0.5,
+                    Shake = 0.65,
+                })
             end
         end)
     end)

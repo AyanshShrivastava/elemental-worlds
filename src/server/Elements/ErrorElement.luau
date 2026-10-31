@@ -17,6 +17,7 @@ local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
 local PlayerDataService = require(script.Parent.Parent.Services.PlayerDataService)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local ErrorElement = {}
 
@@ -47,6 +48,19 @@ function ErrorElement.CastMove1(player: Player, character: Model, rootPart: Base
     -- Dash forward with glitched wall impact
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -18)
 
+    VFXBroadcastService.Broadcast("Crater", {
+        Position = rootPart.Position,
+        Element = "Error",
+        Radius = 14,
+    })
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = rootPart.Position,
+        Element = "Error",
+        Radius = 20,
+        Duration = 0.4,
+        Shake = 0.45,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         local knock = rootPart.CFrame.LookVector * 45 + Vector3.new(0, 15, 0)
@@ -69,6 +83,14 @@ function ErrorElement.CastMove2(player: Player, character: Model, rootPart: Base
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = impactPos,
+            Element = "Error",
+            Radius = 22,
+            Duration = 0.45,
+            Shake = 0.55,
+        })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 20, 360, character)
         for _, target in targets do
@@ -99,6 +121,20 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
 
     -- Deduct Error Meter
     PlayerDataService.AddErrorMeter(player, -50)
+
+    -- Glitched realm activation VFX
+    VFXBroadcastService.Broadcast("Crater", {
+        Position = rootPart.Position,
+        Element = "Error",
+        Radius = 20,
+    })
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = rootPart.Position,
+        Element = "Error",
+        Radius = 30,
+        Duration = 0.5,
+        Shake = 0.65,
+    })
 
     local duration = ability.Duration or 7.0
     local originCFrame = rootPart.CFrame

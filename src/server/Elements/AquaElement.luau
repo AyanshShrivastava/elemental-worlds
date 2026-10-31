@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local AquaElement = {}
 
@@ -40,6 +41,14 @@ function AquaElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local strikeCFrame = rootPart.CFrame * CFrame.new(0, 0, -8)
+    VFXBroadcastService.Broadcast("Shockwave", {
+        Position = strikeCFrame.Position,
+        Element = "Aqua",
+        Radius = 14,
+        Duration = 0.3,
+        Shake = 0.35,
+    })
+
     local targets = HitboxService.FindTargetsInCone(strikeCFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         local knockback = Vector3.new(0, -20, 0) -- Slam downward
@@ -62,6 +71,14 @@ function AquaElement.CastMove2(player: Player, character: Model, rootPart: BaseP
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = impactPos,
+            Element = "Aqua",
+            Radius = 20,
+            Duration = 0.45,
+            Shake = 0.45,
+        })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 18, 360, character)
         for _, target in targets do
@@ -97,6 +114,17 @@ function AquaElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                 local knock = if i == totalHits then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else nil
                 HitboxService.ApplyDamage(player, target, perHitDamage, knock)
             end
+
+            if i == totalHits then
+                VFXBroadcastService.Broadcast("Shockwave", {
+                    Position = rootPart.Position + (rootPart.CFrame.LookVector * 6),
+                    Element = "Aqua",
+                    Radius = 18,
+                    Duration = 0.4,
+                    Shake = 0.45,
+                })
+            end
+
             task.wait(1.5 / totalHits)
         end
     end)

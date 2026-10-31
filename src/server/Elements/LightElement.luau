@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
 local HitboxService = require(script.Parent.Parent.Services.HitboxService)
 local StatusEffectService = require(script.Parent.Parent.Services.StatusEffectService)
+local VFXBroadcastService = require(script.Parent.Parent.Services.VFXBroadcastService)
 
 local LightElement = {}
 
@@ -38,6 +39,15 @@ function LightElement.CastMove1(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Light", "1")
     if not ability then return end
 
+    local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("Beam", {
+        StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
+        EndPos = beamEnd,
+        Element = "Light",
+        Thickness = 1.4,
+        Shake = 0.25,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, ability.BaseDamage, rootPart.CFrame.LookVector * 20)
@@ -57,6 +67,19 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
         if target.Character.Parent and target.Humanoid.Health > 0 then
             local slamVector = Vector3.new(0, -25, 0)
             HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamVector)
+
+            VFXBroadcastService.Broadcast("Crater", {
+                Position = target.RootPart.Position,
+                Element = "Light",
+                Radius = 12,
+            })
+            VFXBroadcastService.Broadcast("Shockwave", {
+                Position = target.RootPart.Position,
+                Element = "Light",
+                Radius = 16,
+                Duration = 0.35,
+                Shake = 0.45,
+            })
         end
     end)
 end
@@ -82,6 +105,23 @@ function LightElement.CastMove4(player: Player, character: Model, rootPart: Base
     -- Brief charge delay before releasing massive beam
     task.delay(0.4, function()
         if not character.Parent then return end
+
+        local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+        VFXBroadcastService.Broadcast("Beam", {
+            StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
+            EndPos = beamEnd,
+            Element = "Light",
+            Thickness = 3.6,
+            Shake = 0.65,
+        })
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = rootPart.Position,
+            Element = "Light",
+            Radius = 22,
+            Duration = 0.45,
+            Shake = 0.5,
+        })
+
         local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
         for _, target in targets do
             local blastKnock = rootPart.CFrame.LookVector * 50 + Vector3.new(0, 20, 0)
