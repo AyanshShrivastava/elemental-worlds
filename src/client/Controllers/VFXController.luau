@@ -137,6 +137,31 @@ function VFXController.Init()
                     SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.7)
                 end
 
+            elseif vfxType == "CircularSlashWheel" and data and data.CFrame then
+                local element = data.Element or "Fire"
+                VFXHelper.CreateCircularSlashWheel(data.CFrame, element, data.Radius or 12, data.Count or 16, data.Duration or 0.35)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.CFrame.Position, 0.95)
+                else
+                    SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.85)
+                end
+                if data.Shake then
+                    CameraShakeController.Shake(data.Shake)
+                end
+                VFXController.TriggerImpactFrame(0.06, 0.8)
+
+            elseif vfxType == "LightExplosion" and data and data.Position then
+                VFXHelper.CreateLightExplosion(data.Position, data.Radius or 22, data.Duration or 0.48)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 1.0)
+                else
+                    SoundController.PlaySound3D("Explosion", data.Position, 0.95)
+                end
+                if data.Shake then
+                    CameraShakeController.Shake(data.Shake)
+                end
+                VFXController.TriggerImpactFrame(0.08, 1.1)
+
             elseif vfxType == "Fireball" and data and data.StartPos and data.EndPos then
                 VFXHelper.CreateFireball(data.StartPos, data.EndPos, data.Duration or 0.35)
                 if data.SFXId and data.SFXId ~= "" then

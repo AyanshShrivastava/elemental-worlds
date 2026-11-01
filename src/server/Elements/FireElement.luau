@@ -30,13 +30,25 @@ function FireElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
-    -- Visual fiery slash arc
-    VFXBroadcastService.Broadcast("SlashArc", {
-        CFrame = rootPart.CFrame * CFrame.new(0, 0, -2.5),
-        Element = "Fire",
-        Scale = if isFinisher then 1.3 else 1.0,
-        SFXId = ability.SFXId,
-    })
+    -- Visual fiery slash arc (Finisher triggers circular fire slash wheel)
+    if isFinisher then
+        VFXBroadcastService.Broadcast("CircularSlashWheel", {
+            CFrame = rootPart.CFrame * CFrame.new(0, 0, -3),
+            Element = "Fire",
+            Radius = 10,
+            Count = 16,
+            Duration = 0.35,
+            SFXId = "rbxassetid://9114223170",
+            Shake = 0.45,
+        })
+    else
+        VFXBroadcastService.Broadcast("SlashArc", {
+            CFrame = rootPart.CFrame * CFrame.new(0, 0, -2.5),
+            Element = "Fire",
+            Scale = 1.0,
+            SFXId = ability.SFXId,
+        })
+    end
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
@@ -69,6 +81,18 @@ function FireElement.CastMove1(player: Player, character: Model, rootPart: BaseP
             SFXId = ability.SFXId,
             Shake = 0.4,
         })
+
+        task.delay(0.32, function()
+            VFXBroadcastService.Broadcast("CircularSlashWheel", {
+                CFrame = CFrame.new(impactPos),
+                Element = "Fire",
+                Radius = 15,
+                Count = 16,
+                Duration = 0.38,
+                SFXId = "rbxassetid://9114223170",
+                Shake = 0.55,
+            })
+        end)
 
         local burstCFrame = CFrame.new(impactPos)
         local blastRadius = 15
@@ -150,6 +174,17 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
         -- Teleport behind target
         rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)
 
+        -- Fiery circular slash wheel vortex around target
+        VFXBroadcastService.Broadcast("CircularSlashWheel", {
+            CFrame = CFrame.new(target.RootPart.Position),
+            Element = "Fire",
+            Radius = 12,
+            Count = 16,
+            Duration = 0.35,
+            SFXId = "rbxassetid://9114223170",
+            Shake = 0.5,
+        })
+
         -- Fire beam at target
         VFXBroadcastService.Broadcast("Beam", {
             StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
@@ -167,9 +202,18 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
             end
         end)
     else
-        -- Whiff action: Flame flash dash forward and searing fire beam burst
+        -- Whiff action: Flame flash dash forward and searing fire slash wheel
         rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -16)
         local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+        VFXBroadcastService.Broadcast("CircularSlashWheel", {
+            CFrame = rootPart.CFrame * CFrame.new(0, 0, -8),
+            Element = "Fire",
+            Radius = 11,
+            Count = 14,
+            Duration = 0.35,
+            SFXId = "rbxassetid://9114223170",
+            Shake = 0.4,
+        })
         VFXBroadcastService.Broadcast("Beam", {
             StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
             EndPos = beamEnd,

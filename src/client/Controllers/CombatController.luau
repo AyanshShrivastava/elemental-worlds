@@ -78,6 +78,7 @@ local function PerformAnimeDash()
     if not canDash then return end
 
     lastDashTime = now
+    UIController.StartCooldown("Dash", DASH_COOLDOWN)
 
     -- Determine dash direction (movement direction or camera facing)
     local moveDir = humanoid.MoveDirection

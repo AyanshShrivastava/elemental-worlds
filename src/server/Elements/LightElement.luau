@@ -58,6 +58,13 @@ function LightElement.CastMove1(player: Player, character: Model, rootPart: Base
         Shake = 0.35,
         SFXId = ability.SFXId,
     })
+    VFXBroadcastService.Broadcast("LightExplosion", {
+        Position = beamEnd,
+        Radius = 16,
+        Duration = 0.45,
+        SFXId = "rbxassetid://9114223170",
+        Shake = 0.45,
+    })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
@@ -85,6 +92,13 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
             if target.Character.Parent and target.Humanoid.Health > 0 then
                 local slamVector = Vector3.new(0, -25, 0)
                 HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamVector)
+                VFXBroadcastService.Broadcast("LightExplosion", {
+                    Position = target.RootPart.Position,
+                    Radius = 20,
+                    Duration = 0.5,
+                    SFXId = "rbxassetid://9114223170",
+                    Shake = 0.55,
+                })
             end
         end)
     end
@@ -137,6 +151,20 @@ function LightElement.CastMove4(player: Player, character: Model, rootPart: Base
             Thickness = 3.6,
             Shake = 0.65,
             SFXId = ability.SFXId,
+        })
+        VFXBroadcastService.Broadcast("LightExplosion", {
+            Position = rootPart.Position + (rootPart.CFrame.LookVector * 18),
+            Radius = 32,
+            Duration = 0.65,
+            SFXId = "rbxassetid://9114223170",
+            Shake = 0.75,
+        })
+        VFXBroadcastService.Broadcast("LightExplosion", {
+            Position = beamEnd,
+            Radius = 26,
+            Duration = 0.55,
+            SFXId = "rbxassetid://9114223170",
+            Shake = 0.6,
         })
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = rootPart.Position,

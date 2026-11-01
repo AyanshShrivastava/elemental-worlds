@@ -240,20 +240,20 @@ function ShopUIController.Init()
     shopGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     shopGui.Parent = playerGui
 
-    -- HUD Toggle Button
+    -- HUD Toggle Button (Top-Right Widget Dock)
     local shopToggleBtn = Instance.new("TextButton")
     shopToggleBtn.Name = "ShopHUDButton"
-    shopToggleBtn.Size = UDim2.new(0, 130, 0, 38)
-    shopToggleBtn.Position = UDim2.new(0, 20, 0.53, 0)
+    shopToggleBtn.Size = UDim2.new(0, 125, 0, 34)
+    shopToggleBtn.Position = UDim2.new(1, -145, 0, 96)
     shopToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 32)
     shopToggleBtn.Font = Enum.Font.GothamBlack
-    shopToggleBtn.TextSize = 12
+    shopToggleBtn.TextSize = 11
     shopToggleBtn.TextColor3 = PALETTE.PRICE_TAG
     shopToggleBtn.Text = "ROBUX SHOP"
     shopToggleBtn.AutoButtonColor = false
     shopToggleBtn.Parent = shopGui
-    MakeRounded(shopToggleBtn, 8)
-    MakeStroke(shopToggleBtn, PALETTE.PRICE_TAG, 1.8)
+    MakeRounded(shopToggleBtn, 6)
+    MakeStroke(shopToggleBtn, PALETTE.PRICE_TAG, 1.5)
 
     shopToggleBtn.MouseEnter:Connect(function()
         TweenService:Create(shopToggleBtn, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(24, 30, 48) }):Play()

@@ -84,6 +84,8 @@ local blindOverlay: Frame? = nil
 local errorMeterContainer: Frame? = nil
 local errorMeterFill: Frame? = nil
 local errorMeterText: TextLabel? = nil
+local avatarStroke: UIStroke? = nil
+local avatarImage: ImageLabel? = nil
 
 local abilityButtons: { [string]: {
     Button: TextButton,
@@ -117,6 +119,14 @@ local function MakeStroke(inst: GuiObject, color: Color3, thickness: number): UI
     return s
 end
 
+local function MakeGradient(inst: GuiObject, colorSeq: ColorSequence, rot: number?)
+    local g = Instance.new("UIGradient")
+    g.Color = colorSeq
+    g.Rotation = rot or 90
+    g.Parent = inst
+    return g
+end
+
 -- ==================== CREATE HUD ====================
 function UIController.CreateHUD()
     local playerGui = GetPlayerGui()
@@ -142,80 +152,137 @@ function UIController.CreateHUD()
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = playerGui
 
-    -- ==================== 1. PLAYER STATS CARD (Bottom-Left) ====================
+    -- ==================== 1. PLAYER STATS CARD (Top-Left) ====================
     local statsCard = Instance.new("Frame")
     statsCard.Name = "PlayerStatsCard"
-    statsCard.Size = UDim2.new(0, 360, 0, 110)
-    statsCard.Position = UDim2.new(0, 20, 1, -135)
+    statsCard.Size = UDim2.new(0, 380, 0, 110)
+    statsCard.Position = UDim2.new(0, 20, 0, 20)
     statsCard.BackgroundColor3 = PALETTE.BG_MAIN
-    statsCard.BackgroundTransparency = 0.12
+    statsCard.BackgroundTransparency = 0.1
     statsCard.Parent = screenGui
     MakeCorner(statsCard, 10)
     MakeStroke(statsCard, PALETTE.BORDER_DEFAULT, 1.8)
 
-    -- Top Row: Level Pill & Element Badge & Currency
-    local topRow = Instance.new("Frame")
-    topRow.Size = UDim2.new(1, -20, 0, 26)
-    topRow.Position = UDim2.new(0, 10, 0, 8)
-    topRow.BackgroundTransparency = 1
-    topRow.Parent = statsCard
+    -- Avatar Portrait Frame (60x60)
+    local avatarFrame = Instance.new("Frame")
+    avatarFrame.Name = "AvatarPortraitFrame"
+    avatarFrame.Size = UDim2.new(0, 60, 0, 60)
+    avatarFrame.Position = UDim2.new(0, 12, 0, 12)
+    avatarFrame.BackgroundColor3 = Color3.fromRGB(16, 22, 34)
+    avatarFrame.Parent = statsCard
+    MakeCorner(avatarFrame, 8)
+    avatarStroke = MakeStroke(avatarFrame, PALETTE.BORDER_ACCENT, 2.0)
 
-    -- Level Pill
+    avatarImage = Instance.new("ImageLabel")
+    avatarImage.Name = "AvatarHeadshot"
+    avatarImage.Size = UDim2.new(1, -4, 1, -4)
+    avatarImage.Position = UDim2.new(0, 2, 0, 2)
+    avatarImage.BackgroundTransparency = 1
+    avatarImage.ScaleType = Enum.ScaleType.Fit
+    avatarImage.Parent = avatarFrame
+    MakeCorner(avatarImage, 6)
+
+    -- Asynchronously load headshot thumbnail
+    task.spawn(function()
+        local userId = (localPlayer and localPlayer.UserId) or 0
+        if userId > 0 then
+            local pcallSuccess, content = pcall(function()
+                return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+            end)
+            if pcallSuccess and avatarImage and avatarImage.Parent then
+                avatarImage.Image = content
+            end
+        end
+    end)
+
+    -- Level Badge Pill pinned to avatar portrait bottom
     local levelPill = Instance.new("Frame")
-    levelPill.Size = UDim2.new(0, 75, 1, 0)
-    levelPill.BackgroundColor3 = PALETTE.BG_CARD
-    levelPill.Parent = topRow
-    MakeCorner(levelPill, 6)
-    MakeStroke(levelPill, PALETTE.BORDER_DEFAULT, 1.2)
+    levelPill.Name = "LevelPill"
+    levelPill.Size = UDim2.new(1, 4, 0, 18)
+    levelPill.Position = UDim2.new(0, -2, 1, -8)
+    levelPill.BackgroundColor3 = Color3.fromRGB(10, 14, 22)
+    levelPill.Parent = avatarFrame
+    MakeCorner(levelPill, 4)
+    MakeStroke(levelPill, PALETTE.BORDER_DEFAULT, 1.0)
 
     levelBadgeText = Instance.new("TextLabel")
     levelBadgeText.Size = UDim2.new(1, 0, 1, 0)
     levelBadgeText.BackgroundTransparency = 1
     levelBadgeText.Font = Enum.Font.GothamBlack
-    levelBadgeText.TextSize = 12
+    levelBadgeText.TextSize = 10
     levelBadgeText.TextColor3 = PALETTE.TEXT_PRIMARY
     levelBadgeText.Text = "Lv. 1"
     levelBadgeText.Parent = levelPill
 
+    -- Content Section (Right of avatar)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "ContentFrame"
+    contentFrame.Size = UDim2.new(1, -94, 1, -16)
+    contentFrame.Position = UDim2.new(0, 84, 0, 8)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = statsCard
+
+    -- Top Row: Player Name + Element Badge + Currency
+    local topRow = Instance.new("Frame")
+    topRow.Name = "TopRow"
+    topRow.Size = UDim2.new(1, 0, 0, 22)
+    topRow.Position = UDim2.new(0, 0, 0, 0)
+    topRow.BackgroundTransparency = 1
+    topRow.Parent = contentFrame
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "PlayerName"
+    nameLabel.Size = UDim2.new(0, 105, 1, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.GothamBlack
+    nameLabel.TextSize = 12
+    nameLabel.TextColor3 = PALETTE.TEXT_PRIMARY
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    nameLabel.Text = (localPlayer and (localPlayer.DisplayName or localPlayer.Name)) or "Player"
+    nameLabel.Parent = topRow
+
     -- Element Badge
     elementTagFrame = Instance.new("Frame")
-    elementTagFrame.Size = UDim2.new(0, 110, 1, 0)
-    elementTagFrame.Position = UDim2.new(0, 82, 0, 0)
+    elementTagFrame.Name = "ElementBadge"
+    elementTagFrame.Size = UDim2.new(0, 64, 1, 0)
+    elementTagFrame.Position = UDim2.new(0, 110, 0, 0)
     elementTagFrame.BackgroundColor3 = PALETTE.BG_CARD
     elementTagFrame.Parent = topRow
-    MakeCorner(elementTagFrame, 6)
+    MakeCorner(elementTagFrame, 4)
     local elemStroke = MakeStroke(elementTagFrame, PALETTE.BORDER_ACCENT, 1.2)
 
     elementTagText = Instance.new("TextLabel")
     elementTagText.Size = UDim2.new(1, 0, 1, 0)
     elementTagText.BackgroundTransparency = 1
-    elementTagText.Font = Enum.Font.GothamBold
-    elementTagText.TextSize = 11
+    elementTagText.Font = Enum.Font.GothamBlack
+    elementTagText.TextSize = 10
     elementTagText.TextColor3 = PALETTE.BORDER_ACCENT
     elementTagText.Text = "FIRE"
     elementTagText.Parent = elementTagFrame
 
-    -- Spins & Charges
+    -- Currency: Spins & Charges
     spinTicketText = Instance.new("TextLabel")
-    spinTicketText.Size = UDim2.new(0, 140, 1, 0)
-    spinTicketText.Position = UDim2.new(1, -140, 0, 0)
+    spinTicketText.Name = "CurrencyInfo"
+    spinTicketText.Size = UDim2.new(1, -178, 1, 0)
+    spinTicketText.Position = UDim2.new(0, 178, 0, 0)
     spinTicketText.BackgroundTransparency = 1
     spinTicketText.Font = Enum.Font.GothamBold
-    spinTicketText.TextSize = 11
+    spinTicketText.TextSize = 10
     spinTicketText.TextColor3 = PALETTE.TEXT_MUTED
     spinTicketText.TextXAlignment = Enum.TextXAlignment.Right
     spinTicketText.Text = "Spins: 1 | Charges: 0"
     spinTicketText.Parent = topRow
 
-    -- Health Bar (Emerald Green with damage chip underneath)
+    -- Health Bar Track (Emerald Green with damage chip underneath)
     local hpTrack = Instance.new("Frame")
     hpTrack.Name = "HealthTrack"
-    hpTrack.Size = UDim2.new(1, -20, 0, 24)
-    hpTrack.Position = UDim2.new(0, 10, 0, 42)
+    hpTrack.Size = UDim2.new(1, 0, 0, 22)
+    hpTrack.Position = UDim2.new(0, 0, 0, 28)
     hpTrack.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
-    hpTrack.Parent = statsCard
+    hpTrack.Parent = contentFrame
     MakeCorner(hpTrack, 6)
-    MakeStroke(hpTrack, Color3.fromRGB(30, 40, 55), 1.2)
+    MakeStroke(hpTrack, Color3.fromRGB(28, 38, 54), 1.2)
 
     healthChip = Instance.new("Frame")
     healthChip.Name = "HealthChip"
@@ -232,27 +299,27 @@ function UIController.CreateHUD()
     healthFill.BorderSizePixel = 0
     healthFill.Parent = hpTrack
     MakeCorner(healthFill, 6)
+    MakeGradient(healthFill, ColorSequence.new(Color3.fromRGB(75, 230, 140), Color3.fromRGB(35, 175, 95)), 90)
 
     healthText = Instance.new("TextLabel")
-    healthText.Size = UDim2.new(1, -12, 1, 0)
-    healthText.Position = UDim2.new(0, 6, 0, 0)
+    healthText.Size = UDim2.new(1, 0, 1, 0)
     healthText.BackgroundTransparency = 1
     healthText.Font = Enum.Font.GothamBlack
     healthText.TextSize = 11
     healthText.TextColor3 = PALETTE.TEXT_PRIMARY
     healthText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    healthText.TextStrokeTransparency = 0.3
+    healthText.TextStrokeTransparency = 0.25
     healthText.TextXAlignment = Enum.TextXAlignment.Center
     healthText.Text = "100 / 100"
     healthText.Parent = hpTrack
 
-    -- Energy Bar (Blox Fruits Electric Cyan)
+    -- Energy Bar Track (Blox Fruits Electric Cyan)
     local energyTrack = Instance.new("Frame")
     energyTrack.Name = "EnergyTrack"
-    energyTrack.Size = UDim2.new(1, -20, 0, 20)
-    energyTrack.Position = UDim2.new(0, 10, 0, 74)
+    energyTrack.Size = UDim2.new(1, 0, 0, 18)
+    energyTrack.Position = UDim2.new(0, 0, 0, 56)
     energyTrack.BackgroundColor3 = Color3.fromRGB(8, 20, 36)
-    energyTrack.Parent = statsCard
+    energyTrack.Parent = contentFrame
     MakeCorner(energyTrack, 6)
     MakeStroke(energyTrack, Color3.fromRGB(20, 50, 80), 1.2)
 
@@ -263,16 +330,16 @@ function UIController.CreateHUD()
     energyFill.BorderSizePixel = 0
     energyFill.Parent = energyTrack
     MakeCorner(energyFill, 6)
+    MakeGradient(energyFill, ColorSequence.new(Color3.fromRGB(80, 225, 255), Color3.fromRGB(0, 145, 225)), 90)
 
     energyText = Instance.new("TextLabel")
-    energyText.Size = UDim2.new(1, -12, 1, 0)
-    energyText.Position = UDim2.new(0, 6, 0, 0)
+    energyText.Size = UDim2.new(1, 0, 1, 0)
     energyText.BackgroundTransparency = 1
     energyText.Font = Enum.Font.GothamBlack
     energyText.TextSize = 10
     energyText.TextColor3 = PALETTE.TEXT_PRIMARY
     energyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    energyText.TextStrokeTransparency = 0.4
+    energyText.TextStrokeTransparency = 0.35
     energyText.TextXAlignment = Enum.TextXAlignment.Center
     energyText.Text = "500 / 500"
     energyText.Parent = energyTrack
@@ -288,11 +355,12 @@ function UIController.CreateHUD()
         end
     end)
 
-    -- ==================== 2. BLOX FRUITS ABILITY HOTBAR (Bottom-Center) ====================
+    -- ==================== 2. MASTER ANIME ABILITY HOTBAR (Bottom-Center) ====================
     local hotbar = Instance.new("Frame")
     hotbar.Name = "AbilityHotbar"
-    hotbar.Size = UDim2.new(0, 480, 0, 78)
-    hotbar.Position = UDim2.new(0.5, -190, 1, -98)
+    hotbar.Size = UDim2.new(0, 540, 0, 74)
+    hotbar.AnchorPoint = Vector2.new(0.5, 1)
+    hotbar.Position = UDim2.new(0.5, 0, 1, -16)
     hotbar.BackgroundTransparency = 1
     hotbar.Parent = screenGui
 
@@ -303,21 +371,22 @@ function UIController.CreateHUD()
     layout.Padding = UDim.new(0, 8)
     layout.Parent = hotbar
 
-    -- Hotbar slots matching Blox Fruits anime RPG conventions
+    -- Hotbar slots matching top anime RPG conventions: M1 + 4 moves + Secret (5) + Q Dash!
     local slots = {
-        { slot = "M1", key = "M1", name = "Basic Attack" },
-        { slot = "1",  key = "Z",  name = "Move 1" },
-        { slot = "2",  key = "X",  name = "Move 2" },
-        { slot = "3",  key = "C",  name = "Move 3" },
-        { slot = "4",  key = "V",  name = "Move 4" },
-        { slot = "5",  key = "B",  name = "Secret" },
+        { slot = "M1",   key = "M1", name = "Basic Attack" },
+        { slot = "1",    key = "Z",  name = "Move 1" },
+        { slot = "2",    key = "X",  name = "Move 2" },
+        { slot = "3",    key = "C",  name = "Move 3" },
+        { slot = "4",    key = "V",  name = "Move 4" },
+        { slot = "5",    key = "B",  name = "Secret" },
+        { slot = "Dash", key = "Q",  name = "Dash" },
     }
 
     for _, slotInfo in slots do
         local slot = slotInfo.slot
         local btn = Instance.new("TextButton")
         btn.Name = "Slot_" .. slot
-        btn.Size = UDim2.new(0, 70, 0, 70)
+        btn.Size = UDim2.new(0, 68, 0, 68)
         btn.BackgroundColor3 = PALETTE.BG_SLOT
         btn.Text = ""
         btn.AutoButtonColor = false
@@ -325,7 +394,7 @@ function UIController.CreateHUD()
         MakeCorner(btn, 8)
         local btnStroke = MakeStroke(btn, PALETTE.BORDER_DEFAULT, 1.8)
 
-        -- Keybind Badge [Z], [X], [C], [V]
+        -- Keybind Badge [Z], [X], [C], [V], [Q]
         local keyBadge = Instance.new("Frame")
         keyBadge.Size = UDim2.new(0, 22, 0, 18)
         keyBadge.Position = UDim2.new(0, 5, 0, 5)
@@ -361,8 +430,8 @@ function UIController.CreateHUD()
         cdOverlay.Size = UDim2.new(1, 0, 0, 0)
         cdOverlay.Position = UDim2.new(0, 0, 1, 0)
         cdOverlay.AnchorPoint = Vector2.new(0, 1)
-        cdOverlay.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
-        cdOverlay.BackgroundTransparency = 0.25
+        cdOverlay.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
+        cdOverlay.BackgroundTransparency = 0.28
         cdOverlay.Visible = false
         cdOverlay.Parent = btn
         MakeCorner(cdOverlay, 8)
@@ -371,24 +440,26 @@ function UIController.CreateHUD()
         cdText.Size = UDim2.new(1, 0, 1, 0)
         cdText.BackgroundTransparency = 1
         cdText.Font = Enum.Font.GothamBlack
-        cdText.TextSize = 18
+        cdText.TextSize = 17
         cdText.TextColor3 = PALETTE.TEXT_PRIMARY
+        cdText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        cdText.TextStrokeTransparency = 0.3
         cdText.Text = ""
         cdText.Parent = cdOverlay
 
         -- Hover and tactile press animations
         btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 74, 0, 74), BackgroundColor3 = PALETTE.BG_CARD }):Play()
+            TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 72, 0, 72), BackgroundColor3 = PALETTE.BG_CARD }):Play()
             SoundController.PlayUI("hover")
         end)
         btn.MouseLeave:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 70, 0, 70), BackgroundColor3 = PALETTE.BG_SLOT }):Play()
+            TweenService:Create(btn, TweenInfo.new(0.12), { Size = UDim2.new(0, 68, 0, 68), BackgroundColor3 = PALETTE.BG_SLOT }):Play()
         end)
         btn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                TweenService:Create(btn, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 65, 0, 65) }):Play()
+                TweenService:Create(btn, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 63, 0, 63) }):Play()
                 task.delay(0.08, function()
-                    TweenService:Create(btn, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(0, 70, 0, 70) }):Play()
+                    TweenService:Create(btn, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(0, 68, 0, 68) }):Play()
                 end)
                 local combatController = require(script.Parent.CombatController)
                 combatController.Cast(slot)
@@ -408,8 +479,9 @@ function UIController.CreateHUD()
     -- ==================== 3. ERROR METER (For Secret Error Element) ====================
     errorMeterContainer = Instance.new("Frame")
     errorMeterContainer.Name = "ErrorMeter"
-    errorMeterContainer.Size = UDim2.new(0, 320, 0, 22)
-    errorMeterContainer.Position = UDim2.new(0.5, -160, 1, -128)
+    errorMeterContainer.Size = UDim2.new(0, 420, 0, 22)
+    errorMeterContainer.AnchorPoint = Vector2.new(0.5, 1)
+    errorMeterContainer.Position = UDim2.new(0.5, 0, 1, -94)
     errorMeterContainer.BackgroundColor3 = Color3.fromRGB(16, 10, 24)
     errorMeterContainer.Visible = false
     errorMeterContainer.Parent = screenGui
@@ -422,6 +494,7 @@ function UIController.CreateHUD()
     errorMeterFill.BorderSizePixel = 0
     errorMeterFill.Parent = errorMeterContainer
     MakeCorner(errorMeterFill, 6)
+    MakeGradient(errorMeterFill, ColorSequence.new(Color3.fromRGB(255, 20, 140), Color3.fromRGB(0, 240, 255)), 0)
 
     errorMeterText = Instance.new("TextLabel")
     errorMeterText.Size = UDim2.new(1, 0, 1, 0)
@@ -636,12 +709,19 @@ function UIController.UpdateStats(data: {
             stroke.Color = theme.Primary
         end
     end
+    if avatarStroke then
+        avatarStroke.Color = theme.Primary
+    end
 
     -- Update slot labels and borders
     for slot, btnData in abilityButtons do
-        local ability = AbilityConfig.GetAbility(data.Element, slot)
-        if ability then
-            btnData.NameLabel.Text = ability.Name
+        if slot == "Dash" then
+            btnData.NameLabel.Text = "Dash"
+        else
+            local ability = AbilityConfig.GetAbility(data.Element, slot)
+            if ability then
+                btnData.NameLabel.Text = ability.Name
+            end
         end
         TweenService:Create(btnData.Stroke, TweenInfo.new(0.3), { Color = theme.Primary }):Play()
     end

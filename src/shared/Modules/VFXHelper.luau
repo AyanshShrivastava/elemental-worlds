@@ -20,6 +20,8 @@ local VFXHelper = {}
 
 -- Real Verified Roblox Creator Store Asset IDs
 local ASSETS = {
+    FIRE_SLASH_MODEL  = "rbxassetid://107157303748652", -- Fire slash attack VFX [Free] by Squav
+    LIGHT_EXPLOSION_MODEL = "rbxassetid://108812638060941", -- Light explosion VFX
     SLASH_TEXTURE     = "rbxassetid://4991873131", -- Anime crescent curve
     STAR_SPARKLE      = "rbxassetid://6034177218", -- Crisp anime 4-point star
     SMOKE_PUFF        = "rbxassetid://2520762076", -- Stylized dust / smoke
@@ -1486,6 +1488,348 @@ function VFXHelper.CreateVirtualKill(targetPos: Vector3)
         Transparency = 1,
     }):Play()
     Debris:AddItem(clockFloor, 0.7)
+end
+
+-- ==================== CIRCULAR SLASH WHEEL (Fire Slash Wheel 107157303748652) ====================
+function VFXHelper.CreateCircularSlashWheel(cframe: CFrame, element: string?, radius: number?, slashCount: number?, duration: number?)
+    local elem = element or "Fire"
+    local palette = ELEMENT_PALETTES[elem] or ELEMENT_PALETTES.Fire
+    local vfxFolder = GetVFXFolder()
+    local r = radius or 12
+    local count = slashCount or 16
+    local totalDuration = duration or 0.35
+
+    -- Check if pre-inserted template exists in ReplicatedStorage
+    local rs = game:GetService("ReplicatedStorage")
+    local customTemplate = rs:FindFirstChild("Assets") and rs.Assets:FindFirstChild("VFX") and rs.Assets.VFX:FindFirstChild("FireSlashWheel")
+    if customTemplate and customTemplate:IsA("Model") then
+        local clone = customTemplate:Clone()
+        clone:PivotTo(cframe)
+        clone.Parent = vfxFolder
+        for _, desc in clone:GetDescendants() do
+            if desc:IsA("ParticleEmitter") then
+                desc:Emit(desc:GetAttribute("EmitCount") or 15)
+            end
+        end
+        Debris:AddItem(clone, totalDuration + 0.5)
+    end
+
+    -- 1. Central Spinning Fiery Torus Shockwave
+    local centerTorus = Instance.new("Part")
+    centerTorus.Name = "VFX_SlashWheelTorus"
+    centerTorus.Size = Vector3.new(2, 2, 0.4)
+    centerTorus.CFrame = cframe * CFrame.Angles(math.rad(90), 0, 0)
+    centerTorus.Material = Enum.Material.Neon
+    centerTorus.Color = palette.Primary
+    centerTorus.Transparency = 0.1
+    centerTorus.CanCollide = false
+    centerTorus.Anchored = true
+    centerTorus.Parent = vfxFolder
+
+    local torusMesh = Instance.new("SpecialMesh")
+    torusMesh.MeshId = ASSETS.RING_MESH
+    torusMesh.Scale = Vector3.new(1, 1, 0.6)
+    torusMesh.Parent = centerTorus
+
+    local targetScale = Vector3.new(r * 0.48, r * 0.48, 0.8)
+    TweenService:Create(torusMesh, TweenInfo.new(totalDuration, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        Scale = targetScale,
+    }):Play()
+    TweenService:Create(centerTorus, TweenInfo.new(totalDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Transparency = 1,
+    }):Play()
+    Debris:AddItem(centerTorus, totalDuration + 0.1)
+
+    -- 2. Central Core Light Flash
+    local coreLight = Instance.new("PointLight")
+    coreLight.Color = palette.Core
+    coreLight.Brightness = 8
+    coreLight.Range = r * 1.8
+    coreLight.Parent = centerTorus
+
+    TweenService:Create(coreLight, TweenInfo.new(totalDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Brightness = 0,
+        Range = 0,
+    }):Play()
+
+    -- 3. Staggered 360-Degree Crescent Slash Arcs
+    -- Rapid sequence of slashes rotating around the normal in a complete circle
+    local stepDelay = totalDuration / count
+    task.spawn(function()
+        for i = 1, count do
+            local angleDeg = (i - 1) * (360 / count)
+            local angleRad = math.rad(angleDeg)
+
+            -- Slash position placed on the perimeter of the wheel
+            local offsetRight = math.cos(angleRad) * (r * 0.72)
+            local offsetUp = math.sin(angleRad) * (r * 0.72)
+            local slashCF = cframe * CFrame.new(offsetRight, offsetUp, 0) * CFrame.Angles(0, 0, angleRad + math.rad(90))
+
+            local slashPart = Instance.new("Part")
+            slashPart.Name = "VFX_WheelBlade_" .. tostring(i)
+            slashPart.Size = Vector3.new(0.2, 0.2, 0.2)
+            slashPart.CFrame = slashCF
+            slashPart.Transparency = 1
+            slashPart.CanCollide = false
+            slashPart.Anchored = true
+            slashPart.Parent = vfxFolder
+
+            -- Fiery crescent slash curve emitter
+            local slashEmitter = Instance.new("ParticleEmitter")
+            slashEmitter.Texture = ASSETS.SLASH_TEXTURE
+            slashEmitter.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, palette.Core),
+                ColorSequenceKeypoint.new(0.4, palette.Secondary),
+                ColorSequenceKeypoint.new(1, palette.Primary),
+            })
+            slashEmitter.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.65, 0.2),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+            slashEmitter.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, r * 0.55),
+                NumberSequenceKeypoint.new(0.5, r * 0.4),
+                NumberSequenceKeypoint.new(1, 0),
+            })
+            slashEmitter.Lifetime = NumberRange.new(0.18, 0.28)
+            slashEmitter.Speed = NumberRange.new(18, 36)
+            slashEmitter.SpreadAngle = Vector2.new(20, 20)
+            slashEmitter.LightEmission = 1.0
+            slashEmitter.Rate = 0
+            slashEmitter.Parent = slashPart
+
+            -- Fiery star sparkles shooting outward
+            local starEmitter = Instance.new("ParticleEmitter")
+            starEmitter.Texture = ASSETS.STAR_SPARKLE
+            starEmitter.Color = ColorSequence.new(palette.Secondary, palette.Core)
+            starEmitter.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1.4),
+                NumberSequenceKeypoint.new(1, 0),
+            })
+            starEmitter.Lifetime = NumberRange.new(0.2, 0.35)
+            starEmitter.Speed = NumberRange.new(20, 42)
+            starEmitter.SpreadAngle = Vector2.new(45, 45)
+            starEmitter.LightEmission = 1.0
+            starEmitter.Rate = 0
+            starEmitter.Parent = slashPart
+
+            -- Fiery stylized smoke puff
+            local smokeEmitter = Instance.new("ParticleEmitter")
+            smokeEmitter.Texture = ASSETS.SMOKE_PUFF
+            smokeEmitter.Color = ColorSequence.new(palette.Dark, Color3.fromRGB(35, 15, 10))
+            smokeEmitter.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.4),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+            smokeEmitter.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1.5),
+                NumberSequenceKeypoint.new(1, 3.5),
+            })
+            smokeEmitter.Lifetime = NumberRange.new(0.25, 0.45)
+            smokeEmitter.Speed = NumberRange.new(8, 16)
+            smokeEmitter.Rate = 0
+            smokeEmitter.Parent = slashPart
+
+            slashEmitter:Emit(12)
+            starEmitter:Emit(6)
+            smokeEmitter:Emit(4)
+
+            Debris:AddItem(slashPart, 0.45)
+
+            if stepDelay > 0 then
+                task.wait(stepDelay)
+            end
+        end
+    end)
+end
+
+-- ==================== LIGHT EXPLOSION (Divine Light Explosion 108812638060941) ====================
+function VFXHelper.CreateLightExplosion(position: Vector3, maxRadius: number?, duration: number?)
+    local palette = ELEMENT_PALETTES.Light
+    local vfxFolder = GetVFXFolder()
+    local r = maxRadius or 22
+    local totalDuration = duration or 0.48
+
+    -- Check if pre-inserted template exists in ReplicatedStorage
+    local rs = game:GetService("ReplicatedStorage")
+    local customTemplate = rs:FindFirstChild("Assets") and rs.Assets:FindFirstChild("VFX") and rs.Assets.VFX:FindFirstChild("LightExplosion")
+    if customTemplate and customTemplate:IsA("Model") then
+        local clone = customTemplate:Clone()
+        clone:PivotTo(CFrame.new(position))
+        clone.Parent = vfxFolder
+        for _, desc in clone:GetDescendants() do
+            if desc:IsA("ParticleEmitter") then
+                desc:Emit(desc:GetAttribute("EmitCount") or 25)
+            end
+        end
+        Debris:AddItem(clone, totalDuration + 0.6)
+    end
+
+    -- 1. White-Hot Expanding Core Flash Sphere
+    local coreSphere = Instance.new("Part")
+    coreSphere.Name = "VFX_LightExplosionCore"
+    coreSphere.Shape = Enum.PartType.Ball
+    coreSphere.Size = Vector3.new(2, 2, 2)
+    coreSphere.Position = position
+    coreSphere.Material = Enum.Material.Neon
+    coreSphere.Color = palette.Core
+    coreSphere.Transparency = 0
+    coreSphere.CanCollide = false
+    coreSphere.Anchored = true
+    coreSphere.Parent = vfxFolder
+
+    -- Explosive flash: scales to radius * 0.8 in 0.08s, then fades out
+    TweenService:Create(coreSphere, TweenInfo.new(0.08, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+        Size = Vector3.new(r * 0.85, r * 0.85, r * 0.85),
+    }):Play()
+    task.delay(0.08, function()
+        if coreSphere.Parent then
+            TweenService:Create(coreSphere, TweenInfo.new(totalDuration - 0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = Vector3.new(r * 1.1, r * 1.1, r * 1.1),
+                Transparency = 1,
+            }):Play()
+        end
+    end)
+    Debris:AddItem(coreSphere, totalDuration + 0.1)
+
+    -- 2. Intense Divine Point Light
+    local pointLight = Instance.new("PointLight")
+    pointLight.Color = palette.Secondary
+    pointLight.Brightness = 12
+    pointLight.Range = r * 2.2
+    pointLight.Parent = coreSphere
+    TweenService:Create(pointLight, TweenInfo.new(totalDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Brightness = 0,
+        Range = 0,
+    }):Play()
+
+    -- 3. 14 3D Radiating God-Rays / Light Spikes
+    -- Shoots tapered neon beams radially in all 3D spherical directions
+    local rayDirections = {
+        Vector3.new(1, 0, 0),
+        Vector3.new(-1, 0, 0),
+        Vector3.new(0, 1, 0),
+        Vector3.new(0, -1, 0),
+        Vector3.new(0, 0, 1),
+        Vector3.new(0, 0, -1),
+        Vector3.new(0.7, 0.7, 0.14).Unit,
+        Vector3.new(-0.7, 0.7, -0.14).Unit,
+        Vector3.new(0.7, -0.7, -0.14).Unit,
+        Vector3.new(-0.7, -0.7, 0.14).Unit,
+        Vector3.new(0.14, 0.7, 0.7).Unit,
+        Vector3.new(-0.14, -0.7, 0.7).Unit,
+        Vector3.new(0.7, 0.14, -0.7).Unit,
+        Vector3.new(-0.7, -0.14, 0.7).Unit,
+    }
+
+    for idx, rayDir in rayDirections do
+        local rayLength = r * (1.3 + (idx % 3) * 0.25)
+        local spike = Instance.new("Part")
+        spike.Name = "VFX_GodRaySpike_" .. tostring(idx)
+        spike.Size = Vector3.new(0.8, 0.8, 2)
+        spike.CFrame = CFrame.lookAt(position, position + rayDir) * CFrame.new(0, 0, -1)
+        spike.Material = Enum.Material.Neon
+        spike.Color = if idx % 2 == 0 then palette.Core else palette.Primary
+        spike.Transparency = 0.05
+        spike.CanCollide = false
+        spike.Anchored = true
+        spike.Parent = vfxFolder
+
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Cylinder
+        mesh.Scale = Vector3.new(1, 1, 1)
+        mesh.Parent = spike
+
+        -- Animate ray shooting outward and tapering thin
+        local targetCF = CFrame.lookAt(position, position + rayDir) * CFrame.new(0, 0, -rayLength * 0.5)
+        local targetSize = Vector3.new(0.15, 0.15, rayLength)
+
+        TweenService:Create(spike, TweenInfo.new(totalDuration * 0.65, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+            CFrame = targetCF,
+            Size = targetSize,
+        }):Play()
+        TweenService:Create(spike, TweenInfo.new(totalDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Transparency = 1,
+        }):Play()
+        Debris:AddItem(spike, totalDuration + 0.1)
+    end
+
+    -- 4. Dual Orthogonal Torus Expanding Shockwave Rings
+    local function SpawnShockwaveRing(angleX: number, angleY: number, angleZ: number)
+        local ring = Instance.new("Part")
+        ring.Name = "VFX_LightShockwaveRing"
+        ring.Size = Vector3.new(2, 2, 0.4)
+        ring.CFrame = CFrame.new(position) * CFrame.Angles(math.rad(angleX), math.rad(angleY), math.rad(angleZ))
+        ring.Material = Enum.Material.Neon
+        ring.Color = palette.Primary
+        ring.Transparency = 0.1
+        ring.CanCollide = false
+        ring.Anchored = true
+        ring.Parent = vfxFolder
+
+        local rMesh = Instance.new("SpecialMesh")
+        rMesh.MeshId = ASSETS.RING_MESH
+        rMesh.Scale = Vector3.new(1, 1, 0.5)
+        rMesh.Parent = ring
+
+        local targetRScale = Vector3.new(r * 0.45, r * 0.45, 0.7)
+        TweenService:Create(rMesh, TweenInfo.new(totalDuration * 0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+            Scale = targetRScale,
+        }):Play()
+        TweenService:Create(ring, TweenInfo.new(totalDuration * 0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Transparency = 1,
+        }):Play()
+        Debris:AddItem(ring, totalDuration + 0.1)
+    end
+
+    -- Horizontal Ring
+    SpawnShockwaveRing(90, 0, 0)
+    -- Vertical / Tilted Ring
+    SpawnShockwaveRing(35, 45, 0)
+
+    -- 5. High-Velocity Anime Star Sparkles Burst
+    local sparkleEmitterPart = Instance.new("Part")
+    sparkleEmitterPart.Name = "VFX_LightSparkleEmitter"
+    sparkleEmitterPart.Size = Vector3.new(1, 1, 1)
+    sparkleEmitterPart.Position = position
+    sparkleEmitterPart.Transparency = 1
+    sparkleEmitterPart.CanCollide = false
+    sparkleEmitterPart.Anchored = true
+    sparkleEmitterPart.Parent = vfxFolder
+
+    local starEmitter = Instance.new("ParticleEmitter")
+    starEmitter.Texture = ASSETS.STAR_SPARKLE
+    starEmitter.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, palette.Core),
+        ColorSequenceKeypoint.new(0.5, palette.Secondary),
+        ColorSequenceKeypoint.new(1, palette.Primary),
+    })
+    starEmitter.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0),
+        NumberSequenceKeypoint.new(0.7, 0.15),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    starEmitter.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 2.2),
+        NumberSequenceKeypoint.new(0.6, 1.4),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    starEmitter.Lifetime = NumberRange.new(0.35, 0.55)
+    starEmitter.Speed = NumberRange.new(28, 55)
+    starEmitter.SpreadAngle = Vector2.new(180, 180)
+    starEmitter.LightEmission = 1.0
+    starEmitter.Rate = 0
+    starEmitter.Parent = sparkleEmitterPart
+
+    starEmitter:Emit(48)
+    Debris:AddItem(sparkleEmitterPart, 0.7)
+
+    -- 6. Ground Scorch / Crater if Near Ground
+    local groundRay = Workspace:Raycast(position, Vector3.new(0, -18, 0))
+    if groundRay then
+        VFXHelper.CreateCrater(groundRay.Position, r * 0.65, "Light")
+    end
 end
 
 return table.freeze(VFXHelper)

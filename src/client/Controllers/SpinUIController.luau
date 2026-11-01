@@ -90,20 +90,20 @@ function SpinUIController.Init()
     spinGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     spinGui.Parent = playerGui
 
-    -- HUD Toggle Button (Left Side Stack)
+    -- HUD Toggle Button (Top-Right Widget Dock)
     local spinToggleBtn = Instance.new("TextButton")
     spinToggleBtn.Name = "SpinHUDButton"
-    spinToggleBtn.Size = UDim2.new(0, 130, 0, 38)
-    spinToggleBtn.Position = UDim2.new(0, 20, 0.46, 0)
+    spinToggleBtn.Size = UDim2.new(0, 125, 0, 34)
+    spinToggleBtn.Position = UDim2.new(1, -145, 0, 56)
     spinToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 32)
     spinToggleBtn.Font = Enum.Font.GothamBlack
-    spinToggleBtn.TextSize = 12
-    spinToggleBtn.TextColor3 = Color3.fromRGB(140, 110, 255)
+    spinToggleBtn.TextSize = 11
+    spinToggleBtn.TextColor3 = Color3.fromRGB(160, 130, 255)
     spinToggleBtn.Text = "SPIN ELEMENT"
     spinToggleBtn.AutoButtonColor = false
     spinToggleBtn.Parent = spinGui
-    MakeRounded(spinToggleBtn, 8)
-    MakeStroke(spinToggleBtn, Color3.fromRGB(115, 90, 245), 1.8)
+    MakeRounded(spinToggleBtn, 6)
+    MakeStroke(spinToggleBtn, Color3.fromRGB(115, 90, 245), 1.5)
 
     spinToggleBtn.MouseEnter:Connect(function()
         TweenService:Create(spinToggleBtn, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(24, 30, 48) }):Play()
