@@ -12,8 +12,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local VFXHelper = require(ReplicatedStorage.Shared.Modules.VFXHelper)
+local SharedLoader = require(script.Parent.Parent.SharedLoader)
+local GameConfig = SharedLoader.GameConfig
+local VFXHelper = SharedLoader.VFXHelper
 
 local UIController = require(script.Parent.UIController)
 local SoundController = require(script.Parent.SoundController)

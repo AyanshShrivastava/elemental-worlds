@@ -16,11 +16,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local SharedLoader = require(script.Parent.Parent.SharedLoader)
+local GameConfig = SharedLoader.GameConfig
 local SoundController = require(script.Parent.SoundController)
 
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+
+local function GetPlayerGui(): PlayerGui?
+    if not localPlayer then
+        localPlayer = Players.LocalPlayer
+    end
+    if not localPlayer then return nil end
+    return (localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 15)) :: PlayerGui?
+end
 
 local AdminPanelController = {}
 
@@ -69,6 +77,9 @@ local function SendAdminCmd(cmd: string, arg1: any?, arg2: any?)
 end
 
 function AdminPanelController.Init()
+    local playerGui = GetPlayerGui()
+    if not playerGui then return end
+
     panelGui = Instance.new("ScreenGui")
     panelGui.Name = "ElementalWorlds_CreatorSuite"
     panelGui.ResetOnSpawn = false

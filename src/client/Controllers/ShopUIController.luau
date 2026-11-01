@@ -14,11 +14,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 
-local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local SharedLoader = require(script.Parent.Parent.SharedLoader)
+local ShopConfig = SharedLoader.ShopConfig
 local SoundController = require(script.Parent.SoundController)
 
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+
+local function GetPlayerGui(): PlayerGui?
+    if not localPlayer then
+        localPlayer = Players.LocalPlayer
+    end
+    if not localPlayer then return nil end
+    return (localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 15)) :: PlayerGui?
+end
 
 local ShopUIController = {}
 
@@ -223,6 +231,9 @@ local function PopulateCards()
 end
 
 function ShopUIController.Init()
+    local playerGui = GetPlayerGui()
+    if not playerGui then return end
+
     shopGui = Instance.new("ScreenGui")
     shopGui.Name = "ElementalWorlds_Shop"
     shopGui.ResetOnSpawn = false

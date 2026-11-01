@@ -18,15 +18,16 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
-local AnimationMarkerUtil = require(ReplicatedStorage.Shared.Modules.AnimationMarkerUtil)
+local SharedLoader = require(script.Parent.Parent.SharedLoader)
+local GameConfig = SharedLoader.GameConfig
+local AbilityConfig = SharedLoader.AbilityConfig
+local AnimationMarkerUtil = SharedLoader.AnimationMarkerUtil
+local VFXHelper = SharedLoader.VFXHelper
 local SoundController = require(script.Parent.SoundController)
 local CameraShakeController = require(script.Parent.CameraShakeController)
 local ProceduralAnimController = require(script.Parent.ProceduralAnimController)
 local UIController = require(script.Parent.UIController)
 local VFXController = require(script.Parent.VFXController)
-local VFXHelper = require(ReplicatedStorage.Shared.Modules.VFXHelper)
 
 local localPlayer = Players.LocalPlayer
 

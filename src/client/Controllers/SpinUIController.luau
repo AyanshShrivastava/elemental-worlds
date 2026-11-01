@@ -14,12 +14,20 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local SharedLoader = require(script.Parent.Parent.SharedLoader)
+local GameConfig = SharedLoader.GameConfig
 local SoundController = require(script.Parent.SoundController)
 local CameraShakeController = require(script.Parent.CameraShakeController)
 
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+
+local function GetPlayerGui(): PlayerGui?
+    if not localPlayer then
+        localPlayer = Players.LocalPlayer
+    end
+    if not localPlayer then return nil end
+    return (localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 15)) :: PlayerGui?
+end
 
 local SpinUIController = {}
 
@@ -73,6 +81,9 @@ local function MakeStroke(inst: GuiObject, color: Color3, thickness: number): UI
 end
 
 function SpinUIController.Init()
+    local playerGui = GetPlayerGui()
+    if not playerGui then return end
+
     spinGui = Instance.new("ScreenGui")
     spinGui.Name = "ElementalWorlds_SpinGacha"
     spinGui.ResetOnSpawn = false

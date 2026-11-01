@@ -31,7 +31,19 @@
         }
       },
       "Map": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "Village": {
+          "$className": "Folder"
+        },
+        "Forest": {
+          "$className": "Folder"
+        },
+        "Cave": {
+          "$className": "Folder"
+        },
+        "Ruins": {
+          "$className": "Folder"
+        }
       },
       "NPCs": {
         "$className": "Folder"

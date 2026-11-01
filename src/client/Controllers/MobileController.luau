@@ -12,7 +12,14 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+
+local function GetPlayerGui(): PlayerGui?
+    if not localPlayer then
+        localPlayer = Players.LocalPlayer
+    end
+    if not localPlayer then return nil end
+    return (localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 15)) :: PlayerGui?
+end
 
 local MobileController = {}
 
@@ -20,6 +27,9 @@ function MobileController.Init()
     if not UserInputService.TouchEnabled then
         return
     end
+
+    local playerGui = GetPlayerGui()
+    if not playerGui then return end
 
     local mobileGui = Instance.new("ScreenGui")
     mobileGui.Name = "ElementalWorlds_MobileControls"

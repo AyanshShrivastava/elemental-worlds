@@ -16,13 +16,20 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local AbilityConfig = require(ReplicatedStorage.Shared.Config.AbilityConfig)
+local SharedLoader = require(script.Parent.Parent.SharedLoader)
+local GameConfig = SharedLoader.GameConfig
+local AbilityConfig = SharedLoader.AbilityConfig
 local SoundController = require(script.Parent.SoundController)
 
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
+
+local function GetPlayerGui(): PlayerGui?
+    if not localPlayer then
+        localPlayer = Players.LocalPlayer
+    end
+    if not localPlayer then return nil end
+    return (localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 15)) :: PlayerGui?
+end
 
 local UIController = {}
 
@@ -118,7 +125,11 @@ function UIController.CreateHUD()
     screenGui.Name = "ElementalWorlds_BloxFruitsHUD"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.IgnoreGuiInset = false
+    local playerGui = GetPlayerGui()
+    if not playerGui then
+        warn("[UIController] PlayerGui not available.")
+        return
+    end
     screenGui.Parent = playerGui
 
     -- ==================== 1. PLAYER STATS CARD (Bottom-Left) ====================

@@ -14,8 +14,8 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-
-local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local SharedLoader = require(script.Parent.SharedLoader)
+local GameConfig = SharedLoader.GameConfig
 local UIController = require(script.Parent.Controllers.UIController)
 local CombatController = require(script.Parent.Controllers.CombatController)
 local CameraShakeController = require(script.Parent.Controllers.CameraShakeController)
