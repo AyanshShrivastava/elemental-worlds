@@ -73,8 +73,14 @@ function StatusEffectService.ApplyEffect(
         -- Set character invisible on server (never touch HumanoidRootPart)
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                if part:GetAttribute("OrigTrans") == nil then
+                    part:SetAttribute("OrigTrans", part.Transparency)
+                end
                 part.Transparency = 1
             elseif part:IsA("Decal") then
+                if part:GetAttribute("OrigTrans") == nil then
+                    part:SetAttribute("OrigTrans", part.Transparency)
+                end
                 part.Transparency = 1
             end
         end
@@ -160,12 +166,16 @@ function StatusEffectService.RemoveEffect(character: Model, effectName: StatusEf
             rootPart.Anchored = false
         end
     elseif effectName == "GotGlitched" then
-        -- Restore visibility on server
+        -- Restore visibility on server using saved original transparencies
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                part.Transparency = 0
+                local orig = part:GetAttribute("OrigTrans")
+                part.Transparency = if typeof(orig) == "number" then orig else 0
+                part:SetAttribute("OrigTrans", nil)
             elseif part:IsA("Decal") then
-                part.Transparency = 0
+                local orig = part:GetAttribute("OrigTrans")
+                part.Transparency = if typeof(orig) == "number" then orig else 0
+                part:SetAttribute("OrigTrans", nil)
             end
         end
         -- Enforce client visibility restoration

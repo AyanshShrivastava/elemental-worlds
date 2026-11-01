@@ -43,16 +43,17 @@ local function SetupAnimeLighting()
     cc.Saturation = 0.16
     cc.TintColor = Color3.fromRGB(255, 252, 248)
 
-    -- Bloom for elemental abilities
-    local bloom = Lighting:FindFirstChild("AnimeBloom") :: BloomEffect?
+    -- Subtle bloom tuned to prevent text blooming/blinding glare while preserving vibrant VFX
+    local bloom = Lighting:FindFirstChild("SubtleBloom") :: BloomEffect? or Lighting:FindFirstChild("AnimeBloom") :: BloomEffect?
     if not bloom then
         bloom = Instance.new("BloomEffect")
-        bloom.Name = "AnimeBloom"
+        bloom.Name = "SubtleBloom"
         bloom.Parent = Lighting
     end
-    bloom.Intensity = 0.55
-    bloom.Size = 22
-    bloom.Threshold = 1.1
+    bloom.Name = "SubtleBloom"
+    bloom.Intensity = 0.10
+    bloom.Size = 14
+    bloom.Threshold = 2.2
 
     -- SunRays for anime atmosphere
     local sunRays = Lighting:FindFirstChild("AnimeSunRays") :: SunRaysEffect?

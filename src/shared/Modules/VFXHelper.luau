@@ -187,6 +187,30 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
     local vfxFolder = GetVFXFolder()
     local count = particleCount or 32
 
+    -- Check for high-fidelity Creator Store Light Explosion VFX (ID 108812638060941)
+    local lightVFXTemplate = ReplicatedStorage:FindFirstChild("LightExplosionVFX")
+    if element == "Light" and lightVFXTemplate then
+        local clone = lightVFXTemplate:Clone()
+        clone.Name = "VFX_ActiveLightExplosion"
+        for _, desc in ipairs(clone:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                desc.Anchored = true
+                desc.CanCollide = false
+            end
+        end
+        clone:PivotTo(CFrame.new(position))
+        clone.Parent = vfxFolder
+
+        for _, emitter in ipairs(clone:GetDescendants()) do
+            if emitter:IsA("ParticleEmitter") then
+                emitter:Emit(emitter.Rate > 0 and math.clamp(math.round(emitter.Rate * 0.5), 4, 30) or 8)
+            end
+        end
+
+        Debris:AddItem(clone, 1.5)
+        return
+    end
+
     local emitterPart = Instance.new("Part")
     emitterPart.Name = "VFX_ImpactCenter"
     emitterPart.Size = Vector3.new(0.1, 0.1, 0.1)
@@ -291,8 +315,42 @@ end
 function VFXHelper.CreateSlashArc(cframe: CFrame, element: string, scale: number)
     local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
     local vfxFolder = GetVFXFolder()
-
     local s = scale or 1.0
+
+    -- Check for high-fidelity Creator Store Fire Slash VFX (Squav ID 107157303748652)
+    local fireVFXTemplate = ReplicatedStorage:FindFirstChild("FireSlashVFX")
+    if element == "Fire" and fireVFXTemplate then
+        local clone = fireVFXTemplate:Clone()
+        clone.Name = "VFX_ActiveFireSlash"
+        for _, desc in ipairs(clone:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                desc.Anchored = true
+                desc.CanCollide = false
+            end
+        end
+        clone:PivotTo(cframe * CFrame.new(0, 0, -2.5))
+        clone.Parent = vfxFolder
+
+        -- Rapid circular slash sequence: spin parts rapidly through angles to form circular wheel
+        task.spawn(function()
+            local baseCFrame = cframe * CFrame.new(0, 0, -2.5)
+            local steps = 8
+            for i = 1, steps do
+                local angle = (i / steps) * math.pi * 2
+                clone:PivotTo(baseCFrame * CFrame.Angles(0, 0, angle))
+                for _, emitter in ipairs(clone:GetDescendants()) do
+                    if emitter:IsA("ParticleEmitter") then
+                        emitter:Emit(3)
+                    end
+                end
+                task.wait(0.02)
+            end
+        end)
+
+        Debris:AddItem(clone, 0.5)
+        return
+    end
+
     local slashPart = Instance.new("Part")
     slashPart.Name = "VFX_SlashBlade"
     slashPart.Size = Vector3.new(0.2, 0.2, 0.2)
@@ -1256,6 +1314,9 @@ function VFXHelper.EndGlitchInvis(character: Model)
     for _, desc in character:GetDescendants() do
         if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
             desc.Transparency = 0
+            pcall(function()
+                (desc :: any).LocalTransparencyModifier = 0
+            end)
         elseif desc:IsA("Decal") then
             desc.Transparency = 0
         end

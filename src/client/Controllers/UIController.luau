@@ -152,194 +152,130 @@ function UIController.CreateHUD()
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = playerGui
 
-    -- ==================== 1. PLAYER STATS CARD (Top-Left) ====================
+    -- ==================== 1. ROBLOX STYLE STATUS HUD (Top-Left) ====================
     local statsCard = Instance.new("Frame")
-    statsCard.Name = "PlayerStatsCard"
-    statsCard.Size = UDim2.new(0, 380, 0, 110)
-    statsCard.Position = UDim2.new(0, 20, 0, 20)
-    statsCard.BackgroundColor3 = PALETTE.BG_MAIN
-    statsCard.BackgroundTransparency = 0.1
+    statsCard.Name = "RobloxStatusHUD"
+    statsCard.Size = UDim2.new(0, 290, 0, 72)
+    statsCard.Position = UDim2.new(0, 16, 0, 14)
+    statsCard.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+    statsCard.BackgroundTransparency = 0.2
     statsCard.Parent = screenGui
-    MakeCorner(statsCard, 10)
-    MakeStroke(statsCard, PALETTE.BORDER_DEFAULT, 1.8)
+    MakeCorner(statsCard, 6)
+    MakeStroke(statsCard, Color3.fromRGB(45, 55, 75), 1.2)
 
-    -- Avatar Portrait Frame (60x60)
-    local avatarFrame = Instance.new("Frame")
-    avatarFrame.Name = "AvatarPortraitFrame"
-    avatarFrame.Size = UDim2.new(0, 60, 0, 60)
-    avatarFrame.Position = UDim2.new(0, 12, 0, 12)
-    avatarFrame.BackgroundColor3 = Color3.fromRGB(16, 22, 34)
-    avatarFrame.Parent = statsCard
-    MakeCorner(avatarFrame, 8)
-    avatarStroke = MakeStroke(avatarFrame, PALETTE.BORDER_ACCENT, 2.0)
-
-    avatarImage = Instance.new("ImageLabel")
-    avatarImage.Name = "AvatarHeadshot"
-    avatarImage.Size = UDim2.new(1, -4, 1, -4)
-    avatarImage.Position = UDim2.new(0, 2, 0, 2)
-    avatarImage.BackgroundTransparency = 1
-    avatarImage.ScaleType = Enum.ScaleType.Fit
-    avatarImage.Parent = avatarFrame
-    MakeCorner(avatarImage, 6)
-
-    -- Asynchronously load headshot thumbnail
-    task.spawn(function()
-        local userId = (localPlayer and localPlayer.UserId) or 0
-        if userId > 0 then
-            local pcallSuccess, content = pcall(function()
-                return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
-            end)
-            if pcallSuccess and avatarImage and avatarImage.Parent then
-                avatarImage.Image = content
-            end
-        end
-    end)
-
-    -- Level Badge Pill pinned to avatar portrait bottom
-    local levelPill = Instance.new("Frame")
-    levelPill.Name = "LevelPill"
-    levelPill.Size = UDim2.new(1, 4, 0, 18)
-    levelPill.Position = UDim2.new(0, -2, 1, -8)
-    levelPill.BackgroundColor3 = Color3.fromRGB(10, 14, 22)
-    levelPill.Parent = avatarFrame
-    MakeCorner(levelPill, 4)
-    MakeStroke(levelPill, PALETTE.BORDER_DEFAULT, 1.0)
-
-    levelBadgeText = Instance.new("TextLabel")
-    levelBadgeText.Size = UDim2.new(1, 0, 1, 0)
-    levelBadgeText.BackgroundTransparency = 1
-    levelBadgeText.Font = Enum.Font.GothamBlack
-    levelBadgeText.TextSize = 10
-    levelBadgeText.TextColor3 = PALETTE.TEXT_PRIMARY
-    levelBadgeText.Text = "Lv. 1"
-    levelBadgeText.Parent = levelPill
-
-    -- Content Section (Right of avatar)
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Name = "ContentFrame"
-    contentFrame.Size = UDim2.new(1, -94, 1, -16)
-    contentFrame.Position = UDim2.new(0, 84, 0, 8)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = statsCard
-
-    -- Top Row: Player Name + Element Badge + Currency
+    -- Top Row: Level Badge + Element Badge + Charges / Spins
     local topRow = Instance.new("Frame")
     topRow.Name = "TopRow"
-    topRow.Size = UDim2.new(1, 0, 0, 22)
-    topRow.Position = UDim2.new(0, 0, 0, 0)
+    topRow.Size = UDim2.new(1, -16, 0, 18)
+    topRow.Position = UDim2.new(0, 8, 0, 6)
     topRow.BackgroundTransparency = 1
-    topRow.Parent = contentFrame
+    topRow.Parent = statsCard
 
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "PlayerName"
-    nameLabel.Size = UDim2.new(0, 105, 1, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Font = Enum.Font.GothamBlack
-    nameLabel.TextSize = 12
-    nameLabel.TextColor3 = PALETTE.TEXT_PRIMARY
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-    nameLabel.Text = (localPlayer and (localPlayer.DisplayName or localPlayer.Name)) or "Player"
-    nameLabel.Parent = topRow
+    levelBadgeText = Instance.new("TextLabel")
+    levelBadgeText.Size = UDim2.new(0, 48, 1, 0)
+    levelBadgeText.Position = UDim2.new(0, 0, 0, 0)
+    levelBadgeText.BackgroundTransparency = 1
+    levelBadgeText.Font = Enum.Font.GothamBlack
+    levelBadgeText.TextSize = 11
+    levelBadgeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    levelBadgeText.TextXAlignment = Enum.TextXAlignment.Left
+    levelBadgeText.Text = "Lv. 1"
+    levelBadgeText.Parent = topRow
 
-    -- Element Badge
     elementTagFrame = Instance.new("Frame")
     elementTagFrame.Name = "ElementBadge"
-    elementTagFrame.Size = UDim2.new(0, 64, 1, 0)
-    elementTagFrame.Position = UDim2.new(0, 110, 0, 0)
-    elementTagFrame.BackgroundColor3 = PALETTE.BG_CARD
+    elementTagFrame.Size = UDim2.new(0, 58, 1, 0)
+    elementTagFrame.Position = UDim2.new(0, 48, 0, 0)
+    elementTagFrame.BackgroundColor3 = Color3.fromRGB(24, 30, 44)
     elementTagFrame.Parent = topRow
     MakeCorner(elementTagFrame, 4)
-    local elemStroke = MakeStroke(elementTagFrame, PALETTE.BORDER_ACCENT, 1.2)
+    local elemStroke = MakeStroke(elementTagFrame, Color3.fromRGB(80, 100, 130), 1.0)
 
     elementTagText = Instance.new("TextLabel")
     elementTagText.Size = UDim2.new(1, 0, 1, 0)
     elementTagText.BackgroundTransparency = 1
-    elementTagText.Font = Enum.Font.GothamBlack
+    elementTagText.Font = Enum.Font.GothamBold
     elementTagText.TextSize = 10
-    elementTagText.TextColor3 = PALETTE.BORDER_ACCENT
+    elementTagText.TextColor3 = Color3.fromRGB(255, 100, 40)
     elementTagText.Text = "FIRE"
     elementTagText.Parent = elementTagFrame
 
-    -- Currency: Spins & Charges
     spinTicketText = Instance.new("TextLabel")
     spinTicketText.Name = "CurrencyInfo"
-    spinTicketText.Size = UDim2.new(1, -178, 1, 0)
-    spinTicketText.Position = UDim2.new(0, 178, 0, 0)
+    spinTicketText.Size = UDim2.new(1, -112, 1, 0)
+    spinTicketText.Position = UDim2.new(0, 112, 0, 0)
     spinTicketText.BackgroundTransparency = 1
-    spinTicketText.Font = Enum.Font.GothamBold
+    spinTicketText.Font = Enum.Font.GothamMedium
     spinTicketText.TextSize = 10
-    spinTicketText.TextColor3 = PALETTE.TEXT_MUTED
+    spinTicketText.TextColor3 = Color3.fromRGB(180, 192, 210)
     spinTicketText.TextXAlignment = Enum.TextXAlignment.Right
-    spinTicketText.Text = "Spins: 1 | Charges: 0"
+    spinTicketText.Text = "Charges: 0 | Spins: 1"
     spinTicketText.Parent = topRow
 
-    -- Health Bar Track (Emerald Green with damage chip underneath)
+    -- Health Bar Track (Emerald Green with damage chip)
     local hpTrack = Instance.new("Frame")
     hpTrack.Name = "HealthTrack"
-    hpTrack.Size = UDim2.new(1, 0, 0, 22)
-    hpTrack.Position = UDim2.new(0, 0, 0, 28)
+    hpTrack.Size = UDim2.new(1, -16, 0, 18)
+    hpTrack.Position = UDim2.new(0, 8, 0, 27)
     hpTrack.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
-    hpTrack.Parent = contentFrame
-    MakeCorner(hpTrack, 6)
-    MakeStroke(hpTrack, Color3.fromRGB(28, 38, 54), 1.2)
+    hpTrack.Parent = statsCard
+    MakeCorner(hpTrack, 4)
+    MakeStroke(hpTrack, Color3.fromRGB(30, 40, 55), 1.0)
 
     healthChip = Instance.new("Frame")
     healthChip.Name = "HealthChip"
     healthChip.Size = UDim2.new(1, 0, 1, 0)
-    healthChip.BackgroundColor3 = PALETTE.HP_CHIP
+    healthChip.BackgroundColor3 = Color3.fromRGB(130, 30, 30)
     healthChip.BorderSizePixel = 0
     healthChip.Parent = hpTrack
-    MakeCorner(healthChip, 6)
+    MakeCorner(healthChip, 4)
 
     healthFill = Instance.new("Frame")
     healthFill.Name = "HealthFill"
     healthFill.Size = UDim2.new(1, 0, 1, 0)
-    healthFill.BackgroundColor3 = PALETTE.HP_GREEN
+    healthFill.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
     healthFill.BorderSizePixel = 0
     healthFill.Parent = hpTrack
-    MakeCorner(healthFill, 6)
-    MakeGradient(healthFill, ColorSequence.new(Color3.fromRGB(75, 230, 140), Color3.fromRGB(35, 175, 95)), 90)
+    MakeCorner(healthFill, 4)
 
     healthText = Instance.new("TextLabel")
     healthText.Size = UDim2.new(1, 0, 1, 0)
     healthText.BackgroundTransparency = 1
-    healthText.Font = Enum.Font.GothamBlack
-    healthText.TextSize = 11
-    healthText.TextColor3 = PALETTE.TEXT_PRIMARY
+    healthText.Font = Enum.Font.GothamBold
+    healthText.TextSize = 10
+    healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
     healthText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    healthText.TextStrokeTransparency = 0.25
+    healthText.TextStrokeTransparency = 0.5
     healthText.TextXAlignment = Enum.TextXAlignment.Center
     healthText.Text = "100 / 100"
     healthText.Parent = hpTrack
 
-    -- Energy Bar Track (Blox Fruits Electric Cyan)
+    -- Energy Bar Track (Electric Cyan)
     local energyTrack = Instance.new("Frame")
     energyTrack.Name = "EnergyTrack"
-    energyTrack.Size = UDim2.new(1, 0, 0, 18)
-    energyTrack.Position = UDim2.new(0, 0, 0, 56)
-    energyTrack.BackgroundColor3 = Color3.fromRGB(8, 20, 36)
-    energyTrack.Parent = contentFrame
-    MakeCorner(energyTrack, 6)
-    MakeStroke(energyTrack, Color3.fromRGB(20, 50, 80), 1.2)
+    energyTrack.Size = UDim2.new(1, -16, 0, 15)
+    energyTrack.Position = UDim2.new(0, 8, 0, 49)
+    energyTrack.BackgroundColor3 = Color3.fromRGB(8, 16, 26)
+    energyTrack.Parent = statsCard
+    MakeCorner(energyTrack, 4)
+    MakeStroke(energyTrack, Color3.fromRGB(20, 42, 68), 1.0)
 
     energyFill = Instance.new("Frame")
     energyFill.Name = "EnergyFill"
     energyFill.Size = UDim2.new(1, 0, 1, 0)
-    energyFill.BackgroundColor3 = PALETTE.ENERGY_CYAN
+    energyFill.BackgroundColor3 = Color3.fromRGB(0, 165, 255)
     energyFill.BorderSizePixel = 0
     energyFill.Parent = energyTrack
-    MakeCorner(energyFill, 6)
-    MakeGradient(energyFill, ColorSequence.new(Color3.fromRGB(80, 225, 255), Color3.fromRGB(0, 145, 225)), 90)
+    MakeCorner(energyFill, 4)
 
     energyText = Instance.new("TextLabel")
     energyText.Size = UDim2.new(1, 0, 1, 0)
     energyText.BackgroundTransparency = 1
-    energyText.Font = Enum.Font.GothamBlack
-    energyText.TextSize = 10
-    energyText.TextColor3 = PALETTE.TEXT_PRIMARY
+    energyText.Font = Enum.Font.GothamBold
+    energyText.TextSize = 9
+    energyText.TextColor3 = Color3.fromRGB(255, 255, 255)
     energyText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    energyText.TextStrokeTransparency = 0.35
+    energyText.TextStrokeTransparency = 0.5
     energyText.TextXAlignment = Enum.TextXAlignment.Center
     energyText.Text = "500 / 500"
     energyText.Parent = energyTrack

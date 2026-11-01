@@ -30,6 +30,9 @@ export type PlayerProfile = {
 
 local PlayerDataService = {}
 local profiles: { [number]: PlayerProfile } = {}
+local isDirty: { [number]: boolean } = {}
+local lastSavedTime: { [number]: number } = {}
+local DATASTORE_WRITE_COOLDOWN = 6
 
 local PlayerDataStore: DataStore? = nil
 pcall(function()
@@ -255,10 +258,12 @@ function PlayerDataService.AddSpinTickets(player: Player, amount: number)
     PlayerDataService.SyncClient(player)
 end
 
--- Sync state to client
+-- Sync state to client & mark profile dirty for immediate 1-second auto-save
 function PlayerDataService.SyncClient(player: Player)
     local profile = profiles[player.UserId]
     if not profile then return end
+
+    isDirty[player.UserId] = true
 
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if remotes then
@@ -283,19 +288,37 @@ function PlayerDataService.SyncClient(player: Player)
     end
 end
 
+function PlayerDataService.MarkDirty(player: Player)
+    isDirty[player.UserId] = true
+end
+
 function PlayerDataService.RemoveProfile(player: Player)
     PlayerDataService.SaveProfile(player)
     profiles[player.UserId] = nil
+    isDirty[player.UserId] = nil
+    lastSavedTime[player.UserId] = nil
 end
 
--- ==================== AUTO-SAVE LOOP (Every 120s) ====================
+-- ==================== 1-SECOND AUTO-SAVE LOOP ====================
+-- Runs every 1 second, saving everything the player did or acquired
 task.spawn(function()
     while true do
-        task.wait(120)
+        task.wait(1)
+        local now = os.clock()
         for _, player in Players:GetPlayers() do
-            task.spawn(function()
-                PlayerDataService.SaveProfile(player)
-            end)
+            local userId = player.UserId
+            local profile = profiles[userId]
+            if profile and isDirty[userId] then
+                local lastSave = lastSavedTime[userId] or 0
+                -- In Studio or when cooldown has elapsed, persist dirty data to DataStore
+                if RunService:IsStudio() or (now - lastSave >= DATASTORE_WRITE_COOLDOWN) then
+                    isDirty[userId] = false
+                    lastSavedTime[userId] = now
+                    task.spawn(function()
+                        PlayerDataService.SaveProfile(player)
+                    end)
+                end
+            end
         end
     end
 end)

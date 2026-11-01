@@ -58,31 +58,43 @@
     "Lighting": {
       "$className": "Lighting",
       "$properties": {
-        "ClockTime": 14.5,
-        "Brightness": 2.2,
+        "ClockTime": 14.2,
+        "Brightness": 2.0,
         "GlobalShadows": true,
-        "OutdoorAmbient": [0.43, 0.47, 0.55]
+        "OutdoorAmbient": [0.43, 0.47, 0.53],
+        "Technology": "Future"
       },
-      "AnimeColorCorrection": {
+      "RealisticAtmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.28,
+          "Offset": 0.2,
+          "Color": [0.75, 0.8, 0.86],
+          "Decay": [0.41, 0.45, 0.51],
+          "Glare": 0.15,
+          "Haze": 0.4
+        }
+      },
+      "NaturalColorCorrection": {
         "$className": "ColorCorrectionEffect",
         "$properties": {
-          "Brightness": 0.02,
-          "Contrast": 0.12,
-          "Saturation": 0.16
+          "Brightness": 0.0,
+          "Contrast": 0.06,
+          "Saturation": 0.06
         }
       },
-      "AnimeBloom": {
+      "SubtleBloom": {
         "$className": "BloomEffect",
         "$properties": {
-          "Intensity": 0.55,
-          "Size": 22,
-          "Threshold": 1.1
+          "Intensity": 0.12,
+          "Size": 14,
+          "Threshold": 2.2
         }
       },
-      "AnimeSunRays": {
+      "NaturalSunRays": {
         "$className": "SunRaysEffect",
         "$properties": {
-          "Intensity": 0.12,
+          "Intensity": 0.08,
           "Spread": 0.8
         }
       }
