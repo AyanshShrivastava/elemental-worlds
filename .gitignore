@@ -3,3 +3,4 @@
 *.rbxl.lock
 *.tmp
 build/
+*.rbxl
