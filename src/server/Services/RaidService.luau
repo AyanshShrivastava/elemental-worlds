@@ -177,12 +177,15 @@ local function NextWave()
 
     table.clear(activeRaidEnemies)
 
+    -- Dedicated Raid Arena Coordinates (Elevated Roman Colosseum Sky Dungeon)
+    local ARENA_CENTER = Vector3.new(0, 252, 900)
+    local ARENA_ENTRANCE = Vector3.new(0, 253, 850)
+
     if currentWave == 1 then
-        BroadcastAnnouncement("[RAID WAVE 1/3] Corrupted Elementals have spawned!")
-        local spawnCenter = Vector3.new(0, 4, -480)
+        BroadcastAnnouncement("[RAID WAVE 1/3] Corrupted Elementals have entered the Colosseum!")
         for i = 1, 4 do
             local angle = (i / 4) * math.pi * 2
-            local pos = spawnCenter + Vector3.new(math.cos(angle) * 20, 0, math.sin(angle) * 20)
+            local pos = ARENA_CENTER + Vector3.new(math.cos(angle) * 30, 0, math.sin(angle) * 30)
             local mob = SpawnRaidMob("Corrupted Sentinel " .. i, CFrame.new(pos), 800, Color3.fromRGB(150, 60, 255), 1.0)
             table.insert(activeRaidEnemies, mob)
 
@@ -202,11 +205,10 @@ local function NextWave()
             end
         end
     elseif currentWave == 2 then
-        BroadcastAnnouncement("[RAID WAVE 2/3] Highland Wardens approaching!")
-        local spawnCenter = Vector3.new(0, 4, -480)
+        BroadcastAnnouncement("[RAID WAVE 2/3] Highland Wardens storming the Colosseum!")
         for i = 1, 2 do
-            local offset = if i == 1 then Vector3.new(-18, 0, 0) else Vector3.new(18, 0, 0)
-            local mob = SpawnRaidMob("Highland Warden " .. i, CFrame.new(spawnCenter + offset), 2200, Color3.fromRGB(0, 180, 255), 1.3)
+            local offset = if i == 1 then Vector3.new(-25, 0, 0) else Vector3.new(25, 0, 0)
+            local mob = SpawnRaidMob("Highland Warden " .. i, CFrame.new(ARENA_CENTER + offset), 2200, Color3.fromRGB(0, 180, 255), 1.3)
             table.insert(activeRaidEnemies, mob)
 
             local hum = mob:FindFirstChildOfClass("Humanoid")
@@ -225,8 +227,8 @@ local function NextWave()
             end
         end
     elseif currentWave == 3 then
-        BroadcastAnnouncement("[RAID FINAL BOSS] INFERNAL TITAN has awakened! Defeat the Colossus!")
-        local boss = SpawnRaidMob("INFERNAL TITAN", CFrame.new(0, 6, -480), 8000, Color3.fromRGB(255, 60, 40), 2.2)
+        BroadcastAnnouncement("[RAID FINAL BOSS] INFERNAL TITAN has awakened in the Colosseum! Defeat the Colossus!")
+        local boss = SpawnRaidMob("INFERNAL TITAN", CFrame.new(ARENA_CENTER), 8000, Color3.fromRGB(255, 60, 40), 2.2)
         table.insert(activeRaidEnemies, boss)
 
         local hum = boss:FindFirstChildOfClass("Humanoid")
@@ -238,7 +240,7 @@ local function NextWave()
     end
 end
 
--- Starts a full raid session
+-- Starts a full raid session in the dedicated Colosseum
 function RaidService.StartRaid(initiator: Player?): boolean
     if isRaidActive then
         return false -- Already active
@@ -248,14 +250,18 @@ function RaidService.StartRaid(initiator: Player?): boolean
     currentWave = 0
     table.clear(raidParticipants)
 
-    -- Register nearby players as participants
-    local portalPos = Vector3.new(0, 20, -520)
+    local portalPos = Vector3.new(320, 2, 280)
+    local ARENA_ENTRANCE = Vector3.new(0, 253, 850)
+
+    -- Register nearby players as participants and teleport them to the arena
     for _, player in Players:GetPlayers() do
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local dist = (char.HumanoidRootPart.Position - portalPos).Magnitude
-            if dist <= 120 or player == initiator then
+            if dist <= 100 or player == initiator then
                 raidParticipants[player] = true
+                -- Teleport to Colosseum staging platform
+                char:PivotTo(CFrame.new(ARENA_ENTRANCE + Vector3.new(math.random(-10, 10), 0, math.random(-5, 5))))
             end
         end
     end
@@ -265,7 +271,7 @@ function RaidService.StartRaid(initiator: Player?): boolean
     raidFolder.Name = "ActiveRaidFolder"
     raidFolder.Parent = Workspace
 
-    BroadcastAnnouncement(string.format("[RAID] Elemental Raid initiated by [%s]! Defend the Highlands!", initiator and initiator.Name or "Server"))
+    BroadcastAnnouncement(string.format("[RAID] Elemental Colosseum Raid initiated by [%s]! Fight for glory!", initiator and initiator.Name or "Server"))
 
     task.delay(2.0, NextWave)
     return true
@@ -289,7 +295,16 @@ function RaidService.EndRaid(victory: boolean)
         BroadcastAnnouncement("[RAID DEFEAT] The Raid has concluded.")
     end
 
-    task.delay(3.0, function()
+    task.delay(4.0, function()
+        -- Teleport participants back to Village hub
+        local villageSpawn = Vector3.new(0, 3, 30)
+        for player in raidParticipants do
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char:PivotTo(CFrame.new(villageSpawn + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))))
+            end
+        end
+
         if raidFolder then
             pcall(function() raidFolder:Destroy() end)
             raidFolder = nil

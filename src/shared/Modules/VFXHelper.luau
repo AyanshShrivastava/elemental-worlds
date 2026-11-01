@@ -54,10 +54,10 @@ local ELEMENT_PALETTES = {
         Core = Color3.fromRGB(255, 245, 230),
     },
     Light = {
-        Primary = Color3.fromRGB(255, 250, 140),
-        Secondary = Color3.fromRGB(255, 255, 230),
-        Dark = Color3.fromRGB(215, 180, 40),
-        Core = Color3.fromRGB(255, 255, 255),
+        Primary = Color3.fromHex("#C8A2F0"),   -- Pale lavender main
+        Secondary = Color3.fromHex("#E9D8FF"), -- Ethereal lavender glow
+        Dark = Color3.fromHex("#8B5BD6"),      -- Deeper celestial violet
+        Core = Color3.fromRGB(255, 250, 255),  -- Brilliant white-lavender highlight
     },
     Wind = {
         Primary = Color3.fromRGB(60, 240, 180),

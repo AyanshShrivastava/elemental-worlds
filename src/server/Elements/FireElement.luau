@@ -170,6 +170,17 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    
+    -- Goldi Chant
+    local chant = "Flames of Fury, I command. Through heaven and earth, I am the Honoured One."
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if remotes then
+        local announceEvent = remotes:FindFirstChild(GameConfig.REMOTES.GLOBAL_ANNOUNCEMENT) :: RemoteEvent?
+        if announceEvent then
+            announceEvent:FireClient(player, "[Goldi]: " .. chant)
+        end
+    end
+
     if target and target.Character.Parent then
         -- Teleport behind target
         rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)

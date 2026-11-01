@@ -55,7 +55,7 @@ local ELEMENT_THEMES = {
     Fire  = { Primary = Color3.fromRGB(255, 75, 30),  Accent = Color3.fromRGB(255, 130, 50) },
     Aqua  = { Primary = Color3.fromRGB(0, 160, 255),  Accent = Color3.fromRGB(100, 215, 255) },
     Earth = { Primary = Color3.fromRGB(150, 110, 65), Accent = Color3.fromRGB(200, 160, 110) },
-    Light = { Primary = Color3.fromRGB(240, 220, 90), Accent = Color3.fromRGB(255, 255, 180) },
+    Light = { Primary = Color3.fromHex("#C8A2F0"), Accent = Color3.fromHex("#E9D8FF") },
     Wind  = { Primary = Color3.fromRGB(60, 215, 150), Accent = Color3.fromRGB(160, 255, 210) },
     Error = { Primary = Color3.fromRGB(255, 20, 140), Accent = Color3.fromRGB(0, 255, 240) },
     Time  = { Primary = Color3.fromRGB(120, 80, 255), Accent = Color3.fromRGB(190, 160, 255) },
@@ -667,9 +667,14 @@ function UIController.UpdateStats(data: {
         local isError = (data.Element == "Error")
         errorMeterContainer.Visible = isError
         if isError then
-            local ratio = math.clamp(data.ErrorMeter / 100, 0, 1)
-            TweenService:Create(errorMeterFill, TweenInfo.new(0.25), { Size = UDim2.new(ratio, 0, 1, 0) }):Play()
-            errorMeterText.Text = string.format("ERROR METER: %d%%", math.round(data.ErrorMeter))
+            local pct = math.round(data.ErrorMeter)
+            if pct >= 100 then
+                errorMeterText.Text = "ERROR METER: 100% [MAX POWER: UNPARALLELED READY]"
+            elseif pct >= 50 then
+                errorMeterText.Text = string.format("ERROR METER: %d%% [DOMAIN UNLOCKED] (100%%: Freeze)", pct)
+            else
+                errorMeterText.Text = string.format("ERROR METER: %d%% (50%%: Domain | 100%%: Freeze)", pct)
+            end
         end
     end
 
