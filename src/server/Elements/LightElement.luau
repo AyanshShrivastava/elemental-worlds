@@ -71,21 +71,23 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
-    if not target then return end
+    local mirrorPos = if target and target.Character.Parent then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 14)
 
     -- Visual crystalline mirrors with bouncing light rays and inward slam
     VFXBroadcastService.Broadcast("MirrorsOfJudgement", {
-        Position = target.RootPart.Position,
+        Position = mirrorPos,
         SFXId = ability.SFXId,
         Shake = 0.5,
     })
 
-    task.delay(0.35, function()
-        if target.Character.Parent and target.Humanoid.Health > 0 then
-            local slamVector = Vector3.new(0, -25, 0)
-            HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamVector)
-        end
-    end)
+    if target and target.Character.Parent then
+        task.delay(0.35, function()
+            if target.Character.Parent and target.Humanoid.Health > 0 then
+                local slamVector = Vector3.new(0, -25, 0)
+                HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamVector)
+            end
+        end)
+    end
 end
 
 -- Move 3: Blinding Attack (2s Blind Effect)
@@ -93,15 +95,17 @@ function LightElement.CastMove3(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Light", "3")
     if not ability then return end
 
+    -- Always broadcast blinding flash forward
+    VFXBroadcastService.Broadcast("BlindingFlash", {
+        Position = rootPart.Position + (rootPart.CFrame.LookVector * 10),
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, ability.BaseDamage, nil)
-        -- Apply fair 2-second blindness status effect & visual blinding flash
+        -- Apply fair 2-second blindness status effect
         StatusEffectService.ApplyEffect(target.Character, "Blinded", ability.Duration or 2.0, player)
-        VFXBroadcastService.Broadcast("BlindingFlash", {
-            Position = target.RootPart.Position,
-            SFXId = ability.SFXId,
-        })
     end
 end
 

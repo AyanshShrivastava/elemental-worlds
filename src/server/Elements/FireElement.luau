@@ -30,6 +30,14 @@ function FireElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Visual fiery slash arc
+    VFXBroadcastService.Broadcast("SlashArc", {
+        CFrame = rootPart.CFrame * CFrame.new(0, 0, -2.5),
+        Element = "Fire",
+        Scale = if isFinisher then 1.3 else 1.0,
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
@@ -138,29 +146,47 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
-    if not target then return end
+    if target and target.Character.Parent then
+        -- Teleport behind target
+        rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)
 
-    -- Chat line logic: check if fury is 100% or below
-    local chatLine = "Goldi..."
-    -- Teleport behind target
-    rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)
+        -- Fire beam at target
+        VFXBroadcastService.Broadcast("Beam", {
+            StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
+            EndPos = target.RootPart.Position,
+            Element = "Fire",
+            Thickness = 1.8,
+            Shake = 0.4,
+            SFXId = ability.SFXId,
+        })
 
-    -- Fire beam at target
-    VFXBroadcastService.Broadcast("Beam", {
-        StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
-        EndPos = target.RootPart.Position,
-        Element = "Fire",
-        Thickness = 1.8,
-        Shake = 0.4,
-        SFXId = ability.SFXId,
-    })
-
-    task.delay(0.2, function()
-        if target.Character.Parent and target.Humanoid.Health > 0 then
-            local knockback = rootPart.CFrame.LookVector * 45 + Vector3.new(0, 15, 0)
-            HitboxService.ApplyDamage(player, target, ability.BaseDamage, knockback)
-        end
-    end)
+        task.delay(0.2, function()
+            if target.Character.Parent and target.Humanoid.Health > 0 then
+                local knockback = rootPart.CFrame.LookVector * 45 + Vector3.new(0, 15, 0)
+                HitboxService.ApplyDamage(player, target, ability.BaseDamage, knockback)
+            end
+        end)
+    else
+        -- Whiff action: Flame flash dash forward and searing fire beam burst
+        rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -16)
+        local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+        VFXBroadcastService.Broadcast("Beam", {
+            StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
+            EndPos = beamEnd,
+            Element = "Fire",
+            Thickness = 1.8,
+            Shake = 0.4,
+            SFXId = ability.SFXId,
+        })
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = rootPart.Position,
+            Element = "Fire",
+            Radius = 14,
+            Duration = 0.35,
+            Shake = 0.35,
+            SFXId = ability.SFXId,
+        })
+    end
 end
 
 -- Move 4: Infernal Judgement (10s Domain)

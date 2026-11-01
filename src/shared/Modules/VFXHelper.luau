@@ -293,42 +293,50 @@ function VFXHelper.CreateSlashArc(cframe: CFrame, element: string, scale: number
     local s = scale or 1.0
     local slashPart = Instance.new("Part")
     slashPart.Name = "VFX_SlashBlade"
-    slashPart.Size = Vector3.new(8 * s, 0.15, 7 * s)
-    slashPart.CFrame = cframe * CFrame.new(0, 0, -3.2) * CFrame.Angles(0, math.rad(math.random(-25, 25)), math.rad(math.random(-15, 15)))
-    slashPart.Material = Enum.Material.Neon
-    slashPart.Color = palette.Secondary
-    slashPart.Transparency = 0.05
+    slashPart.Size = Vector3.new(0.2, 0.2, 0.2)
+    slashPart.CFrame = cframe * CFrame.new(0, 0, -2.5) * CFrame.Angles(0, math.rad(math.random(-20, 20)), math.rad(math.random(-10, 10)))
+    slashPart.Transparency = 1
     slashPart.CanCollide = false
     slashPart.Anchored = true
     slashPart.Parent = vfxFolder
 
-    -- Particle curve on slash edge
+    -- High-emission anime crescent curve emitter
     local slashEmitter = Instance.new("ParticleEmitter")
     slashEmitter.Texture = ASSETS.SLASH_TEXTURE
     slashEmitter.Color = ColorSequence.new(palette.Core, palette.Primary)
     slashEmitter.Transparency = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0),
+        NumberSequenceKeypoint.new(0.7, 0.2),
         NumberSequenceKeypoint.new(1, 1),
     })
     slashEmitter.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 3.5 * s),
+        NumberSequenceKeypoint.new(0, 4.5 * s),
+        NumberSequenceKeypoint.new(0.6, 3.0 * s),
         NumberSequenceKeypoint.new(1, 0),
     })
-    slashEmitter.Lifetime = NumberRange.new(0.18, 0.28)
-    slashEmitter.Speed = NumberRange.new(14, 26)
+    slashEmitter.Lifetime = NumberRange.new(0.2, 0.32)
+    slashEmitter.Speed = NumberRange.new(16, 30)
+    slashEmitter.SpreadAngle = Vector2.new(15, 15)
     slashEmitter.LightEmission = 1.0
     slashEmitter.Rate = 0
     slashEmitter.Parent = slashPart
 
-    slashEmitter:Emit(10)
+    -- Anime 4-point star sparks
+    local starEmitter = Instance.new("ParticleEmitter")
+    starEmitter.Texture = ASSETS.STAR_SPARKLE
+    starEmitter.Color = ColorSequence.new(palette.Secondary, palette.Core)
+    starEmitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.2 * s), NumberSequenceKeypoint.new(1, 0) })
+    starEmitter.Lifetime = NumberRange.new(0.15, 0.28)
+    starEmitter.Speed = NumberRange.new(12, 24)
+    starEmitter.SpreadAngle = Vector2.new(45, 45)
+    starEmitter.LightEmission = 1.0
+    starEmitter.Rate = 0
+    starEmitter.Parent = slashPart
 
-    TweenService:Create(slashPart, TweenInfo.new(0.16, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-        Size = Vector3.new(14 * s, 0.02, 10 * s),
-        Transparency = 1,
-        CFrame = slashPart.CFrame * CFrame.new(0, 0, -3.5),
-    }):Play()
+    slashEmitter:Emit(14)
+    starEmitter:Emit(8)
 
-    Debris:AddItem(slashPart, 0.25)
+    Debris:AddItem(slashPart, 0.35)
 end
 
 -- ==================== 4. GROUND IMPACT CRATER ====================
@@ -428,7 +436,7 @@ function VFXHelper.CreateBeam(startPos: Vector3, endPos: Vector3, element: strin
 
     local dist = (endPos - startPos).Magnitude
     local midPos = (startPos + endPos) / 2
-    local lookCF = CFrame.new(midPos, endPos) * CFrame.Angles(0, 0, math.rad(90))
+    local lookCF = CFrame.new(midPos, endPos) * CFrame.Angles(0, math.rad(90), 0)
     local th = thickness or 1.5
 
     -- Outer Glowing Elemental Sheath
@@ -1051,7 +1059,7 @@ function VFXHelper.CreateWindLightning(startPos: Vector3, endPos: Vector3)
         bolt.Name = "VFX_WindBolt"
         bolt.Shape = Enum.PartType.Cylinder
         bolt.Size = Vector3.new(dist, 0.5, 0.5)
-        bolt.CFrame = CFrame.new(mid, p1) * CFrame.Angles(0, 0, math.rad(90))
+        bolt.CFrame = CFrame.new(mid, p1) * CFrame.Angles(0, math.rad(90), 0)
         bolt.Material = Enum.Material.Neon
         bolt.Color = palette.Primary
         bolt.Anchored = true
@@ -1202,25 +1210,118 @@ end
 -- ==================== 26. GLITCH INVISIBILITY (Error Move 3) ====================
 function VFXHelper.AttachGlitchInvis(character: Model, duration: number)
     local d = duration or 5.0
-    local originalTransparencies: { [BasePart]: number } = {}
+    local rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if not rootPart then return end
 
-    for _, desc in character:GetDescendants() do
-        if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
-            originalTransparencies[desc] = desc.Transparency
-            desc.Transparency = 0.85
-        end
-    end
+    local palette = ELEMENT_PALETTES.Error
+
+    -- Stylized cyber neon highlight (transparency is strictly server-authoritative)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "VFX_GlitchInvisHighlight"
+    highlight.FillColor = palette.Primary
+    highlight.OutlineColor = palette.Secondary
+    highlight.FillTransparency = 0.82
+    highlight.OutlineTransparency = 0.2
+    highlight.Adornee = character
+    highlight.Parent = character
+
+    -- Cyber spark emitters on rootPart
+    local emitter = Instance.new("ParticleEmitter")
+    emitter.Name = "VFX_GlitchInvisEmitter"
+    emitter.Texture = ASSETS.GLITCH_PIXEL
+    emitter.Color = ColorSequence.new(palette.Secondary, palette.Primary)
+    emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.2), NumberSequenceKeypoint.new(1, 0.1) })
+    emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+    emitter.Speed = NumberRange.new(3, 8)
+    emitter.Rate = 22
+    emitter.LightEmission = 1.0
+    emitter.Parent = rootPart
 
     task.delay(d, function()
-        for part, orig in originalTransparencies do
-            if part.Parent then
-                part.Transparency = orig
-            end
+        VFXHelper.EndGlitchInvis(character)
+    end)
+end
+
+function VFXHelper.EndGlitchInvis(character: Model)
+    local hl = character:FindFirstChild("VFX_GlitchInvisHighlight")
+    if hl then hl:Destroy() end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        local em = rootPart:FindFirstChild("VFX_GlitchInvisEmitter")
+        if em then em:Destroy() end
+    end
+    -- Explicitly ensure all character parts and decals are completely visible on the client
+    for _, desc in character:GetDescendants() do
+        if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
+            desc.Transparency = 0
+        elseif desc:IsA("Decal") then
+            desc.Transparency = 0
+        end
+    end
+end
+
+-- ==================== 27. SPATIAL DISTORTION DOMAIN (Error Move 4) ====================
+function VFXHelper.CreateSpatialDistortionDomain(position: Vector3, radius: number, duration: number)
+    local palette = ELEMENT_PALETTES.Error
+    local vfxFolder = GetVFXFolder()
+    local d = duration or 7.0
+    local r = radius or 35
+
+    local domainModel = Instance.new("Model")
+    domainModel.Name = "VFX_SpatialDistortionDomain"
+
+    -- Glowing cyber holographic floor disc
+    local floor = Instance.new("Part")
+    floor.Name = "DomainFloor"
+    floor.Shape = Enum.PartType.Cylinder
+    floor.Size = Vector3.new(0.4, r * 2, r * 2)
+    floor.CFrame = CFrame.new(position + Vector3.new(0, -2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    floor.Material = Enum.Material.Neon
+    floor.Color = palette.Dark
+    floor.Transparency = 0.35
+    floor.Anchored = true
+    floor.CanCollide = false
+    floor.Parent = domainModel
+
+    -- Boundary cyber barrier cylinder
+    local barrier = Instance.new("Part")
+    barrier.Name = "DomainBarrier"
+    barrier.Shape = Enum.PartType.Cylinder
+    barrier.Size = Vector3.new(22, r * 2, r * 2)
+    barrier.CFrame = CFrame.new(position + Vector3.new(0, 8, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    barrier.Material = Enum.Material.ForceField
+    barrier.Color = palette.Primary
+    barrier.Transparency = 0.55
+    barrier.Anchored = true
+    barrier.CanCollide = false
+    barrier.Parent = domainModel
+
+    -- Rising cyber pixel particles
+    local emitter = Instance.new("ParticleEmitter")
+    emitter.Texture = ASSETS.GLITCH_PIXEL
+    emitter.Color = ColorSequence.new(palette.Secondary, palette.Primary)
+    emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 0.2) })
+    emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+    emitter.Lifetime = NumberRange.new(1.0, 2.0)
+    emitter.Speed = NumberRange.new(8, 18)
+    emitter.SpreadAngle = Vector2.new(30, 30)
+    emitter.EmissionDirection = Enum.NormalId.Top
+    emitter.Rate = 40
+    emitter.LightEmission = 1.0
+    emitter.Parent = floor
+
+    domainModel.Parent = vfxFolder
+
+    task.delay(d, function()
+        if domainModel.Parent then
+            VFXHelper.CreateShockwave(position, r * 1.2, 0.5, "Error")
+            VFXHelper.CreateImpactBurst(position, "Error", 45)
+            domainModel:Destroy()
         end
     end)
 end
 
--- ==================== 27. GLITCH CAGE (Error Move 5) ====================
+-- ==================== 28. GLITCH CAGE (Error Move 5) ====================
 function VFXHelper.CreateGlitchCage(targetPos: Vector3, duration: number)
     local palette = ELEMENT_PALETTES.Error
     local vfxFolder = GetVFXFolder()

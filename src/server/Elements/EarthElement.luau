@@ -127,7 +127,32 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
     -- 1. Validate and reserve target
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     if not target or not target.Character.Parent then
-        return -- No valid target in direction
+        -- Whiff feedback: Colossal Earth Terra Ground Shatter
+        local strikePos = rootPart.Position + (rootPart.CFrame.LookVector * 10)
+        VFXBroadcastService.Broadcast("ImpactFrame", {
+            Duration = 0.08,
+            Intensity = 1.3,
+        })
+        VFXBroadcastService.Broadcast("Crater", {
+            Position = strikePos,
+            Element = "Earth",
+            Radius = 22,
+            SFXId = ability.SFXId,
+        })
+        VFXBroadcastService.Broadcast("EarthPillars", {
+            CFrame = CFrame.new(strikePos),
+            Duration = 4.0,
+            SFXId = ability.SFXId,
+        })
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = strikePos,
+            Element = "Earth",
+            Radius = 26,
+            Duration = 0.5,
+            Shake = 0.75,
+            SFXId = ability.SFXId,
+        })
+        return
     end
 
     local tRoot = target.RootPart

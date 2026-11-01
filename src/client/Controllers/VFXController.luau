@@ -262,6 +262,16 @@ function VFXController.Init()
                     SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.8)
                 end
 
+            elseif vfxType == "GlitchInvisEnd" and data and data.Character then
+                VFXHelper.EndGlitchInvis(data.Character)
+
+            elseif vfxType == "SpatialDistortionDomain" and data and data.Position then
+                VFXHelper.CreateSpatialDistortionDomain(data.Position, data.Radius or 35, data.Duration or 7.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.95)
+                end
+                CameraShakeController.Shake(data.Shake or 0.65)
+
             elseif vfxType == "GlitchCage" and data and data.Position then
                 VFXHelper.CreateGlitchCage(data.Position, data.Duration or 5.0)
                 if data.SFXId and data.SFXId ~= "" then

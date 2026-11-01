@@ -46,6 +46,9 @@ function ErrorElement.CastM1(player: Player, character: Model, rootPart: BasePar
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
     end
+
+    -- Build Error Meter (+10% on cast)
+    PlayerDataService.AddErrorMeter(player, 10)
 end
 
 -- Move 1: Chaotic Destruction
@@ -83,12 +86,18 @@ function ErrorElement.CastMove1(player: Player, character: Model, rootPart: Base
         local knock = rootPart.CFrame.LookVector * 45 + Vector3.new(0, 15, 0)
         HitboxService.ApplyDamage(player, target, ability.BaseDamage, knock)
     end
+
+    -- Build Error Meter (+15%)
+    PlayerDataService.AddErrorMeter(player, 15)
 end
 
 -- Move 2: 404 Not Found
 function ErrorElement.CastMove2(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Error", "2")
     if not ability then return end
+
+    -- Build Error Meter (+20%)
+    PlayerDataService.AddErrorMeter(player, 20)
 
     local dir = rootPart.CFrame.LookVector
     local spawnPos = rootPart.Position + (dir * 3)
@@ -122,6 +131,9 @@ end
 function ErrorElement.CastMove3(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Error", "3")
     if not ability then return end
+
+    -- Build Error Meter (+25%)
+    PlayerDataService.AddErrorMeter(player, 25)
 
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "GotGlitched", duration, player)
@@ -173,44 +185,66 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
     })
 
     local duration = ability.Duration or 7.0
-    local originCFrame = rootPart.CFrame
-    -- Separate glitched realm coordinate high above map
-    local realmPosition = Vector3.new(0, 5000, 0)
+    local domainRadius = 35
+    local domainCenter = rootPart.Position
 
-    -- Collect nearby targets
-    local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, 360, character)
+    -- Spawn Grounded Cyber Glitched Domain Arena (NO sky teleport, NO void plummet!)
+    VFXBroadcastService.Broadcast("SpatialDistortionDomain", {
+        Position = domainCenter,
+        Radius = domainRadius,
+        Duration = duration,
+        SFXId = ability.SFXId,
+        Shake = 0.7,
+    })
 
-    -- Transport caster and targets to isolated realm
-    rootPart.CFrame = CFrame.new(realmPosition)
-    local targetOriginalCFrames: { [BasePart]: CFrame } = {}
-
-    for _, target in targets do
-        targetOriginalCFrames[target.RootPart] = target.RootPart.CFrame
-        target.RootPart.CFrame = CFrame.new(realmPosition + Vector3.new(math.random(-15, 15), 0, math.random(-15, 15)))
-        StatusEffectService.ApplyEffect(target.Character, "Stunned", duration, player)
-    end
-
-    -- Tick damage while inside
-    local elapsed = 0
+    -- Trap and apply ticks to nearby targets inside the 35-stud arena
     task.spawn(function()
+        local elapsed = 0
         while elapsed < duration and character.Parent do
             task.wait(1.0)
             elapsed += 1.0
+
+            local targets = HitboxService.FindTargetsInCone(CFrame.new(domainCenter), domainRadius, 360, character)
             for _, target in targets do
                 if target.Character.Parent and target.Humanoid.Health > 0 then
-                    HitboxService.ApplyDamage(player, target, math.round(ability.BaseDamage / duration), nil)
+                    StatusEffectService.ApplyEffect(target.Character, "Stunned", 1.2, player)
+                    local tickDamage = math.round(ability.BaseDamage / duration)
+                    HitboxService.ApplyDamage(player, target, tickDamage, nil)
                 end
             end
+
+            -- Pulse a chromatic distortion shockwave every second
+            VFXBroadcastService.Broadcast("Shockwave", {
+                Position = domainCenter,
+                Element = "Error",
+                Radius = domainRadius * 0.8,
+                Duration = 0.35,
+                Shake = 0.3,
+            })
         end
 
-        -- Safe Return: Guaranteed teleport back to original positions
-        if rootPart.Parent then
-            rootPart.CFrame = originCFrame
-        end
-        for root, originalCF in targetOriginalCFrames do
-            if root and root.Parent then
-                root.CFrame = originalCF
-            end
+        -- Final inward collapse burst
+        VFXBroadcastService.Broadcast("ImpactFrame", {
+            Duration = 0.1,
+            Intensity = 1.4,
+        })
+        VFXBroadcastService.Broadcast("Crater", {
+            Position = domainCenter,
+            Element = "Error",
+            Radius = 24,
+            SFXId = ability.SFXId,
+        })
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = domainCenter,
+            Element = "Error",
+            Radius = domainRadius * 1.2,
+            Duration = 0.5,
+            Shake = 0.6,
+            SFXId = ability.SFXId,
+        })
+        local finalTargets = HitboxService.FindTargetsInCone(CFrame.new(domainCenter), domainRadius, 360, character)
+        for _, target in finalTargets do
+            HitboxService.ApplyDamage(player, target, 25, Vector3.new(0, 20, 0))
         end
     end)
 end
@@ -243,10 +277,20 @@ function ErrorElement.CastMove5(player: Player, character: Model, rootPart: Base
 
     local duration = ability.Duration or 5.0
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, 360, character)
-    for _, target in targets do
-        StatusEffectService.ApplyEffect(target.Character, "UnparalleledStun", duration, player)
+    if #targets > 0 then
+        for _, target in targets do
+            StatusEffectService.ApplyEffect(target.Character, "UnparalleledStun", duration, player)
+            HitboxService.ApplyDamage(player, target, ability.BaseDamage, nil)
+            VFXBroadcastService.Broadcast("GlitchCage", {
+                Position = target.RootPart.Position,
+                Duration = duration,
+                SFXId = ability.SFXId,
+            })
+        end
+    else
+        -- Whiff visual feedback: spawn cyber glitch cage in front of caster
         VFXBroadcastService.Broadcast("GlitchCage", {
-            Position = target.RootPart.Position,
+            Position = rootPart.Position + rootPart.CFrame.LookVector * 12,
             Duration = duration,
             SFXId = ability.SFXId,
         })

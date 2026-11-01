@@ -120,6 +120,15 @@ function AquaElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     task.spawn(function()
         for i = 1, totalHits do
             if not character.Parent then break end
+
+            local punchOffset = CFrame.new(math.random(-2, 2) * 0.8, math.random(-1, 2) * 0.5, -3.5)
+            VFXBroadcastService.Broadcast("SlashArc", {
+                CFrame = rootPart.CFrame * punchOffset,
+                Element = "Aqua",
+                Scale = 0.85,
+                SFXId = "rbxassetid://3041191430",
+            })
+
             local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
             for _, target in targets do
                 local knock = if i == totalHits then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else nil
@@ -129,14 +138,20 @@ function AquaElement.CastMove4(player: Player, character: Model, rootPart: BaseP
             if i == totalHits then
                 VFXBroadcastService.Broadcast("ImpactFrame", {
                     Duration = 0.08,
-                    Intensity = 1.2,
+                    Intensity = 1.25,
+                })
+                VFXBroadcastService.Broadcast("Crater", {
+                    Position = rootPart.Position + (rootPart.CFrame.LookVector * 6),
+                    Element = "Aqua",
+                    Radius = 16,
+                    SFXId = ability.SFXId,
                 })
                 VFXBroadcastService.Broadcast("Shockwave", {
                     Position = rootPart.Position + (rootPart.CFrame.LookVector * 6),
                     Element = "Aqua",
-                    Radius = 18,
+                    Radius = 20,
                     Duration = 0.4,
-                    Shake = 0.45,
+                    Shake = 0.6,
                     SFXId = ability.SFXId,
                 })
             end

@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local StatusTypes = require(ReplicatedStorage.Shared.Modules.StatusEffectTypes)
+local VFXBroadcastService = require(script.Parent.VFXBroadcastService)
 
 export type ActiveEffect = StatusTypes.ActiveEffect
 export type StatusEffectName = StatusTypes.StatusEffectName
@@ -69,9 +70,11 @@ function StatusEffectService.ApplyEffect(
             humanoid.WalkSpeed = 32 -- Doubled standard walkspeed
         end
     elseif effectName == "GotGlitched" then
-        -- Set character invisible
+        -- Set character invisible on server (never touch HumanoidRootPart)
         for _, part in character:GetDescendants() do
-            if part:IsA("BasePart") or part:IsA("Decal") then
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.Transparency = 1
+            elseif part:IsA("Decal") then
                 part.Transparency = 1
             end
         end
@@ -157,7 +160,7 @@ function StatusEffectService.RemoveEffect(character: Model, effectName: StatusEf
             rootPart.Anchored = false
         end
     elseif effectName == "GotGlitched" then
-        -- Restore visibility
+        -- Restore visibility on server
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                 part.Transparency = 0
@@ -165,6 +168,8 @@ function StatusEffectService.RemoveEffect(character: Model, effectName: StatusEf
                 part.Transparency = 0
             end
         end
+        -- Enforce client visibility restoration
+        VFXBroadcastService.Broadcast("GlitchInvisEnd", { Character = character })
     end
 end
 
@@ -177,6 +182,7 @@ function StatusEffectService.ClearAllEffects(character: Model)
         StatusEffectService.RemoveEffect(character, effectName)
     end
     characterEffects[character] = nil
+    VFXBroadcastService.Broadcast("GlitchInvisEnd", { Character = character })
 end
 
 return table.freeze(StatusEffectService)

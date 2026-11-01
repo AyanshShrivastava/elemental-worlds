@@ -11,26 +11,25 @@ local Debris = game:GetService("Debris")
 
 local SoundController = {}
 
--- Verified Roblox Audio Asset IDs
+-- Verified Roblox Audio Asset IDs (Publicly Accessible)
 local SFX_LIBRARY: { [string]: { string } } = {
     Punch = {
-        "rbxassetid://17325540665",
-        "rbxassetid://8560439519",
-        "rbxassetid://9075321955",
-        "rbxassetid://7346569653",
-        "rbxassetid://17429233290",
+        "rbxassetid://1720389178",
+        "rbxassetid://3041191430",
+        "rbxassetid://5835032207",
+        "rbxassetid://4612375233",
     },
     SwordSlash = {
-        "rbxassetid://6230938036",
-        "rbxassetid://6241709963",
-        "rbxassetid://536642316",
+        "rbxassetid://6760643020",
+        "rbxassetid://7863855238",
+        "rbxassetid://615910787",
         "rbxassetid://12222216",
     },
     Explosion = {
-        "rbxassetid://17150550302",
-        "rbxassetid://6296105178",
-        "rbxassetid://2042692050",
+        "rbxassetid://3802269741",
         "rbxassetid://5898090542",
+        "rbxassetid://287390954",
+        "rbxassetid://138087122",
     },
     MagicCast = {
         "rbxassetid://3356359494",
@@ -38,28 +37,29 @@ local SFX_LIBRARY: { [string]: { string } } = {
         "rbxassetid://1839806527",
     },
     Dash = {
-        "rbxassetid://6230938036",
-        "rbxassetid://17429233290",
+        "rbxassetid://624706518",
+        "rbxassetid://858508159",
     },
     HeavyHit = {
-        "rbxassetid://17429233290",
-        "rbxassetid://17150550302",
+        "rbxassetid://3041191430",
+        "rbxassetid://3802269741",
     },
     Glitch = {
-        "rbxassetid://9065458112",
-        "rbxassetid://9114223401",
+        "rbxassetid://2767090000",
+        "rbxassetid://5599818817",
+        "rbxassetid://6527415891",
     },
     TimeStop = {
-        "rbxassetid://9114223652",
-        "rbxassetid://9114224018",
+        "rbxassetid://4744477218",
+        "rbxassetid://6148384813",
     },
     Water = {
-        "rbxassetid://9114221585",
+        "rbxassetid://5850414902",
         "rbxassetid://6543434968",
     },
     Wind = {
-        "rbxassetid://9114222047",
-        "rbxassetid://9114222513",
+        "rbxassetid://3484593077",
+        "rbxassetid://624706518",
     },
 }
 
@@ -133,7 +133,7 @@ local UI_SFX: { [string]: string } = {
     click = "rbxassetid://8560439519",
     open = "rbxassetid://6230938036",
     close = "rbxassetid://6241709963",
-    success = "rbxassetid://17150550302",
+    success = "rbxasset://sounds/electronicpingshort.wav",
     spin_start = "rbxassetid://3356359494",
 }
 

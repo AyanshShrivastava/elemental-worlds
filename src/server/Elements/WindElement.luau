@@ -122,7 +122,29 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
-    if not target or not target.Character.Parent then return end
+    if not target or not target.Character.Parent then
+        -- Whiff action: Supersonic wind dive dash forward 28 studs with massive shockwave and crater
+        rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -28)
+        VFXBroadcastService.Broadcast("ImpactFrame", {
+            Duration = 0.08,
+            Intensity = 1.3,
+        })
+        VFXBroadcastService.Broadcast("Crater", {
+            Position = rootPart.Position,
+            Element = "Wind",
+            Radius = 18,
+            SFXId = ability.SFXId,
+        })
+        VFXBroadcastService.Broadcast("Shockwave", {
+            Position = rootPart.Position,
+            Element = "Wind",
+            Radius = 26,
+            Duration = 0.45,
+            Shake = 0.65,
+            SFXId = ability.SFXId,
+        })
+        return
+    end
 
     local tRoot = target.RootPart
     local tHum = target.Humanoid
