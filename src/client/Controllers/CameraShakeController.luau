@@ -8,7 +8,7 @@
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera") :: Camera
+local camera: Camera? = Workspace.CurrentCamera
 
 local CameraShakeController = {}
 
@@ -38,8 +38,11 @@ function CameraShakeController.Init()
         local pitchOffset = (math.noise(0, time, 0) - 0.5) * 2 * maxPitch * shakeAmount
         local rollOffset = (math.noise(0, 0, time) - 0.5) * 2 * maxRoll * shakeAmount
 
+        local cam = camera or Workspace.CurrentCamera
+        if not cam then return end
+
         local shakeCFrame = CFrame.Angles(math.rad(pitchOffset), math.rad(yawOffset), math.rad(rollOffset))
-        camera.CFrame = camera.CFrame * shakeCFrame
+        cam.CFrame = cam.CFrame * shakeCFrame
     end)
 end
 

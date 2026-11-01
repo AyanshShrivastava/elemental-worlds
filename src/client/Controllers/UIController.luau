@@ -119,17 +119,27 @@ end
 
 -- ==================== CREATE HUD ====================
 function UIController.CreateHUD()
-    if screenGui then return end
+    local playerGui = GetPlayerGui()
+    if not playerGui then
+        warn("[UIController] PlayerGui not available yet.")
+        return
+    end
+
+    if screenGui and screenGui.Parent == playerGui then
+        return
+    end
+
+    local existing = playerGui:FindFirstChild("ElementalWorlds_BloxFruitsHUD") :: ScreenGui?
+    if existing then
+        screenGui = existing
+        return
+    end
 
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "ElementalWorlds_BloxFruitsHUD"
     screenGui.ResetOnSpawn = false
+    screenGui.DisplayOrder = 10
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    local playerGui = GetPlayerGui()
-    if not playerGui then
-        warn("[UIController] PlayerGui not available.")
-        return
-    end
     screenGui.Parent = playerGui
 
     -- ==================== 1. PLAYER STATS CARD (Bottom-Left) ====================

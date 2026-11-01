@@ -10,7 +10,7 @@
       "Baseplate": {
         "$className": "Part",
         "$properties": {
-          "Size": [2048, 16, 2048],
+          "Size": [4096, 16, 4096],
           "CFrame": [0, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
           "Anchored": true,
           "CanCollide": true,

@@ -5,7 +5,8 @@
     MANDATORY REQUIREMENT: Targets behind or outside attack direction NEVER take damage.
 ]]
 
-local GameConfig = require(script.Parent.Parent.Config.GameConfig)
+local configFolder = script.Parent.Parent:WaitForChild("Config", 15) :: Folder
+local GameConfig = require(configFolder:WaitForChild("GameConfig", 15))
 
 local CombatHelper = {}
 

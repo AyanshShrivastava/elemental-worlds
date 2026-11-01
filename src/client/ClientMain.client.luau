@@ -27,9 +27,18 @@ local ShopUIController = require(script.Parent.Controllers.ShopUIController)
 
 local localPlayer = Players.LocalPlayer
 
+local function SafeInit(name: string, fn: () -> ())
+    local success, err = pcall(fn)
+    if not success then
+        warn(string.format("[Elemental Worlds] Warning: Failed to init %s: %s", name, tostring(err)))
+    else
+        print(string.format("[Elemental Worlds] %s ready.", name))
+    end
+end
+
 -- 1. Core Systems
-CameraShakeController.Init()
-UIController.CreateHUD()
+SafeInit("CameraShake", CameraShakeController.Init)
+SafeInit("HUD", UIController.CreateHUD)
 
 -- 2. Link Combat cooldown callback to HUD
 CombatController.SetCooldownCallback(function(slot, duration)
@@ -37,15 +46,17 @@ CombatController.SetCooldownCallback(function(slot, duration)
 end)
 
 -- 3. Initialize all subsystems
-CombatController.Init()
-MobileController.Init()
-VFXController.Init()
-AdminPanelController.Init()
-SpinUIController.Init()
-ShopUIController.Init()
+SafeInit("Combat", CombatController.Init)
+SafeInit("Mobile", MobileController.Init)
+SafeInit("VFX", VFXController.Init)
+SafeInit("AdminPanel", AdminPanelController.Init)
+SafeInit("SpinUI", SpinUIController.Init)
+SafeInit("ShopUI", ShopUIController.Init)
 
 -- 4. Character health tracking
 local function OnCharacterAdded(character: Model)
+    UIController.CreateHUD() -- Guarantee HUD mounts if PlayerGui was delayed
+
     local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
     if humanoid then
         humanoid.HealthChanged:Connect(function(health)
