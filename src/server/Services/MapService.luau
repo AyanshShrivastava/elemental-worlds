@@ -174,7 +174,7 @@ local function SetupRaidPortal(ruinsFolder: Folder)
     frameLeft.Size = Vector3.new(3, 24, 3)
     frameLeft.CFrame = CFrame.new(-12, 12, -180)
     frameLeft.Color = Color3.fromRGB(25, 20, 35)
-    frameLeft.Material = Enum.Material.Obsidian
+    frameLeft.Material = Enum.Material.Basalt
     frameLeft.Anchored = true
     frameLeft.Parent = portalModel
 
@@ -183,7 +183,7 @@ local function SetupRaidPortal(ruinsFolder: Folder)
     frameRight.Size = Vector3.new(3, 24, 3)
     frameRight.CFrame = CFrame.new(12, 12, -180)
     frameRight.Color = Color3.fromRGB(25, 20, 35)
-    frameRight.Material = Enum.Material.Obsidian
+    frameRight.Material = Enum.Material.Basalt
     frameRight.Anchored = true
     frameRight.Parent = portalModel
 
@@ -192,7 +192,7 @@ local function SetupRaidPortal(ruinsFolder: Folder)
     frameTop.Size = Vector3.new(27, 3, 3)
     frameTop.CFrame = CFrame.new(0, 24, -180)
     frameTop.Color = Color3.fromRGB(25, 20, 35)
-    frameTop.Material = Enum.Material.Obsidian
+    frameTop.Material = Enum.Material.Basalt
     frameTop.Anchored = true
     frameTop.Parent = portalModel
 

@@ -13,8 +13,8 @@ function AnimationMarkerUtil.PlayWithMarker(
     animationId: string,
     markerName: string,
     fallbackDelaySeconds: number,
-    onMarkerFired: () => (),
-    onEnded: (() => ())?
+    onMarkerFired: () -> (),
+    onEnded: (() -> ())?
 ): AnimationTrack?
     local animator = humanoid:FindFirstChildOfClass("Animator")
     if not animator then
