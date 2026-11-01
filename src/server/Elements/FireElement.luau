@@ -53,14 +53,13 @@ function FireElement.CastMove1(player: Player, character: Model, rootPart: BaseP
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
-        -- Burst AoE at impact/miss position
-        VFXBroadcastService.Broadcast("Shockwave", {
-            Position = impactPos,
-            Element = "Fire",
-            Radius = 16,
+        -- Visual fireball projectile with traveling flame sphere and burst on arrival
+        VFXBroadcastService.Broadcast("Fireball", {
+            StartPos = spawnPos,
+            EndPos = impactPos,
             Duration = 0.35,
-            Shake = 0.35,
             SFXId = ability.SFXId,
+            Shake = 0.4,
         })
 
         local burstCFrame = CFrame.new(impactPos)

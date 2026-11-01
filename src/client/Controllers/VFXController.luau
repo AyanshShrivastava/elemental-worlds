@@ -136,6 +136,162 @@ function VFXController.Init()
                     SoundController.PlaySound3D("SwordSlash", data.CFrame.Position, 0.7)
                 end
 
+            elseif vfxType == "Fireball" and data and data.StartPos and data.EndPos then
+                VFXHelper.CreateFireball(data.StartPos, data.EndPos, data.Duration or 0.35)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.85)
+                end
+                if data.Shake then
+                    CameraShakeController.Shake(data.Shake)
+                end
+
+            elseif vfxType == "WaterSpray" and data and data.CFrame then
+                VFXHelper.CreateWaterSpray(data.CFrame, data.Range or 12)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.CFrame.Position, 0.75)
+                end
+
+            elseif vfxType == "WaterHand" and data and data.Position then
+                VFXHelper.CreateWaterHand(data.Position)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.9)
+                end
+                CameraShakeController.Shake(data.Shake or 0.45)
+
+            elseif vfxType == "VortexSphere" and data and data.StartPos and data.EndPos then
+                VFXHelper.CreateVortexSphere(data.StartPos, data.EndPos, data.Duration or 0.4)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.85)
+                end
+                CameraShakeController.Shake(data.Shake or 0.5)
+
+            elseif vfxType == "WaterDragon" and data and data.Character then
+                VFXHelper.AttachWaterDragon(data.Character, data.Duration or 5.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.85)
+                end
+
+            elseif vfxType == "EarthPillars" and data and data.CFrame then
+                VFXHelper.CreateEarthPillars(data.CFrame, data.Duration or 6.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.CFrame.Position, 0.85)
+                end
+                CameraShakeController.Shake(0.35)
+
+            elseif vfxType == "Boulder" and data and data.StartPos and data.EndPos then
+                VFXHelper.CreateBoulder(data.StartPos, data.EndPos, data.Duration or 0.45)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.9)
+                end
+                CameraShakeController.Shake(data.Shake or 0.55)
+
+            elseif vfxType == "StoneGauntlet" and data and data.Character then
+                VFXHelper.CreateStoneGauntlet(data.Character, data.Duration or 0.4)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.8)
+                end
+
+            elseif vfxType == "TerraSequence" and data and data.Position then
+                VFXHelper.CreateTerraSequence(data.Position)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.95)
+                end
+
+            elseif vfxType == "MirrorsOfJudgement" and data and data.Position then
+                VFXHelper.CreateMirrorsOfJudgement(data.Position)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.85)
+                end
+                CameraShakeController.Shake(data.Shake or 0.5)
+
+            elseif vfxType == "BlindingFlash" and data and data.Position then
+                VFXHelper.CreateBlindingFlash(data.Position)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.85)
+                end
+
+            elseif vfxType == "Tornado" and data and data.StartPos and data.EndPos then
+                VFXHelper.CreateTornado(data.StartPos, data.EndPos, data.Duration or 0.45)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.8)
+                end
+                CameraShakeController.Shake(data.Shake or 0.35)
+
+            elseif vfxType == "Cyclone" and data and data.Position then
+                VFXHelper.CreateCyclone(data.Position, data.Radius or 20, data.Duration or 4.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.9)
+                end
+                CameraShakeController.Shake(data.Shake or 0.5)
+
+            elseif vfxType == "WindLightning" and data and data.StartPos and data.EndPos then
+                VFXHelper.CreateWindLightning(data.StartPos, data.EndPos)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.8)
+                end
+
+            elseif vfxType == "SpeedBoost" and data and data.Character then
+                VFXHelper.AttachSpeedBoost(data.Character, data.Duration or 5.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.8)
+                end
+
+            elseif vfxType == "GlitchedTrail" and data and data.StartPos and data.EndPos then
+                VFXHelper.CreateGlitchedTrail(data.StartPos, data.EndPos)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.8)
+                end
+
+            elseif vfxType == "GlitchWall" and data and data.Character then
+                VFXHelper.CreateGlitchWall(data.Character, data.Duration or 0.6)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.85)
+                end
+
+            elseif vfxType == "404Ball" and data and data.StartPos and data.EndPos then
+                VFXHelper.Create404Ball(data.StartPos, data.EndPos, data.Duration or 0.45)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.StartPos, 0.9)
+                end
+                CameraShakeController.Shake(data.Shake or 0.6)
+
+            elseif vfxType == "GlitchInvis" and data and data.Character then
+                VFXHelper.AttachGlitchInvis(data.Character, data.Duration or 5.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.8)
+                end
+
+            elseif vfxType == "GlitchCage" and data and data.Position then
+                VFXHelper.CreateGlitchCage(data.Position, data.Duration or 5.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.85)
+                end
+
+            elseif vfxType == "ClockAura" and data and data.Character then
+                VFXHelper.AttachClockDial(data.Character)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.8)
+                end
+
+            elseif vfxType == "TimeInjection" and data and data.Position then
+                VFXHelper.CreateTimeInjection(data.Position)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 0.85)
+                end
+                CameraShakeController.Shake(data.Shake or 0.45)
+
+            elseif vfxType == "UntouchableBarrier" and data and data.Character then
+                VFXHelper.AttachUntouchableBarrier(data.Character, data.Duration or 4.0)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Character:GetPivot().Position, 0.85)
+                end
+
+            elseif vfxType == "VirtualKill" and data and data.Position then
+                VFXHelper.CreateVirtualKill(data.Position)
+                if data.SFXId and data.SFXId ~= "" then
+                    SoundController.PlayAudioId3D(data.SFXId, data.Position, 1.0)
+                end
+
             elseif vfxType == "ConvergingCharge" and data and data.Position then
                 local element = data.Element or "Fire"
                 VFXHelper.CreateConvergingCharge(data.Position, element, data.Duration or 0.5)

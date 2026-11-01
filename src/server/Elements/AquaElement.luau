@@ -29,6 +29,13 @@ function AquaElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Visual dual water spray from hands
+    VFXBroadcastService.Broadcast("WaterSpray", {
+        CFrame = rootPart.CFrame,
+        Range = ability.Range,
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
@@ -41,13 +48,10 @@ function AquaElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local strikeCFrame = rootPart.CFrame * CFrame.new(0, 0, -8)
-    VFXBroadcastService.Broadcast("Shockwave", {
+    VFXBroadcastService.Broadcast("WaterHand", {
         Position = strikeCFrame.Position,
-        Element = "Aqua",
-        Radius = 14,
-        Duration = 0.3,
-        Shake = 0.35,
         SFXId = ability.SFXId,
+        Shake = 0.45,
     })
 
     local targets = HitboxService.FindTargetsInCone(strikeCFrame, ability.Range, ability.ConeAngle, character)
@@ -73,13 +77,12 @@ function AquaElement.CastMove2(player: Player, character: Model, rootPart: BaseP
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
-        VFXBroadcastService.Broadcast("Shockwave", {
-            Position = impactPos,
-            Element = "Aqua",
-            Radius = 20,
-            Duration = 0.45,
-            Shake = 0.45,
+        VFXBroadcastService.Broadcast("VortexSphere", {
+            StartPos = spawnPos,
+            EndPos = impactPos,
+            Duration = 0.4,
             SFXId = ability.SFXId,
+            Shake = 0.5,
         })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 18, 360, character)
@@ -97,6 +100,12 @@ function AquaElement.CastMove3(player: Player, character: Model, rootPart: BaseP
 
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "WaterDragon", duration, player)
+
+    VFXBroadcastService.Broadcast("WaterDragon", {
+        Character = character,
+        Duration = duration,
+        SFXId = ability.SFXId,
+    })
 end
 
 -- Move 4: Aqua: Limitless Punches

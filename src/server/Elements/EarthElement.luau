@@ -29,6 +29,13 @@ function EarthElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Visual stone blade slash
+    VFXBroadcastService.Broadcast("SlashArc", {
+        CFrame = rootPart.CFrame * CFrame.new(0, 0, -3),
+        Element = "Earth",
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
@@ -51,19 +58,10 @@ function EarthElement.CastMove1(player: Player, character: Model, rootPart: Base
     wallPart.CanCollide = true
     wallPart.Parent = Workspace:FindFirstChild("Map") or Workspace
 
-    -- Visual eruption effects
-    VFXBroadcastService.Broadcast("Crater", {
-        Position = wallPart.Position,
-        Element = "Earth",
-        Radius = 10,
-        SFXId = ability.SFXId,
-    })
-    VFXBroadcastService.Broadcast("Shockwave", {
-        Position = wallPart.Position,
-        Element = "Earth",
-        Radius = 14,
-        Duration = 0.35,
-        Shake = 0.3,
+    -- Visual 3-pillar rock eruption
+    VFXBroadcastService.Broadcast("EarthPillars", {
+        CFrame = wallPart.CFrame,
+        Duration = wallDuration,
         SFXId = ability.SFXId,
     })
 
@@ -86,20 +84,13 @@ function EarthElement.CastMove2(player: Player, character: Model, rootPart: Base
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
-        -- Visual boulder shatter impact
-        VFXBroadcastService.Broadcast("Crater", {
-            Position = impactPos,
-            Element = "Earth",
-            Radius = 14,
-            SFXId = ability.SFXId,
-        })
-        VFXBroadcastService.Broadcast("Shockwave", {
-            Position = impactPos,
-            Element = "Earth",
-            Radius = 20,
+        -- Visual giant rolling boulder and shatter impact
+        VFXBroadcastService.Broadcast("Boulder", {
+            StartPos = spawnPos,
+            EndPos = impactPos,
             Duration = 0.45,
-            Shake = 0.5,
             SFXId = ability.SFXId,
+            Shake = 0.55,
         })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 15, 360, character)
@@ -114,6 +105,13 @@ end
 function EarthElement.CastMove3(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Earth", "3")
     if not ability then return end
+
+    -- Visual stone gauntlet manifests on punch
+    VFXBroadcastService.Broadcast("StoneGauntlet", {
+        Character = character,
+        Duration = 0.4,
+        SFXId = ability.SFXId,
+    })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
@@ -158,18 +156,8 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
                     Duration = 0.08,
                     Intensity = 1.3,
                 })
-                VFXBroadcastService.Broadcast("Crater", {
+                VFXBroadcastService.Broadcast("TerraSequence", {
                     Position = tRoot.Position,
-                    Element = "Earth",
-                    Radius = 18,
-                    SFXId = ability.SFXId,
-                })
-                VFXBroadcastService.Broadcast("Shockwave", {
-                    Position = tRoot.Position,
-                    Element = "Earth",
-                    Radius = 26,
-                    Duration = 0.5,
-                    Shake = 0.65,
                     SFXId = ability.SFXId,
                 })
             end

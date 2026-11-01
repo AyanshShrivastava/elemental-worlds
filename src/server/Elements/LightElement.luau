@@ -28,6 +28,16 @@ function LightElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Visual dim light beam
+    local m1End = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("Beam", {
+        StartPos = rootPart.Position + Vector3.new(0, 1.2, 0),
+        EndPos = m1End,
+        Element = "Light",
+        Thickness = 0.7,
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
@@ -44,8 +54,8 @@ function LightElement.CastMove1(player: Player, character: Model, rootPart: Base
         StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
         EndPos = beamEnd,
         Element = "Light",
-        Thickness = 1.4,
-        Shake = 0.25,
+        Thickness = 2.0,
+        Shake = 0.35,
         SFXId = ability.SFXId,
     })
 
@@ -63,26 +73,17 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     if not target then return end
 
-    -- Ray bounces between mirrors and slams target
-    task.delay(0.3, function()
+    -- Visual crystalline mirrors with bouncing light rays and inward slam
+    VFXBroadcastService.Broadcast("MirrorsOfJudgement", {
+        Position = target.RootPart.Position,
+        SFXId = ability.SFXId,
+        Shake = 0.5,
+    })
+
+    task.delay(0.35, function()
         if target.Character.Parent and target.Humanoid.Health > 0 then
             local slamVector = Vector3.new(0, -25, 0)
             HitboxService.ApplyDamage(player, target, ability.BaseDamage, slamVector)
-
-            VFXBroadcastService.Broadcast("Crater", {
-                Position = target.RootPart.Position,
-                Element = "Light",
-                Radius = 12,
-                SFXId = ability.SFXId,
-            })
-            VFXBroadcastService.Broadcast("Shockwave", {
-                Position = target.RootPart.Position,
-                Element = "Light",
-                Radius = 16,
-                Duration = 0.35,
-                Shake = 0.45,
-                SFXId = ability.SFXId,
-            })
         end
     end)
 end
@@ -95,8 +96,12 @@ function LightElement.CastMove3(player: Player, character: Model, rootPart: Base
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, ability.BaseDamage, nil)
-        -- Apply fair 2-second blindness status effect
+        -- Apply fair 2-second blindness status effect & visual blinding flash
         StatusEffectService.ApplyEffect(target.Character, "Blinded", ability.Duration or 2.0, player)
+        VFXBroadcastService.Broadcast("BlindingFlash", {
+            Position = target.RootPart.Position,
+            SFXId = ability.SFXId,
+        })
     end
 end
 

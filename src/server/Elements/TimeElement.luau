@@ -28,6 +28,12 @@ function TimeElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
+    -- Visual glowing clock dial aura on striking fist
+    VFXBroadcastService.Broadcast("ClockAura", {
+        Character = character,
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
@@ -74,17 +80,14 @@ function TimeElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     local ability = AbilityConfig.GetAbility("Time", "2")
     if not ability then return end
 
-    VFXBroadcastService.Broadcast("Shockwave", {
-        Position = rootPart.Position,
-        Element = "Time",
-        Radius = 20,
-        Duration = 0.4,
-        Shake = 0.35,
-        SFXId = ability.SFXId,
-    })
-
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
+        -- Visual abstract timeline streams & spinning clock rings
+        VFXBroadcastService.Broadcast("TimeInjection", {
+            Position = target.RootPart.Position,
+            SFXId = ability.SFXId,
+            Shake = 0.45,
+        })
         -- Brief time stop effect
         StatusEffectService.ApplyEffect(target.Character, "TimeStopped", 0.8, player)
         task.delay(0.2, function()
@@ -103,6 +106,13 @@ function TimeElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     local duration = ability.Duration or 4.0
     -- Applies Untouchable status: StatusEffectService.CanTakeDamage returns false!
     StatusEffectService.ApplyEffect(character, "Untouchable", duration, player)
+
+    -- Visual revolving chronological forcefield with ethereal clock gears
+    VFXBroadcastService.Broadcast("UntouchableBarrier", {
+        Character = character,
+        Duration = duration,
+        SFXId = ability.SFXId,
+    })
 end
 
 -- Move 4: Virtual Kill (Ultimate instant KO with 150s cooldown)
@@ -132,18 +142,9 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
                 Duration = 0.1,
                 Intensity = 1.5,
             })
-            VFXBroadcastService.Broadcast("Crater", {
+            -- Visual colossal floor clock dial, vertical chronological beam and burst
+            VFXBroadcastService.Broadcast("VirtualKill", {
                 Position = target.RootPart.Position,
-                Element = "Time",
-                Radius = 22,
-                SFXId = ability.SFXId,
-            })
-            VFXBroadcastService.Broadcast("Shockwave", {
-                Position = target.RootPart.Position,
-                Element = "Time",
-                Radius = 30,
-                Duration = 0.5,
-                Shake = 0.75,
                 SFXId = ability.SFXId,
             })
         end

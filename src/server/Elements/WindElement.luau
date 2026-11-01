@@ -28,6 +28,14 @@ function WindElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
+    -- Visual wind lightning projectile
+    local m1End = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("WindLightning", {
+        StartPos = rootPart.Position + Vector3.new(0, 1.2, 0),
+        EndPos = m1End,
+        SFXId = ability.SFXId,
+    })
+
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
         HitboxService.ApplyDamage(player, target, damage, knockback, step)
@@ -39,13 +47,16 @@ function WindElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     local ability = AbilityConfig.GetAbility("Wind", "1")
     if not ability then return end
 
-    VFXBroadcastService.Broadcast("Shockwave", {
-        Position = rootPart.Position + (rootPart.CFrame.LookVector * 10),
-        Element = "Wind",
-        Radius = 16,
-        Duration = 0.35,
-        Shake = 0.35,
+    local spawnPos = rootPart.Position + (rootPart.CFrame.LookVector * 2)
+    local endPos = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+
+    -- Visual mini tornado traveling forward
+    VFXBroadcastService.Broadcast("Tornado", {
+        StartPos = spawnPos,
+        EndPos = endPos,
+        Duration = 0.45,
         SFXId = ability.SFXId,
+        Shake = 0.35,
     })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
@@ -62,8 +73,17 @@ function WindElement.CastMove2(player: Player, character: Model, rootPart: BaseP
 
     local cycloneCenter = rootPart.Position + (rootPart.CFrame.LookVector * 10)
     local duration = ability.Duration or 4.0
-    local elapsed = 0
 
+    -- Visual massive swirling cyclone with suction particles
+    VFXBroadcastService.Broadcast("Cyclone", {
+        Position = cycloneCenter,
+        Radius = ability.Range,
+        Duration = duration,
+        SFXId = ability.SFXId,
+        Shake = 0.5,
+    })
+
+    local elapsed = 0
     task.spawn(function()
         while elapsed < duration and character.Parent do
             task.wait(0.5)
@@ -87,6 +107,13 @@ function WindElement.CastMove3(player: Player, character: Model, rootPart: BaseP
 
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "SpeedBoost", duration, player)
+
+    -- Visual sonic wind trails and foot ring emitters
+    VFXBroadcastService.Broadcast("SpeedBoost", {
+        Character = character,
+        Duration = duration,
+        SFXId = ability.SFXId,
+    })
 end
 
 -- Move 4: Wind: Death Speed (Cinematic Sequence)

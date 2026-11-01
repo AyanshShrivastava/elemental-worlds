@@ -31,8 +31,16 @@ function ErrorElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
+    local prevPos = rootPart.Position
     -- Dash forward
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -12)
+
+    -- Visual chromatic aberration glitch trail
+    VFXBroadcastService.Broadcast("GlitchedTrail", {
+        StartPos = prevPos,
+        EndPos = rootPart.Position,
+        SFXId = ability.SFXId,
+    })
 
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     for _, target in targets do
@@ -44,6 +52,13 @@ end
 function ErrorElement.CastMove1(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Error", "1")
     if not ability then return end
+
+    -- Visual holographic digital arm shield
+    VFXBroadcastService.Broadcast("GlitchWall", {
+        Character = character,
+        Duration = 0.6,
+        SFXId = ability.SFXId,
+    })
 
     -- Dash forward with glitched wall impact
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -18)
@@ -86,13 +101,13 @@ function ErrorElement.CastMove2(player: Player, character: Model, rootPart: Base
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
-        VFXBroadcastService.Broadcast("Shockwave", {
-            Position = impactPos,
-            Element = "Error",
-            Radius = 22,
+        -- Visual pulsating chromatic aberration 404 ball
+        VFXBroadcastService.Broadcast("404Ball", {
+            StartPos = spawnPos,
+            EndPos = impactPos,
             Duration = 0.45,
-            Shake = 0.55,
             SFXId = ability.SFXId,
+            Shake = 0.6,
         })
 
         local targets = HitboxService.FindTargetsInCone(CFrame.new(impactPos), 20, 360, character)
@@ -110,6 +125,13 @@ function ErrorElement.CastMove3(player: Player, character: Model, rootPart: Base
 
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "GotGlitched", duration, player)
+
+    -- Visual scanline glitch dissolution and shimmer silhouette
+    VFXBroadcastService.Broadcast("GlitchInvis", {
+        Character = character,
+        Duration = duration,
+        SFXId = ability.SFXId,
+    })
 end
 
 -- Move 4: Spatial Distortion (Requires 50% Error Meter)
@@ -223,6 +245,11 @@ function ErrorElement.CastMove5(player: Player, character: Model, rootPart: Base
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, 360, character)
     for _, target in targets do
         StatusEffectService.ApplyEffect(target.Character, "UnparalleledStun", duration, player)
+        VFXBroadcastService.Broadcast("GlitchCage", {
+            Position = target.RootPart.Position,
+            Duration = duration,
+            SFXId = ability.SFXId,
+        })
     end
 end
 
