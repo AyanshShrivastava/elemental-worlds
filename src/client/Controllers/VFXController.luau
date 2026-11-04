@@ -360,4 +360,77 @@ function VFXController.PlayVFX(vfxType: string, position: Vector3?, element: str
     end
 end
 
+-- ==================== REQUIRED UNIFIED VFX CONTROLLER API ====================
+
+function VFXController.StopVFX(effectInstance: Instance?)
+    if effectInstance and effectInstance.Parent then
+        effectInstance:Destroy()
+    end
+end
+
+function VFXController.AttachVFX(character: Model, element: string): Attachment?
+    return VFXHelper.AttachElementalAura(character, element)
+end
+
+function VFXController.PlayImpact(position: Vector3, element: string, isCrit: boolean?, sfxId: string?, shake: number?)
+    VFXHelper.CreateImpactBurst(position, element, 32)
+    if isCrit then
+        VFXController.TriggerImpactFrame(0.06, 1.0)
+    end
+    if sfxId and sfxId ~= "" then
+        SoundController.PlayAudioId3D(sfxId, position, 0.85)
+    else
+        SoundController.PlaySound3D("Punch", position, 0.8)
+    end
+    CameraShakeController.Shake(shake or 0.3)
+end
+
+function VFXController.PlayProjectile(startPos: Vector3, endPos: Vector3, element: string, duration: number?)
+    local dur = duration or 0.35
+    if element == "Fire" then
+        VFXHelper.CreateFireball(startPos, endPos, dur)
+    elseif element == "Aqua" then
+        VFXHelper.CreateVortexSphere(startPos, endPos, dur)
+    elseif element == "Earth" then
+        VFXHelper.CreateBoulder(startPos, endPos, dur)
+    elseif element == "Wind" then
+        VFXHelper.CreateTornado(startPos, endPos, dur)
+    elseif element == "Error" then
+        VFXHelper.Create404Ball(startPos, endPos, dur)
+    else
+        VFXHelper.CreateBeam(startPos, endPos, element, 1.5)
+    end
+end
+
+function VFXController.PlayCharge(position: Vector3, element: string, duration: number?)
+    VFXHelper.CreateConvergingCharge(position, element, duration or 0.5)
+end
+
+function VFXController.PlayTransformation(character: Model, element: string, duration: number?)
+    local dur = duration or 5.0
+    if element == "Aqua" then
+        VFXHelper.AttachWaterDragon(character, dur)
+    elseif element == "Wind" then
+        VFXHelper.AttachSpeedBoost(character, dur)
+    elseif element == "Error" then
+        VFXHelper.AttachGlitchInvis(character, dur)
+    elseif element == "Time" then
+        VFXHelper.AttachUntouchableBarrier(character, dur)
+    else
+        VFXHelper.AttachElementalAura(character, element)
+    end
+end
+
+function VFXController.CleanupVFX(target: Instance?)
+    if target and target.Parent then
+        target:Destroy()
+    else
+        local folder = Workspace:FindFirstChild("ActiveVFX")
+        if folder then
+            folder:ClearAllChildren()
+        end
+    end
+end
+
 return table.freeze(VFXController)
+

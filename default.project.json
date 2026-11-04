@@ -103,6 +103,9 @@
       "$className": "ReplicatedStorage",
       "Shared": {
         "$path": "src/shared"
+      },
+      "VFX": {
+        "$path": "src/vfx"
       }
     },
     "ServerScriptService": {

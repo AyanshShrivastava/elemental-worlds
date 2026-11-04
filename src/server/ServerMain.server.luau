@@ -61,8 +61,10 @@ local openShopEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.OPEN_SHOP)
 local fragmentCollectedEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.FRAGMENT_COLLECTED)
 local mapTeleportEvent = GetOrCreateRemoteEvent(GameConfig.REMOTES.MAP_TELEPORT)
 
--- 2. Build World 1 Map
+-- 2. Build World 1 Map & Preload 36 Ability VFX Models
 MapService.BuildWorld1()
+local VFXModelBuilder = require(ReplicatedStorage.Shared.Modules.VFXModelBuilder)
+VFXModelBuilder.BuildAll()
 
 -- 3. Remote Event Listeners
 
