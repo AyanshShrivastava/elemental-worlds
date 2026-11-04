@@ -18,10 +18,8 @@ local Debris = game:GetService("Debris")
 
 local VFXHelper = {}
 
--- Real Verified Roblox Creator Store Asset IDs
+-- Real Verified Roblox Creator Store Asset IDs (Textures and Meshes only)
 local ASSETS = {
-    FIRE_SLASH_MODEL  = "rbxassetid://107157303748652", -- Fire slash attack VFX [Free] by Squav
-    LIGHT_EXPLOSION_MODEL = "rbxassetid://108812638060941", -- Light explosion VFX
     SLASH_TEXTURE     = "rbxassetid://4991873131", -- Anime crescent curve
     STAR_SPARKLE      = "rbxassetid://6034177218", -- Crisp anime 4-point star
     SMOKE_PUFF        = "rbxassetid://2520762076", -- Stylized dust / smoke
@@ -33,49 +31,56 @@ local ASSETS = {
     CLOCK_DIAL        = "rbxassetid://1084991219", -- Ethereal clock face
 }
 
--- Curated Harmonious Stylized Palettes (Strictly NO gold, NO rainbow)
+-- Curated Harmonious Stylized Palettes (Strictly NO gold, NO rainbow; with dark contrast silhouettes)
 local ELEMENT_PALETTES = {
     Fire = {
-        Primary = Color3.fromRGB(255, 65, 20),
-        Secondary = Color3.fromRGB(255, 140, 25),
-        Dark = Color3.fromRGB(150, 15, 10),
-        Core = Color3.fromRGB(255, 240, 220),
+        Primary = Color3.fromRGB(255, 90, 20),
+        Secondary = Color3.fromRGB(255, 170, 30),
+        Dark = Color3.fromRGB(150, 20, 10),
+        Core = Color3.fromRGB(255, 245, 190),
+        Contrast = Color3.fromRGB(20, 10, 8), -- Obsidian Black
     },
     Aqua = {
-        Primary = Color3.fromRGB(0, 195, 255),
+        Primary = Color3.fromRGB(0, 180, 255),
         Secondary = Color3.fromRGB(120, 230, 255),
-        Dark = Color3.fromRGB(15, 70, 180),
-        Core = Color3.fromRGB(230, 250, 255),
+        Dark = Color3.fromRGB(10, 60, 160),
+        Core = Color3.fromRGB(230, 255, 255),
+        Contrast = Color3.fromRGB(8, 15, 30), -- Deep Oceanic Navy
     },
     Earth = {
         Primary = Color3.fromRGB(140, 95, 55),
         Secondary = Color3.fromRGB(210, 170, 110),
         Dark = Color3.fromRGB(65, 45, 25),
         Core = Color3.fromRGB(255, 245, 230),
+        Contrast = Color3.fromRGB(40, 30, 20), -- Dark Slate Brown
     },
     Light = {
         Primary = Color3.fromHex("#C8A2F0"),   -- Pale lavender main
         Secondary = Color3.fromHex("#E9D8FF"), -- Ethereal lavender glow
         Dark = Color3.fromHex("#8B5BD6"),      -- Deeper celestial violet
-        Core = Color3.fromRGB(255, 250, 255),  -- Brilliant white-lavender highlight
+        Core = Color3.fromRGB(255, 255, 255),  -- Brilliant white highlight
+        Contrast = Color3.fromRGB(45, 20, 70), -- Deep Violet Obsidian
     },
     Wind = {
         Primary = Color3.fromRGB(60, 240, 180),
         Secondary = Color3.fromRGB(180, 255, 230),
         Dark = Color3.fromRGB(30, 150, 100),
-        Core = Color3.fromRGB(235, 255, 250),
+        Core = Color3.fromRGB(245, 255, 250),
+        Contrast = Color3.fromRGB(10, 40, 30), -- Dark Forest Silhouette
     },
     Error = {
         Primary = Color3.fromRGB(255, 20, 140),
         Secondary = Color3.fromRGB(0, 240, 255),
         Dark = Color3.fromRGB(120, 0, 95),
         Core = Color3.fromRGB(255, 255, 255),
+        Contrast = Color3.fromRGB(15, 15, 25), -- Glitch Obsidian
     },
     Time = {
         Primary = Color3.fromRGB(90, 110, 255),
         Secondary = Color3.fromRGB(190, 180, 255),
         Dark = Color3.fromRGB(30, 35, 130),
         Core = Color3.fromRGB(245, 240, 255),
+        Contrast = Color3.fromRGB(10, 20, 50), -- Midnight Blue Silhouette
     },
 }
 
@@ -181,36 +186,207 @@ function VFXHelper.CreateShockwave(position: Vector3, maxRadius: number, duratio
     Debris:AddItem(smokePart, d * 1.5)
 end
 
--- ==================== 2. MULTI-TIER IMPACT BURST ====================
+-- ==================== 2. MASTER ANIME GROUND IMPACT BURST ====================
+-- Recreates the exact high-tier cel-shaded anime burst from user reference:
+-- Glowing Neon Wedges + Interlocking Obsidian/Dark Contrast Silhouette Spikes + Ground Ring + Expanding Core Sphere
+function VFXHelper.CreateAnimeBurst(originCF: CFrame, element: string?, scale: number?): Model
+    local palette = ELEMENT_PALETTES[element or "Fire"] or ELEMENT_PALETTES.Fire
+    local s = scale or 1.0
+    local vfxFolder = GetVFXFolder()
+    
+    local burstModel = Instance.new("Model")
+    burstModel.Name = "AnimeBurst_" .. (element or "Generic")
+    burstModel.Parent = vfxFolder
+    
+    local pos = originCF.Position
+    
+    -- 1. Ground Ring Scorch Shockwave
+    local groundRing = Instance.new("Part")
+    groundRing.Name = "GroundRing"
+    groundRing.Size = Vector3.new(2 * s, 0.1, 2 * s)
+    groundRing.CFrame = CFrame.new(pos + Vector3.new(0, 0.05, 0))
+    groundRing.Material = Enum.Material.Neon
+    groundRing.Color = palette.Primary
+    groundRing.Transparency = 0.2
+    groundRing.Anchored = true
+    groundRing.CanCollide = false
+    groundRing.Parent = burstModel
+    
+    local ringMesh = Instance.new("SpecialMesh")
+    ringMesh.MeshId = ASSETS.RING_MESH
+    ringMesh.Scale = Vector3.new(1 * s, 1 * s, 0.5 * s)
+    ringMesh.Parent = groundRing
+    
+    TweenService:Create(ringMesh, TweenInfo.new(0.42, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        Scale = Vector3.new(20 * s, 20 * s, 0.6 * s)
+    }):Play()
+    TweenService:Create(groundRing, TweenInfo.new(0.42, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Transparency = 1
+    }):Play()
+
+    -- 2. Inner Superheated Core Sphere
+    local core = Instance.new("Part")
+    core.Name = "SuperheatedCore"
+    core.Shape = Enum.PartType.Ball
+    core.Size = Vector3.new(2 * s, 2 * s, 2 * s)
+    core.CFrame = CFrame.new(pos)
+    core.Material = Enum.Material.Neon
+    core.Color = palette.Core
+    core.Anchored = true
+    core.CanCollide = false
+    core.Parent = burstModel
+    
+    TweenService:Create(core, TweenInfo.new(0.12, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+        Size = Vector3.new(7 * s, 9 * s, 7 * s)
+    }):Play()
+    task.delay(0.12, function()
+        if core.Parent then
+            TweenService:Create(core, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Size = Vector3.new(0.1, 0.1, 0.1),
+                Transparency = 1
+            }):Play()
+        end
+    end)
+    
+    -- 3. Point Light Flash
+    local light = Instance.new("PointLight")
+    light.Color = palette.Primary
+    light.Brightness = 14
+    light.Range = 30 * s
+    light.Parent = core
+    TweenService:Create(light, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Brightness = 0,
+        Range = 0
+    }):Play()
+
+    -- 4. Rising Jagged Flame/Spike Petals (Layer 1: Bright Glowing Neon Wedges)
+    local spikeCount = 14
+    for i = 1, spikeCount do
+        local angle = (i / spikeCount) * math.pi * 2 + math.random(-15, 15) * 0.01
+        local distFromCenter = math.random(15, 35) * 0.1 * s
+        local height = math.random(60, 130) * 0.1 * s
+        local width = math.random(8, 16) * 0.1 * s
+        
+        local spike = Instance.new("Part")
+        spike.Name = "NeonSpike_" .. i
+        spike.Size = Vector3.new(width, 0.3, width)
+        spike.CFrame = CFrame.new(pos + Vector3.new(math.cos(angle) * distFromCenter, 0, math.sin(angle) * distFromCenter))
+            * CFrame.Angles(math.rad(math.random(-20, 20)), angle, math.rad(math.random(15, 35)))
+        spike.Material = Enum.Material.Neon
+        spike.Color = if i % 2 == 0 then palette.Primary else palette.Core
+        spike.Transparency = 0.05
+        spike.Anchored = true
+        spike.CanCollide = false
+        spike.Parent = burstModel
+        
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Wedge
+        mesh.Scale = Vector3.new(1, 1, 1)
+        mesh.Parent = spike
+        
+        TweenService:Create(spike, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = Vector3.new(width * 1.2, height, width * 0.8),
+            CFrame = spike.CFrame * CFrame.new(0, height * 0.5, 0)
+        }):Play()
+        task.delay(0.18, function()
+            if spike.Parent then
+                TweenService:Create(spike, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    Size = Vector3.new(0.05, height * 1.3, 0.05),
+                    Transparency = 1,
+                    CFrame = spike.CFrame * CFrame.new(0, height * 0.2, 0)
+                }):Play()
+            end
+        end)
+    end
+
+    -- 5. Black/Dark Contrast Smoke & Silhouette Spikes (SmoothPlastic Wedges in Contrast Color)
+    local contrastSpikeCount = 12
+    for i = 1, contrastSpikeCount do
+        local angle = (i / contrastSpikeCount) * math.pi * 2 + (math.pi / contrastSpikeCount)
+        local distFromCenter = math.random(25, 45) * 0.1 * s
+        local height = math.random(70, 120) * 0.1 * s
+        local width = math.random(10, 20) * 0.1 * s
+        
+        local darkSpike = Instance.new("Part")
+        darkSpike.Name = "ContrastSpike_" .. i
+        darkSpike.Size = Vector3.new(width, 0.3, width)
+        darkSpike.CFrame = CFrame.new(pos + Vector3.new(math.cos(angle) * distFromCenter, 0, math.sin(angle) * distFromCenter))
+            * CFrame.Angles(math.rad(math.random(-25, 25)), angle, math.rad(math.random(20, 45)))
+        darkSpike.Material = Enum.Material.SmoothPlastic
+        darkSpike.Color = palette.Contrast
+        darkSpike.Transparency = 0.1
+        darkSpike.Anchored = true
+        darkSpike.CanCollide = false
+        darkSpike.Parent = burstModel
+        
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Wedge
+        mesh.Scale = Vector3.new(1, 1, 1)
+        mesh.Parent = darkSpike
+        
+        TweenService:Create(darkSpike, TweenInfo.new(0.16, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+            Size = Vector3.new(width, height, width * 0.6),
+            CFrame = darkSpike.CFrame * CFrame.new(0, height * 0.5, 0)
+        }):Play()
+        task.delay(0.2, function()
+            if darkSpike.Parent then
+                TweenService:Create(darkSpike, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    Transparency = 1,
+                    CFrame = darkSpike.CFrame * CFrame.new(0, height * 0.2, 0)
+                }):Play()
+            end
+        end)
+    end
+
+    -- 6. Dynamic Arcing Slash Crescent Trails
+    local arcCount = 6
+    for i = 1, arcCount do
+        local angle = (i / arcCount) * math.pi * 2
+        local arcPart = Instance.new("Part")
+        arcPart.Name = "ArcEmitterPart_" .. i
+        arcPart.Size = Vector3.new(0.2, 0.2, 0.2)
+        arcPart.CFrame = CFrame.new(pos) * CFrame.Angles(0, angle, math.rad(math.random(35, 65)))
+        arcPart.Transparency = 1
+        arcPart.Anchored = true
+        arcPart.CanCollide = false
+        arcPart.Parent = burstModel
+        
+        local crescent = Instance.new("ParticleEmitter")
+        crescent.Texture = ASSETS.SLASH_TEXTURE
+        crescent.Color = ColorSequence.new(palette.Core, palette.Primary)
+        crescent.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 3.5 * s),
+            NumberSequenceKeypoint.new(0.6, 2.0 * s),
+            NumberSequenceKeypoint.new(1, 0.1)
+        })
+        crescent.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(0.8, 0.1),
+            NumberSequenceKeypoint.new(1, 1)
+        })
+        crescent.Lifetime = NumberRange.new(0.25, 0.4)
+        crescent.Speed = NumberRange.new(18 * s, 30 * s)
+        crescent.SpreadAngle = Vector2.new(15, 15)
+        crescent.LightEmission = 0.9
+        crescent.Rate = 0
+        crescent.Parent = arcPart
+        crescent:Emit(4)
+    end
+
+    Debris:AddItem(burstModel, 0.65)
+    return burstModel
+end
+
+-- ==================== 2B. MULTI-TIER IMPACT BURST ====================
 function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particleCount: number)
     local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
     local vfxFolder = GetVFXFolder()
     local count = particleCount or 32
 
-    -- Check for high-fidelity Creator Store Light Explosion VFX (ID 108812638060941)
-    local lightVFXTemplate = ReplicatedStorage:FindFirstChild("LightExplosionVFX")
-    if element == "Light" and lightVFXTemplate then
-        local clone = lightVFXTemplate:Clone()
-        clone.Name = "VFX_ActiveLightExplosion"
-        for _, desc in ipairs(clone:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                desc.Anchored = true
-                desc.CanCollide = false
-            end
-        end
-        clone:PivotTo(CFrame.new(position))
-        clone.Parent = vfxFolder
+    -- 1. Spawn Master Anime Spike Burst with Contrast Silhouettes
+    VFXHelper.CreateAnimeBurst(CFrame.new(position), element, 1.0)
 
-        for _, emitter in ipairs(clone:GetDescendants()) do
-            if emitter:IsA("ParticleEmitter") then
-                emitter:Emit(emitter.Rate > 0 and math.clamp(math.round(emitter.Rate * 0.5), 4, 30) or 8)
-            end
-        end
-
-        Debris:AddItem(clone, 1.5)
-        return
-    end
-
+    -- 2. Emitter Part for Fine Particle Details
     local emitterPart = Instance.new("Part")
     emitterPart.Name = "VFX_ImpactCenter"
     emitterPart.Size = Vector3.new(0.1, 0.1, 0.1)
@@ -219,25 +395,6 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
     emitterPart.CanCollide = false
     emitterPart.Anchored = true
     emitterPart.Parent = vfxFolder
-
-    -- Core Flash Star
-    local coreFlash = Instance.new("Part")
-    coreFlash.Name = "VFX_CoreFlash"
-    coreFlash.Shape = Enum.PartType.Ball
-    coreFlash.Size = Vector3.new(3.5, 3.5, 3.5)
-    coreFlash.CFrame = CFrame.new(position)
-    coreFlash.Material = Enum.Material.Neon
-    coreFlash.Color = palette.Core
-    coreFlash.Transparency = 0
-    coreFlash.CanCollide = false
-    coreFlash.Anchored = true
-    coreFlash.Parent = vfxFolder
-
-    TweenService:Create(coreFlash, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = Vector3.new(0.1, 0.1, 0.1),
-        Transparency = 1,
-    }):Play()
-    Debris:AddItem(coreFlash, 0.15)
 
     -- Anime Star Sparks
     local sparks = Instance.new("ParticleEmitter")
@@ -274,7 +431,7 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
     smoke.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, palette.Secondary),
         ColorSequenceKeypoint.new(0.4, palette.Primary),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 35, 45)),
+        ColorSequenceKeypoint.new(1, palette.Contrast or Color3.fromRGB(35, 35, 45)),
     })
     smoke.Transparency = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0.15),
@@ -293,63 +450,11 @@ function VFXHelper.CreateImpactBurst(position: Vector3, element: string, particl
     smoke.Rate = 0
     smoke.Parent = emitterPart
 
-    -- Point Light Flash
-    local flash = Instance.new("PointLight")
-    flash.Color = palette.Secondary
-    flash.Range = 28
-    flash.Brightness = 6
-    flash.Parent = emitterPart
-
-    TweenService:Create(flash, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Brightness = 0,
-        Range = 0,
-    }):Play()
-
     sparks:Emit(count)
     smoke:Emit(math.round(count * 0.45))
 
     Debris:AddItem(emitterPart, 0.8)
 end
-
--- ==================== 3. DIRECTIONAL ANIME SLASH ARC ====================
-function VFXHelper.CreateSlashArc(cframe: CFrame, element: string, scale: number)
-    local palette = ELEMENT_PALETTES[element] or ELEMENT_PALETTES.Fire
-    local vfxFolder = GetVFXFolder()
-    local s = scale or 1.0
-
-    -- Check for high-fidelity Creator Store Fire Slash VFX (Squav ID 107157303748652)
-    local fireVFXTemplate = ReplicatedStorage:FindFirstChild("FireSlashVFX")
-    if element == "Fire" and fireVFXTemplate then
-        local clone = fireVFXTemplate:Clone()
-        clone.Name = "VFX_ActiveFireSlash"
-        for _, desc in ipairs(clone:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                desc.Anchored = true
-                desc.CanCollide = false
-            end
-        end
-        clone:PivotTo(cframe * CFrame.new(0, 0, -2.5))
-        clone.Parent = vfxFolder
-
-        -- Rapid circular slash sequence: spin parts rapidly through angles to form circular wheel
-        task.spawn(function()
-            local baseCFrame = cframe * CFrame.new(0, 0, -2.5)
-            local steps = 8
-            for i = 1, steps do
-                local angle = (i / steps) * math.pi * 2
-                clone:PivotTo(baseCFrame * CFrame.Angles(0, 0, angle))
-                for _, emitter in ipairs(clone:GetDescendants()) do
-                    if emitter:IsA("ParticleEmitter") then
-                        emitter:Emit(3)
-                    end
-                end
-                task.wait(0.02)
-            end
-        end)
-
-        Debris:AddItem(clone, 0.5)
-        return
-    end
 
     local slashPart = Instance.new("Part")
     slashPart.Name = "VFX_SlashBlade"
@@ -1712,20 +1817,8 @@ function VFXHelper.CreateLightExplosion(position: Vector3, maxRadius: number?, d
     local r = maxRadius or 22
     local totalDuration = duration or 0.48
 
-    -- Check if pre-inserted template exists in ReplicatedStorage
-    local rs = game:GetService("ReplicatedStorage")
-    local customTemplate = rs:FindFirstChild("Assets") and rs.Assets:FindFirstChild("VFX") and rs.Assets.VFX:FindFirstChild("LightExplosion")
-    if customTemplate and customTemplate:IsA("Model") then
-        local clone = customTemplate:Clone()
-        clone:PivotTo(CFrame.new(position))
-        clone.Parent = vfxFolder
-        for _, desc in clone:GetDescendants() do
-            if desc:IsA("ParticleEmitter") then
-                desc:Emit(desc:GetAttribute("EmitCount") or 25)
-            end
-        end
-        Debris:AddItem(clone, totalDuration + 0.6)
-    end
+    -- Spawn Top-Tier Anime Burst with deep violet contrast silhouettes
+    VFXHelper.CreateAnimeBurst(CFrame.new(position), "Light", math.clamp(r / 16, 0.8, 2.5))
 
     -- 1. White-Hot Expanding Core Flash Sphere
     local coreSphere = Instance.new("Part")
@@ -1891,6 +1984,60 @@ function VFXHelper.CreateLightExplosion(position: Vector3, maxRadius: number?, d
     if groundRay then
         VFXHelper.CreateCrater(groundRay.Position, r * 0.65, "Light")
     end
+end
+
+-- ==================== 14. SHOWCASE ALL 7 ELEMENT ANIME BURSTS ====================
+function VFXHelper.CreateShowcase(originPos: Vector3?): Folder
+    local center = originPos or Vector3.new(0, 0, 0)
+    local showcaseFolder = Workspace:FindFirstChild("AnimeVFX_Showcase")
+    if showcaseFolder then
+        showcaseFolder:Destroy()
+    end
+    showcaseFolder = Instance.new("Folder")
+    showcaseFolder.Name = "AnimeVFX_Showcase"
+    showcaseFolder.Parent = Workspace
+
+    local elements = { "Fire", "Aqua", "Earth", "Light", "Wind", "Error", "Time" }
+    local spacing = 16
+
+    for index, elem in ipairs(elements) do
+        local offset = (index - 4) * spacing
+        local burstPos = center + Vector3.new(offset, 0, 0)
+        
+        -- Ground pedestal marker
+        local palette = ELEMENT_PALETTES[elem] or ELEMENT_PALETTES.Fire
+        local ped = Instance.new("Part")
+        ped.Name = "Pedestal_" .. elem
+        ped.Size = Vector3.new(8, 0.4, 8)
+        ped.CFrame = CFrame.new(burstPos)
+        ped.Material = Enum.Material.SmoothPlastic
+        ped.Color = palette.Contrast
+        ped.Anchored = true
+        ped.CanCollide = true
+        ped.Parent = showcaseFolder
+        
+        local labelGui = Instance.new("BillboardGui")
+        labelGui.Size = UDim2.new(0, 150, 0, 40)
+        labelGui.StudsOffset = Vector3.new(0, 3, 0)
+        labelGui.AlwaysOnTop = true
+        labelGui.Parent = ped
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = string.upper(elem) .. " VFX"
+        textLabel.TextColor3 = palette.Primary
+        textLabel.TextScaled = true
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.Parent = labelGui
+
+        -- Trigger burst
+        task.delay((index - 1) * 0.15, function()
+            VFXHelper.CreateAnimeBurst(CFrame.new(burstPos + Vector3.new(0, 0.2, 0)), elem, 1.2)
+        end)
+    end
+
+    return showcaseFolder :: Folder
 end
 
 return table.freeze(VFXHelper)

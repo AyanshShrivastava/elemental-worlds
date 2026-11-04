@@ -61,6 +61,32 @@ local function AddPointLight(parent: Instance, color: Color3, brightness: number
     return light
 end
 
+local function AddAnimeSpikes(parentModel: Model, centerCF: CFrame, primaryColor: Color3, contrastColor: Color3, count: number, radius: number, height: number)
+    for i = 1, count do
+        local angle = (i / count) * math.pi * 2
+        local isContrast = (i % 2 == 1)
+        local spike = Instance.new("Part")
+        spike.Name = isContrast and ("ContrastSpike_" .. i) or ("GlowSpike_" .. i)
+        spike.Size = Vector3.new(0.6, height, 0.6)
+        spike.CFrame = centerCF * CFrame.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+            * CFrame.Angles(math.rad(15), angle, math.rad(25))
+        spike.Material = isContrast and Enum.Material.SmoothPlastic or Enum.Material.Neon
+        spike.Color = isContrast and contrastColor or primaryColor
+        spike.Transparency = isContrast and 0.1 or 0.05
+        spike.Anchored = true
+        spike.CanCollide = false
+        spike.CanTouch = false
+        spike.CanQuery = false
+        spike.CastShadow = false
+        
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Wedge
+        mesh.Scale = Vector3.new(1, 1, 1)
+        mesh.Parent = spike
+        spike.Parent = parentModel
+    end
+end
+
 -- ==================== BUILDERS FOR ALL 36 ABILITIES ====================
 
 -- ----------------- FIRE (5 Abilities) -----------------
@@ -113,6 +139,9 @@ local function BuildFireModels(folder: Folder)
         local outerFlames = CreateBasePart("OuterFlames", Vector3.new(4.2, 4.2, 4.2), Color3.fromRGB(255, 95, 15), Enum.Material.Neon, 0.35)
         outerFlames.Shape = Enum.PartType.Ball
         outerFlames.CFrame = core.CFrame
+
+        -- Stylized Anime Spikes & Dark Contrast Wedges around fireball
+        AddAnimeSpikes(model, core.CFrame, Color3.fromRGB(255, 110, 20), Color3.fromRGB(20, 10, 8), 8, 2.2, 3.5)
 
         local emberEmitter = Instance.new("ParticleEmitter")
         emberEmitter.Name = "Embers"
@@ -303,6 +332,9 @@ local function BuildAquaModels(folder: Folder)
         mesh1.Parent = ring1
         ring1.CFrame = sphere.CFrame * CFrame.Angles(math.rad(45), math.rad(30), 0)
 
+        -- Stylized Anime Water Spikes & Dark Navy Contrast Wedges
+        AddAnimeSpikes(model, sphere.CFrame, Color3.fromRGB(0, 200, 255), Color3.fromRGB(8, 15, 30), 8, 2.5, 3.2)
+
         sphere.Parent = model
         coreFlash.Parent = model
         ring1.Parent = model
@@ -424,6 +456,9 @@ local function BuildEarthModels(folder: Folder)
             rock.CFrame = boulder.CFrame * CFrame.new(math.cos(offsetAngle) * 3.4, math.sin(offsetAngle) * 2.5, 0)
             rock.Parent = model
         end
+
+        -- Stylized Anime Rock Spikes & Dark Slate Contrast Wedges
+        AddAnimeSpikes(model, boulder.CFrame, Color3.fromRGB(180, 130, 80), Color3.fromRGB(40, 30, 20), 8, 3.2, 4.0)
 
         boulder.Parent = model
         model.PrimaryPart = boulder
@@ -560,6 +595,9 @@ local function BuildLightModels(folder: Folder)
             ray.CFrame = orb.CFrame * CFrame.Angles(math.sin(angle), math.cos(angle), 0) * CFrame.new(0, 0, -3.0)
             ray.Parent = model
         end
+
+        -- Stylized Anime Light Spikes & Dark Violet Contrast Wedges
+        AddAnimeSpikes(model, orb.CFrame, colLavender, Color3.fromRGB(45, 20, 70), 8, 2.0, 3.8)
 
         orb.Parent = model
         model.PrimaryPart = orb
@@ -948,6 +986,9 @@ local function BuildTimeModels(folder: Folder)
             ring.CFrame = center.CFrame * CFrame.new(0, i * 4, 0) * CFrame.Angles(math.rad(90), 0, 0)
             ring.Parent = model
         end
+
+        -- Stylized Anime Chronos Spikes & Deep Midnight Blue Contrast Wedges
+        AddAnimeSpikes(model, center.CFrame * CFrame.new(0, 4, 0), colCyan, Color3.fromRGB(10, 20, 50), 8, 3.5, 5.0)
 
         center.Parent = model
         pillar.Parent = model
