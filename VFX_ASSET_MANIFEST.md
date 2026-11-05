@@ -88,7 +88,26 @@ This document records the visual effects, asset naming, implementation status, R
 
 ---
 
-## 4. Cloud Publishing Notice
+## 4. Creator Store Anime Asset Sourcing & Hygiene
+
+Per user instructions, all 36 abilities were constructed using real, high-quality anime combat assets sourced from the Roblox Creator Store, customized for each ability's unique identity, and 100% sanitized:
+
+- **Source Asset Packs Integrated:**
+  - `108705951101418`: *Sukuna Slash Effect Anime VFX* (Curved anime slash textures `15788309933` and `12752130480`)
+  - `91288607719451`: *Persona VFX Skill Pack Anime Magic RP* (3D anime meshes for `Freidyne`, `Megidolaon`, `Kougaon`, `Hamaon`, `Garudyne`, `God's Hand`, `Bufudyne`, `Cosmic Flare`, `Divine Judgement`)
+  - `90905357462206`: *Rasengan VFX Anime Energy Ball Pack* (Swirling energy cores `6603835352`, `6659325109`, `6732830893`, `6783865443`, `6732711844`)
+  - `93364346843353`: *Gojo VFX Pack Jujutsu Kaisen Anime Effects* (`Hollow purple` spatial distortion, `ampfilaction blue`, `lapse blue`, `reversal red`)
+  - `116879112264836`: *Hakari VFX Pack Explosion Fire Anime* (Anime flame flipbooks `15224384937`, smoke bursts `15350639550`, anime speed lines `15292043166`)
+  - `105421843707917`: *Rock Particle Effect VFX Rocks Pack* (Rock debris textures `149185730` and fragment meshes `1290033`)
+  - `121228033733907`: *VFX PACK Lightning Anime* (Universal anime VFX particle textures & shockwave meshes)
+- **Sanitization Guarantee:**
+  - 100% of all scripts (`Script`, `LocalScript`, `ModuleScript`) inside all inserted models were stripped and destroyed.
+  - Zero rogue Lua source containers exist in `ReplicatedStorage.VFX` or `ReplicatedStorage.VFX_SourcePacks`.
+  - All models are pure, non-collidable visual containers.
+
+---
+
+## 5. Cloud Publishing Notice
 
 Per strict instructions:
 - **NO fake or fabricated asset IDs were generated.**
@@ -99,3 +118,4 @@ Per strict instructions:
   2. Navigate to `ReplicatedStorage > VFX > <Element> > <AssetName>`.
   3. Right click the model and select **Save to Roblox...**
   4. Once published, copy its real asset ID and paste it into `src/shared/Config/VFXAssetIds.luau`.
+

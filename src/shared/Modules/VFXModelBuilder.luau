@@ -19,12 +19,23 @@ local VFXModelBuilder = {}
 
 -- Real Verified Roblox Creator Store Asset IDs for Textures and Meshes
 local ASSETS = {
-    SLASH_TEXTURE     = "rbxassetid://4991873131", -- Anime crescent curve
-    STAR_SPARKLE      = "rbxassetid://6034177218", -- Crisp anime 4-point star
-    SMOKE_PUFF        = "rbxassetid://2520762076", -- Stylized dust / smoke
-    LIGHTNING_STREAK  = "rbxassetid://446111271",  -- Electric discharge streak
-    RING_MESH         = "rbxassetid://3270017",    -- Torus / Ring mesh
-    ROCK_MESH         = "rbxassetid://1290033",    -- Rock fragment mesh
+    SLASH_TEXTURE     = "http://www.roblox.com/asset/?id=15788309933", -- Sukuna curved anime slash
+    SLASH_TEXTURE_ALT = "http://www.roblox.com/asset/?id=12752130480", -- Crisp anime slash
+    FIRE_FLIPBOOK     = "http://www.roblox.com/asset/?id=15224384937", -- Multi-frame anime flame flipbook
+    FIRE_BURST        = "http://www.roblox.com/asset/?id=13951971792", -- Anime flame burst
+    WATER_DRIP        = "rbxassetid://8030760338",                     -- Fluid droplet ribbon
+    ENERGY_SWIRL      = "rbxassetid://6603835352",                     -- Spiral energy core
+    ENERGY_WAVES      = "rbxassetid://6659325109",                     -- Radial wave pulse
+    ENERGY_RING       = "rbxassetid://6732830893",                     -- Concentric energy ring
+    SPEED_LINES       = "rbxassetid://15292043166",                    -- Anime action speed lines
+    SMOKE_BURST       = "rbxassetid://15350639550",                    -- Stylized anime smoke
+    ROCK_DEBRIS       = "http://www.roblox.com/asset/?id=149185730",   -- Rock shard debris
+    STAR_SPARKLE      = "rbxassetid://6034177218",                     -- Crisp 4-point anime star
+    LIGHTNING_STREAK  = "rbxassetid://446111271",                      -- Electric discharge streak
+    RING_MESH         = "rbxassetid://3270017",                        -- Torus / Ring mesh
+    ROCK_MESH         = "rbxassetid://1290033",                        -- Rock fragment mesh
+    CLOCK_DIAL        = "rbxassetid://1084991219",                     -- Ethereal clock face
+    GLITCH_PIXEL      = "rbxassetid://6034293922",                     -- Digital glitch particle
 }
 
 local function EnsureFolder(parent: Instance, name: string): Folder
@@ -61,31 +72,44 @@ local function AddPointLight(parent: Instance, color: Color3, brightness: number
     return light
 end
 
-local function AddAnimeSpikes(parentModel: Model, centerCF: CFrame, primaryColor: Color3, contrastColor: Color3, count: number, radius: number, height: number)
+local function AddAnimeArches(parentModel: Model, centerCF: CFrame, primaryColor: Color3, contrastColor: Color3, count: number, radius: number, height: number)
     for i = 1, count do
-        local angle = (i / count) * math.pi * 2
-        local isContrast = (i % 2 == 1)
-        local spike = Instance.new("Part")
-        spike.Name = isContrast and ("ContrastSpike_" .. i) or ("GlowSpike_" .. i)
-        spike.Size = Vector3.new(0.6, height, 0.6)
-        spike.CFrame = centerCF * CFrame.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-            * CFrame.Angles(math.rad(15), angle, math.rad(25))
-        spike.Material = isContrast and Enum.Material.SmoothPlastic or Enum.Material.Neon
-        spike.Color = isContrast and contrastColor or primaryColor
-        spike.Transparency = isContrast and 0.1 or 0.05
-        spike.Anchored = true
-        spike.CanCollide = false
-        spike.CanTouch = false
-        spike.CanQuery = false
-        spike.CastShadow = false
+        local angle = (i / count) * math.pi * 1.5 - (math.pi * 0.75)
         
-        local mesh = Instance.new("SpecialMesh")
-        mesh.MeshType = Enum.MeshType.Wedge
-        mesh.Scale = Vector3.new(1, 1, 1)
-        mesh.Parent = spike
-        spike.Parent = parentModel
+        -- Bright Glowing Arch (Neon)
+        local arch = Instance.new("Part")
+        arch.Name = "GlowArch_" .. i
+        arch.Size = Vector3.new(0.4, height, 1.2)
+        arch.CFrame = centerCF * CFrame.Angles(0, angle, 0) * CFrame.new(0, height * 0.5, radius) * CFrame.Angles(math.rad(25), 0, math.rad(10))
+        arch.Color = primaryColor
+        arch.Material = Enum.Material.Neon
+        arch.Transparency = 0.05
+        arch.CanCollide = false
+        arch.Anchored = true
+        arch.CanQuery = false
+        arch.CanTouch = false
+        arch.CastShadow = false
+        arch.Parent = parentModel
+
+        -- Dark Silhouette Contrast Arch (SmoothPlastic - provides the anime cel-shaded edge)
+        local shadowArch = Instance.new("Part")
+        shadowArch.Name = "ShadowArch_" .. i
+        shadowArch.Size = Vector3.new(0.5, height * 1.05, 1.3)
+        shadowArch.CFrame = arch.CFrame * CFrame.new(0, 0.1, -0.3)
+        shadowArch.Color = contrastColor
+        shadowArch.Material = Enum.Material.SmoothPlastic
+        shadowArch.Transparency = 0.1
+        shadowArch.CanCollide = false
+        shadowArch.Anchored = true
+        shadowArch.CanQuery = false
+        shadowArch.CanTouch = false
+        shadowArch.CastShadow = false
+        shadowArch.Parent = parentModel
     end
 end
+
+-- Backward compatibility alias
+local AddAnimeSpikes = AddAnimeArches
 
 -- ==================== BUILDERS FOR ALL 36 ABILITIES ====================
 

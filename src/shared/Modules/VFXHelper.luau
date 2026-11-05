@@ -20,15 +20,24 @@ local VFXHelper = {}
 
 -- Real Verified Roblox Creator Store Asset IDs (Textures and Meshes only)
 local ASSETS = {
-    SLASH_TEXTURE     = "rbxassetid://4991873131", -- Anime crescent curve
-    STAR_SPARKLE      = "rbxassetid://6034177218", -- Crisp anime 4-point star
-    SMOKE_PUFF        = "rbxassetid://2520762076", -- Stylized dust / smoke
-    LIGHTNING_STREAK  = "rbxassetid://446111271",  -- Electric discharge streak
-    RING_MESH         = "rbxassetid://3270017",    -- Torus / Ring mesh
-    ROCK_MESH         = "rbxassetid://1290033",    -- Rock fragment mesh
-    WATER_SPLASH      = "rbxassetid://5850414902", -- Stylized water splash
-    GLITCH_PIXEL      = "rbxassetid://6034293922", -- Pixel square / cyber spark
-    CLOCK_DIAL        = "rbxassetid://1084991219", -- Ethereal clock face
+    SLASH_TEXTURE     = "http://www.roblox.com/asset/?id=15788309933", -- Sukuna curved anime slash
+    SLASH_TEXTURE_ALT = "http://www.roblox.com/asset/?id=12752130480", -- Crisp anime slash
+    FIRE_FLIPBOOK     = "http://www.roblox.com/asset/?id=15224384937", -- Multi-frame anime flame flipbook
+    FIRE_BURST        = "http://www.roblox.com/asset/?id=13951971792", -- Anime flame burst
+    WATER_DRIP        = "rbxassetid://8030760338",                     -- Fluid droplet ribbon
+    ENERGY_SWIRL      = "rbxassetid://6603835352",                     -- Spiral energy core
+    ENERGY_WAVES      = "rbxassetid://6659325109",                     -- Radial wave pulse
+    ENERGY_RING       = "rbxassetid://6732830893",                     -- Concentric energy ring
+    SPEED_LINES       = "rbxassetid://15292043166",                    -- Anime action speed lines
+    SMOKE_BURST       = "rbxassetid://15350639550",                    -- Stylized anime smoke
+    ROCK_DEBRIS       = "http://www.roblox.com/asset/?id=149185730",   -- Rock shard debris
+    STAR_SPARKLE      = "rbxassetid://6034177218",                     -- Crisp 4-point anime star
+    LIGHTNING_STREAK  = "rbxassetid://446111271",                      -- Electric discharge streak
+    RING_MESH         = "rbxassetid://3270017",                        -- Torus / Ring mesh
+    ROCK_MESH         = "rbxassetid://1290033",                        -- Rock fragment mesh
+    CLOCK_DIAL        = "rbxassetid://1084991219",                     -- Ethereal clock face
+    GLITCH_PIXEL      = "rbxassetid://6034293922",                     -- Digital glitch particle
+    WATER_SPLASH      = "rbxassetid://5850414902",                     -- Stylized water splash
 }
 
 -- Curated Harmonious Stylized Palettes (Strictly NO gold, NO rainbow; with dark contrast silhouettes)
