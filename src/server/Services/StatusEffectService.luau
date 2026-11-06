@@ -73,12 +73,12 @@ function StatusEffectService.ApplyEffect(
         -- Set character invisible on server (never touch HumanoidRootPart)
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                if part:GetAttribute("OrigTrans") == nil then
+                if part:GetAttribute("OrigTrans") == nil and part.Transparency < 0.9 then
                     part:SetAttribute("OrigTrans", part.Transparency)
                 end
                 part.Transparency = 1
             elseif part:IsA("Decal") then
-                if part:GetAttribute("OrigTrans") == nil then
+                if part:GetAttribute("OrigTrans") == nil and part.Transparency < 0.9 then
                     part:SetAttribute("OrigTrans", part.Transparency)
                 end
                 part.Transparency = 1
@@ -170,11 +170,11 @@ function StatusEffectService.RemoveEffect(character: Model, effectName: StatusEf
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                 local orig = part:GetAttribute("OrigTrans")
-                part.Transparency = if typeof(orig) == "number" then orig else 0
+                part.Transparency = if (typeof(orig) == "number" and orig < 0.9) then orig else 0
                 part:SetAttribute("OrigTrans", nil)
             elseif part:IsA("Decal") then
                 local orig = part:GetAttribute("OrigTrans")
-                part.Transparency = if typeof(orig) == "number" then orig else 0
+                part.Transparency = if (typeof(orig) == "number" and orig < 0.9) then orig else 0
                 part:SetAttribute("OrigTrans", nil)
             end
         end

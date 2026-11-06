@@ -160,12 +160,10 @@ function CreatorPerksService.ApplyCreatorVisuals(player: Player)
     local hasVIP = profile and profile.GamePasses["VIPMaster"] or false
 
     if isOwner then
-        -- Creator modern title and void aura
-        CreateOverheadBadge(char, "[CREATOR]", "coolzgamer9", CREATOR_ACCENT)
+        -- Creator aura (subtle ambient lighting only, no overhead card)
         AttachModernAura(char, CREATOR_ACCENT, true)
     elseif hasVIP then
-        -- VIP modern title and azure aura
-        CreateOverheadBadge(char, "[VIP]", player.Name, VIP_ACCENT)
+        -- VIP aura
         AttachModernAura(char, VIP_ACCENT, false)
     end
 end

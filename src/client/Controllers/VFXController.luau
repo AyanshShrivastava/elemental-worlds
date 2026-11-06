@@ -75,7 +75,27 @@ function VFXController.Init()
     local vfxEvent = remotes:WaitForChild(GameConfig.REMOTES.VFX_TRIGGER, 5) :: RemoteEvent?
     if vfxEvent then
         vfxEvent.OnClientEvent:Connect(function(vfxType: string, data: any)
-            if vfxType == "Blind" then
+            if vfxType == "ElementalMove" and data and data.Element and data.Move then
+                local evfx = ReplicatedStorage:FindFirstChild("ElementalVFX")
+                if evfx then
+                    local disp = evfx:FindFirstChild("Dispatcher")
+                    if disp then
+                        local ok, dmod = pcall(require, disp)
+                        if ok and dmod and dmod.Play then
+                            dmod.Play(data.Element, data.Move, {
+                                character = data.Character,
+                                target = data.Target,
+                                direction = data.Direction,
+                                duration = data.Duration,
+                                radius = data.Radius,
+                                targetCharacter = data.TargetCharacter,
+                                targets = data.Targets,
+                            })
+                        end
+                    end
+                end
+
+            elseif vfxType == "Blind" then
                 local duration = (data and data.Duration) or 2.0
                 UIController.TriggerBlind(duration)
 

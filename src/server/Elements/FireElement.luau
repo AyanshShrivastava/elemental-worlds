@@ -30,6 +30,15 @@ function FireElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Fire",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 12,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual fiery slash arc (Finisher triggers circular fire slash wheel)
     if isFinisher then
         VFXBroadcastService.Broadcast("CircularSlashWheel", {
@@ -68,10 +77,19 @@ function FireElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        -- Broadcast to ElementalVFX Dispatcher
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Fire",
+            Move = "Move1",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
 
         -- Visual fireball projectile with traveling flame sphere and burst on arrival
         VFXBroadcastService.Broadcast("Fireball", {
@@ -134,6 +152,15 @@ function FireElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     beast.PrimaryPart = bRoot
     beast.Parent = Workspace:FindFirstChild("NPCs") or Workspace
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Fire",
+        Move = "Move2",
+        Character = character,
+        Target = bRoot.Position,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Beast auto-targeting loop
     local duration = ability.Duration or 15
     local alive = true
@@ -182,6 +209,16 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     end
 
     if target and target.Character.Parent then
+        -- Broadcast to ElementalVFX Dispatcher
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Fire",
+            Move = "Move3",
+            Character = character,
+            Target = target.RootPart.Position,
+            TargetCharacter = target.Model,
+            Direction = rootPart.CFrame.LookVector,
+        })
+
         -- Teleport behind target
         rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)
 
@@ -256,6 +293,16 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     -- Rise above ground
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 8, 0)
     rootPart.Anchored = true
+
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Fire",
+        Move = "Move4",
+        Character = character,
+        Target = domainCenter,
+        Duration = duration,
+        Radius = domainRadius,
+    })
 
     -- VFX: Converging charge wind-up, impact frame, massive eruption crater and shockwave
     VFXBroadcastService.Broadcast("ImpactFrame", {

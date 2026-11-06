@@ -61,13 +61,3141 @@
     </Properties>
     <Item class="Folder" referent="6">
       <Properties>
+        <string name="Name">ElementalVFX</string>
+      </Properties>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">Aqua</string>
+          <string name="Source"><![CDATA[-- Aqua.lua — Water element
+--   M1    Water: two quick compressed streams from both hands
+--   Move1 Water Hand: large translucent hand gathers, advances, strikes
+--   Move2 Vortex of Destruction: spinning dense water sphere flies to target
+--   Move3 Water Dragon: returns a handle. handle:End(hitPos) bursts droplets at hitPos;
+--         handle:End() just dissolves it. Also ends by itself after ctx.duration (default 5).
+--   Move4 Limitless Punches: rapid punches with trails, afterimages, layered splashes
+
+local Core = require(script.Parent.Core)
+
+local BLUE = Color3.fromRGB(0, 110, 255)
+local CYAN = Color3.fromRGB(0, 255, 255)
+local TURQUOISE = Color3.fromRGB(64, 224, 208)
+local WATER = Core.seq({ CYAN, TURQUOISE, BLUE })
+local SPARK = Core.Textures.Sparkle
+
+local Aqua = {}
+
+-- Move1 hand: palm, four fingers, thumb (local offsets from the palm)
+local HAND = {
+	{ size = Vector3.new(3.6, 3.2, 0.9), offset = Vector3.new(0, 0, 0) },
+	{ size = Vector3.new(0.8, 2.4, 0.8), offset = Vector3.new(-1.35, 2.7, 0) },
+	{ size = Vector3.new(0.8, 2.8, 0.8), offset = Vector3.new(-0.45, 2.9, 0) },
+	{ size = Vector3.new(0.8, 2.6, 0.8), offset = Vector3.new(0.45, 2.8, 0) },
+	{ size = Vector3.new(0.8, 2.0, 0.8), offset = Vector3.new(1.3, 2.5, 0) },
+	{ size = Vector3.new(0.8, 1.8, 0.8), offset = Vector3.new(2.1, 0.8, 0) },
+}
+
+-- M1: two quick, compressed water streams from both hands
+function Aqua.M1(ctx)
+	local dir = ctx.direction
+	local hands = {
+		Core.getPart(ctx.character, { "LeftHand", "Left Arm" }),
+		Core.getPart(ctx.character, { "RightHand", "Right Arm" }),
+	}
+	for _, hand in ipairs(hands) do
+		if hand then
+			local origin = hand.Position
+			local stream = Core.anchor(origin)
+			stream.CFrame = Core.lookCF(origin, dir)
+			local e = Core.emitter(Core.attach(stream), {
+				texture = SPARK,
+				color = WATER,
+				rate = 200,
+				lifetime = NumberRange.new(0.2, 0.3),
+				speed = NumberRange.new(90, 110),
+				spread = Vector2.new(3, 3),
+				direction = Enum.NormalId.Front,
+				size = NumberSequence.new(0.5, 0.2),
+				squash = NumberSequence.new(5),
+			})
+			Core.runFor(0.3, function(_, t)
+				local pos = origin + dir * (t / 0.3) * 12
+				stream.CFrame = Core.lookCF(pos, dir)
+			end, function()
+				e.Enabled = false
+				Core.cleanupLater({ stream }, 0.5)
+			end)
+		end
+	end
+end
+
+-- Move1: a large translucent water hand gathers, advances and slams the target
+function Aqua.Move1(ctx)
+	local root = ctx.root
+	if not root then
+		return
+	end
+	local startPos = root.Position + ctx.direction * 4 + Vector3.new(0, 1.5, 0)
+	local dir = (ctx.target - startPos).Unit
+	local orient = Core.lookCF(Vector3.zero, dir)
+
+	local parts = {}
+	for i, d in ipairs(HAND) do
+		parts[i] = Core.part(Enum.PartType.Block, d.size, CFrame.new(startPos), {
+			color = i == 1 and TURQUOISE or CYAN,
+			transparency = 0.45,
+		})
+	end
+	local gather = Core.emitter(Core.attach(parts[1]), {
+		texture = SPARK,
+		color = WATER,
+		rate = 60,
+		lifetime = NumberRange.new(0.3, 0.5),
+		speed = NumberRange.new(3, 6),
+		spread = Vector2.new(180, 180),
+		size = NumberSequence.new(0.35, 0.05),
+	})
+
+	local ring = Core.part(Enum.PartType.Cylinder, Vector3.new(0.2, 1, 1), CFrame.new(ctx.target), {
+		color = CYAN, material = Enum.Material.Neon, transparency = 1,
+	})
+	local struck = false
+
+	Core.runFor(1.15, function(_, t)
+		local s, pos
+		if t < 0.4 then
+			-- gather
+			s = 0.2 + 0.8 * Core.smooth(t / 0.4)
+			pos = startPos
+		elseif t < 0.75 then
+			-- advance
+			s = 1
+			pos = startPos:Lerp(ctx.target, Core.smooth((t - 0.4) / 0.35))
+		else
+			-- strike
+			s = 1.1
+			pos = ctx.target
+			if not struck then
+				struck = true
+				gather.Enabled = false
+				Core.burst(ctx.target, 60, { color = WATER, texture = SPARK, speed = 25, light = 1 })
+			end
+			local k = math.clamp((t - 0.75) / 0.4, 0, 1)
+			local d = 2 + 12 * k
+			ring.Size = Vector3.new(0.2, d, d)
+			ring.CFrame = Core.axisCF(ctx.target, dir)
+			ring.Transparency = 0.35 + 0.65 * k
+		end
+
+		local fade = math.clamp((t - 0.9) / 0.25, 0, 1)
+		for i, d in ipairs(HAND) do
+			parts[i].Size = d.size * s
+			parts[i].CFrame = CFrame.new(pos) * orient * CFrame.new(d.offset * s)
+			parts[i].Transparency = 0.45 + 0.55 * fade
+		end
+	end, function()
+		Core.destroyAll(parts)
+		ring:Destroy()
+	end)
+end
+
+-- Move2: dense, rapidly spinning water sphere with currents and orbiting droplets
+function Aqua.Move2(ctx)
+	local origin = ctx.origin
+	local target = ctx.target
+
+	local core = Core.part(Enum.PartType.Ball, Vector3.one * 3.5, CFrame.new(origin), {
+		color = BLUE, transparency = 0.15,
+	})
+	local ringA = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 5.6, 5.6), CFrame.new(origin), {
+		color = CYAN, transparency = 0.55,
+	})
+	local ringB = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 5.0, 5.0), CFrame.new(origin), {
+		color = CYAN, transparency = 0.55,
+	})
+	local drops = {}
+	for i = 1, 6 do
+		drops[i] = Core.part(Enum.PartType.Ball, Vector3.one * 0.45, CFrame.new(origin), {
+			color = CYAN, transparency = 0.1,
+		})
+	end
+	local all = { core, ringA, ringB }
+	for _, d in ipairs(drops) do
+		table.insert(all, d)
+	end
+
+	local spin = 0
+	Core.runFor(0.9, function(dt, t)
+		spin += dt
+		local c = origin:Lerp(target, math.min(t / 0.7, 1))
+		local cf = CFrame.new(c)
+		core.CFrame = cf * CFrame.Angles(0, spin * 25, 0)
+		ringA.CFrame = cf * CFrame.Angles(math.rad(25), spin * 18, 0) * CFrame.Angles(0, 0, math.rad(90))
+		ringB.CFrame = cf * CFrame.Angles(0, spin * -12, 0)
+		for i, d in ipairs(drops) do
+			local a = spin * 6 + i * (math.pi * 2 / #drops)
+			d.CFrame = CFrame.new(c + Vector3.new(math.cos(a) * 3.2, math.sin(a * 2) * 0.9, math.sin(a) * 3.2))
+		end
+	end, function()
+		Core.burst(target, 50, { color = WATER, texture = SPARK, speed = 22, light = 1 })
+		Core.destroyAll(all)
+	end)
+end
+
+-- Move3: water dragon. Spirals around the caster, forms a body with a watery trail.
+-- Returns a handle: handle:End(hitPos) or handle:End()
+function Aqua.Move3(ctx)
+	local root = ctx.root
+	if not root then
+		return nil
+	end
+	local life = ctx.duration or 5
+	local N = 9
+
+	local segs, atts, all = {}, {}, {}
+	for i = 1, N do
+		local size = 2.2 - (i - 1) * 0.16
+		local p = Core.part(Enum.PartType.Ball, Vector3.one * size, root.CFrame, {
+			color = i == 1 and CYAN or TURQUOISE,
+			transparency = 0.45,
+		})
+		segs[i] = { part = p, size = size }
+		atts[i] = Core.attach(p)
+		table.insert(all, p)
+	end
+	for i = 1, N - 1 do
+		local b = Core.beam(atts[i], atts[i + 1], {
+			color = WATER,
+			transparency = Core.FADE,
+			width0 = segs[i].size * 0.9,
+			width1 = segs[i + 1].size * 0.9,
+			light = 0.5,
+		})
+		table.insert(all, b)
+	end
+
+	local head = segs[1].part
+	Core.trail(head, Core.attach(head, Vector3.new(0.9, 0, 0)), Core.attach(head, Vector3.new(-0.9, 0, 0)), {
+		color = WATER, lifetime = 0.8,
+	})
+
+	local eyes = {}
+	for i = 1, 2 do
+		eyes[i] = Core.part(Enum.PartType.Ball, Vector3.one * 0.35, head.CFrame, {
+			color = CYAN, material = Enum.Material.Neon, transparency = 0,
+		})
+		table.insert(all, eyes[i])
+	end
+
+	local drip = Core.emitter(Core.attach(segs[N].part), {
+		texture = SPARK,
+		color = WATER,
+		rate = 30,
+		lifetime = NumberRange.new(0.4, 0.6),
+		speed = NumberRange.new(1, 3),
+		spread = Vector2.new(60, 60),
+		size = NumberSequence.new(0.4, 0.1),
+	})
+
+	local ended = false
+	local finish = Core.runFor(life, function(_, time)
+		local form = math.min(time / 0.8, 1) -- 0 = spiral around caster, 1 = dragon body
+		local fwd, right = root.CFrame.LookVector, root.CFrame.RightVector
+		local headPos = root.Position + fwd * 3 + Vector3.new(0, 1.5, 0)
+
+		for i, s in ipairs(segs) do
+			local wave = math.sin(time * 6 - i * 0.7) * 0.9 * (i / N)
+			local bob = math.sin(time * 4 - i * 0.5) * 0.4
+			local body = headPos - fwd * ((i - 1) * 1.1) + right * wave + Vector3.new(0, bob, 0)
+
+			local a = time * 10 + i * 0.7
+			local R = 1.5 + 3 * (1 - form)
+			local spiral = root.Position + Vector3.new(math.cos(a) * R, 1 + i * 0.35, math.sin(a) * R)
+
+			s.part.CFrame = CFrame.new(spiral:Lerp(body, form))
+		end
+
+		local hp = segs[1].part.Position
+		local headCF = CFrame.lookAt(hp, hp + fwd)
+		eyes[1].CFrame = headCF * CFrame.new(-0.5, 0.3, -0.9)
+		eyes[2].CFrame = headCF * CFrame.new(0.5, 0.3, -0.9)
+	end, function()
+		ended = true
+		drip.Enabled = false
+		Core.cleanupLater(all, 1)
+	end)
+
+	return {
+		End = function(_, hitPos)
+			if ended then
+				return
+			end
+			if hitPos then
+				Core.burst(segs[1].part.Position, 40, {
+					aim = hitPos, color = WATER, texture = SPARK, speed = 40, light = 1,
+				})
+			end
+			finish()
+		end,
+	}
+end
+
+-- Move4: flurry of fast water punches with trails, afterimages and layered splashes
+function Aqua.Move4(ctx)
+	local root = ctx.root
+	if not root then
+		return
+	end
+	local count = ctx.punches or 14
+	local dir = ctx.direction
+
+	for i = 1, count do
+		task.delay((i - 1) * 0.08, function()
+			if not root.Parent then
+				return
+			end
+			local side = (i % 2 == 0) and 1 or -1
+			local last = i == count
+			local size = last and 3 or 1.6
+			local from = (root.CFrame * CFrame.new(side * 1.4, 0.2, -1.5)).Position
+			local to = ctx.target + Vector3.new(side * 0.6, 0, 0)
+
+			local fist = Core.part(Enum.PartType.Ball, Vector3.one * size, CFrame.new(from), {
+				color = CYAN, transparency = 0.3,
+			})
+			Core.trail(fist, Core.attach(fist, Vector3.new(0, size / 2, 0)), Core.attach(fist, Vector3.new(0, -size / 2, 0)), {
+				color = WATER, lifetime = 0.25,
+			})
+
+			local ghostA, ghostB, hit = false, false, false
+			Core.runFor(0.3, function(_, t)
+				local k = math.min(t / 0.07, 1)
+				fist.CFrame = CFrame.new(from:Lerp(to, k))
+				fist.Transparency = 0.3 + 0.7 * math.max(0, (t - 0.07) / 0.23)
+
+				-- flowing afterimages behind the fist
+				if not ghostA and k >= 0.4 then
+					ghostA = true
+					Core.ghost(CFrame.new(from:Lerp(to, 0.4)), Vector3.one * size, CYAN, 0.25, Enum.PartType.Ball)
+				end
+				if not ghostB and k >= 0.7 then
+					ghostB = true
+					Core.ghost(CFrame.new(from:Lerp(to, 0.7)), Vector3.one * size * 0.9, TURQUOISE, 0.2, Enum.PartType.Ball)
+				end
+
+				-- layered impact: splash, a second splash slightly later, and a ring
+				if not hit and k >= 1 then
+					hit = true
+					Core.burst(to, last and 60 or 18, {
+						color = WATER, texture = SPARK, speed = last and 35 or 20, light = 1,
+					})
+					task.delay(0.05, function()
+						Core.burst(to, last and 40 or 10, { color = WATER, texture = SPARK, speed = 25 })
+					end)
+					Core.shockwave(Core.axisCF(to, dir), {
+						color = CYAN, from = 1, to = last and 14 or 5, duration = 0.3,
+					})
+				end
+			end, function()
+				fist:Destroy()
+			end)
+		end)
+	end
+end
+
+return Aqua
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">Core</string>
+          <string name="Source"><![CDATA[-- Core.lua
+-- Shared helpers for every Elemental Worlds VFX.
+-- Client-side visuals only (use from a LocalScript).
+-- Damage, collision, movement and cooldowns belong to the server.
+
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local Core = {}
+
+Core.Textures = {
+	Sparkle = "rbxasset://textures/particles/sparkles_main.dds",
+	Fire = "rbxasset://textures/particles/fire_main.dds",
+	Smoke = "rbxasset://textures/particles/smoke_main.dds",
+	AnimeSlash = "rbxassetid://15788309933",
+	AnimeSlashArc = "rbxassetid://13876022839",
+	AnimeSmoke = "rbxassetid://15350639550",
+	WaterDroplet = "rbxassetid://8030760338",
+	SpeedLines = "rbxassetid://15292043166",
+	RockDebris = "rbxassetid://149185730",
+	ClockDial = "rbxassetid://1084991219",
+	TorusMesh = "rbxassetid://3270017",
+	RockMesh = "rbxassetid://1290033",
+}
+
+Core.FADE = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.2),
+	NumberSequenceKeypoint.new(1, 1),
+})
+
+local folder = workspace:FindFirstChild("ElementalVFX")
+if not folder then
+	folder = Instance.new("Folder")
+	folder.Name = "ElementalVFX"
+	folder.Parent = workspace
+end
+Core.Folder = folder
+
+---------------------------------------------------------------------------
+-- Colour and math
+---------------------------------------------------------------------------
+
+-- A Color3, or a list of Color3s spread evenly into a gradient
+function Core.seq(colors)
+	if typeof(colors) == "Color3" then
+		return ColorSequence.new(colors)
+	end
+	if #colors == 1 then
+		return ColorSequence.new(colors[1])
+	end
+	local keys = {}
+	for i, c in ipairs(colors) do
+		table.insert(keys, ColorSequenceKeypoint.new((i - 1) / (#colors - 1), c))
+	end
+	return ColorSequence.new(keys)
+end
+
+function Core.smooth(x)
+	x = math.clamp(x, 0, 1)
+	return x * x * (3 - 2 * x)
+end
+
+-- Points on a flat circle around center
+function Core.circle(center, radius, n, y)
+	local pts = {}
+	for i = 1, n do
+		local a = (i - 1) / n * math.pi * 2
+		table.insert(pts, center + Vector3.new(math.cos(a) * radius, y or 0, math.sin(a) * radius))
+	end
+	return pts
+end
+
+---------------------------------------------------------------------------
+-- Orientation. A Cylinder's axis is its X. A Block's length is its Z.
+---------------------------------------------------------------------------
+
+-- Cylinder lying flat on the ground at pos
+function Core.groundCF(pos)
+	return CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+-- Block whose length (Z) points along dir
+function Core.lookCF(pos, dir)
+	return CFrame.lookAt(pos, pos + dir)
+end
+
+-- Cylinder whose axis (X) points along dir
+function Core.axisCF(pos, dir)
+	return CFrame.lookAt(pos, pos + dir) * CFrame.Angles(0, math.rad(90), 0)
+end
+
+---------------------------------------------------------------------------
+-- Timing
+---------------------------------------------------------------------------
+
+-- Calls step(dt, elapsed) every frame for `duration` seconds, then onDone().
+-- Returns a function that ends it early (onDone still runs, once).
+function Core.runFor(duration, step, onDone)
+	local elapsed, done = 0, false
+	local conn
+	local function finish()
+		if done then
+			return
+		end
+		done = true
+		if conn then
+			conn:Disconnect()
+		end
+		if onDone then
+			onDone()
+		end
+	end
+	conn = RunService.Heartbeat:Connect(function(dt)
+		if done then
+			return
+		end
+		elapsed = math.min(elapsed + dt, duration)
+		if step then
+			step(dt, elapsed)
+		end
+		if elapsed >= duration then
+			finish()
+		end
+	end)
+	return finish
+end
+
+-- Runs events[i].run(elapsed) once each, at events[i].t seconds
+function Core.timeline(duration, events, onDone)
+	table.sort(events, function(a, b)
+		return a.t < b.t
+	end)
+	local i = 1
+	return Core.runFor(duration, function(_, t)
+		while events[i] and t >= events[i].t do
+			events[i].run(t)
+			i += 1
+		end
+	end, onDone)
+end
+
+---------------------------------------------------------------------------
+-- Cleanup
+---------------------------------------------------------------------------
+
+function Core.destroyAll(list)
+	for _, x in ipairs(list) do
+		x:Destroy()
+	end
+end
+
+function Core.cleanupLater(list, seconds)
+	for _, x in ipairs(list) do
+		Debris:AddItem(x, seconds)
+	end
+end
+
+-- Sets Transparency on Parts and NumberSequence on Beams
+function Core.setTransparency(list, v)
+	for _, x in ipairs(list) do
+		if x:IsA("BasePart") then
+			x.Transparency = v
+		elseif x:IsA("Beam") then
+			x.Transparency = NumberSequence.new(v)
+		end
+	end
+end
+
+---------------------------------------------------------------------------
+-- Instances
+---------------------------------------------------------------------------
+
+-- Anchored, non-colliding, see-through part.
+-- o: color, material, transparency, collide, reflectance, parent
+function Core.part(shape, size, cf, o)
+	o = o or {}
+	local p = Instance.new("Part")
+	p.Shape = shape or Enum.PartType.Block
+	p.Size = size
+	p.CFrame = cf
+	p.Anchored = true
+	p.CanCollide = o.collide == true
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Material = o.material or Enum.Material.Glass
+	p.Color = o.color or Color3.new(1, 1, 1)
+	p.Transparency = o.transparency or 0.4
+	p.Reflectance = o.reflectance or 0
+	p.Parent = o.parent or folder
+	return p
+end
+
+-- Invisible anchor point, used for emitters, beams and trails
+function Core.anchor(pos)
+	return Core.part(Enum.PartType.Ball, Vector3.one * 0.2, CFrame.new(pos), { transparency = 1 })
+end
+
+function Core.attach(part, offset)
+	local a = Instance.new("Attachment")
+	a.Position = offset or Vector3.zero
+	a.Parent = part
+	return a
+end
+
+-- Particle emitter. Rate 0 means it only fires when :Emit() is called.
+-- o: texture, color, light, transparency, size, lifetime, speed, spread, direction,
+--    acceleration, drag, rate, squash, enabled
+function Core.emitter(parent, o)
+	o = o or {}
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = o.texture or Core.Textures.Sparkle
+	e.Color = o.color or Core.seq(Color3.new(1, 1, 1))
+	e.LightEmission = o.light or 0.6
+	e.Transparency = o.transparency or Core.FADE
+	e.Size = o.size or NumberSequence.new(0.5, 0.1)
+	e.Lifetime = o.lifetime or NumberRange.new(0.4, 0.7)
+	e.Speed = o.speed or NumberRange.new(2, 5)
+	e.SpreadAngle = o.spread or Vector2.new(180, 180)
+	e.EmissionDirection = o.direction or Enum.NormalId.Top
+	e.Acceleration = o.acceleration or Vector3.zero
+	e.Drag = o.drag or 0
+	e.Rate = o.rate or 0
+	if o.squash then
+		e.Squash = o.squash
+	end
+	if o.enabled == false then
+		e.Enabled = false
+	end
+	e.Parent = parent
+	return e
+end
+
+-- One-shot splash of droplets. o.aim points it toward a position.
+function Core.burst(pos, count, o)
+	o = o or {}
+	local a = Core.anchor(pos)
+	if o.aim then
+		a.CFrame = CFrame.lookAt(pos, o.aim)
+	end
+	local s = o.speed or 20
+	local life = o.life or 0.35
+	local e = Core.emitter(Core.attach(a), {
+		texture = o.texture,
+		color = o.color,
+		light = o.light or 0.8,
+		lifetime = NumberRange.new(life, life * 1.7),
+		speed = NumberRange.new(s, s * 1.8),
+		spread = o.aim and Vector2.new(25, 25) or Vector2.new(180, 180),
+		direction = o.aim and Enum.NormalId.Front or Enum.NormalId.Top,
+		size = o.size or NumberSequence.new(0.6, 0.05),
+		drag = o.drag or 2,
+	})
+	e:Emit(count)
+	Core.cleanupLater({ a }, 2)
+end
+
+-- Ribbon trail between two attachments (put them side by side, across the motion)
+function Core.trail(part, a0, a1, o)
+	o = o or {}
+	local t = Instance.new("Trail")
+	t.Attachment0 = a0
+	t.Attachment1 = a1
+	t.Lifetime = o.lifetime or 0.3
+	t.Color = o.color or Core.seq(Color3.new(1, 1, 1))
+	t.Transparency = o.transparency or Core.FADE
+	t.LightEmission = o.light or 0.5
+	t.FaceCamera = true
+	t.Parent = part
+	return t
+end
+
+-- Glowing beam between two attachments
+-- o: color, transparency, width0, width1, light, segments, curve
+function Core.beam(a0, a1, o)
+	o = o or {}
+	local b = Instance.new("Beam")
+	b.Attachment0 = a0
+	b.Attachment1 = a1
+	b.Color = o.color or Core.seq(Color3.new(1, 1, 1))
+	b.Transparency = o.transparency or NumberSequence.new(0.1)
+	b.Width0 = o.width0 or 1
+	b.Width1 = o.width1 or o.width0 or 1
+	b.LightEmission = o.light or 0.7
+	b.FaceCamera = true
+	b.Segments = o.segments or 10
+	b.CurveSize0 = o.curve or 0
+	b.CurveSize1 = o.curve or 0
+	b.Parent = folder
+	return b
+end
+
+-- Beam between two points that fades out and cleans itself up
+function Core.tempBeam(p0, p1, life, o)
+	local a, b = Core.anchor(p0), Core.anchor(p1)
+	local beam = Core.beam(Core.attach(a), Core.attach(b), o)
+	Core.runFor(life, function(_, t)
+		beam.Transparency = NumberSequence.new(math.clamp(0.1 + 0.9 * (t / life), 0, 1))
+	end, function()
+		Core.destroyAll({ beam, a, b })
+	end)
+	return beam
+end
+
+-- Expanding ring. cf sets position and orientation (see groundCF / axisCF).
+-- o: color, from, to (diameters), duration
+function Core.shockwave(cf, o)
+	o = o or {}
+	local ring = Core.part(Enum.PartType.Cylinder, Vector3.new(0.2, 1, 1), cf, {
+		color = o.color, material = Enum.Material.Neon, transparency = 0.2,
+	})
+	local mesh = nil
+	if o.useMesh ~= false then
+		mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.FileMesh
+		mesh.MeshId = Core.Textures.TorusMesh
+		mesh.Parent = ring
+	end
+	local from, to = o.from or 1, o.to or 20
+	local dur = o.duration or 0.6
+	Core.runFor(dur, function(_, t)
+		local k = t / dur
+		local d = from + (to - from) * Core.smooth(k)
+		ring.Size = Vector3.new(0.2, d, d)
+		if mesh then
+			mesh.Scale = Vector3.new(d * 0.5, d * 0.5, 0.2)
+		end
+		ring.Transparency = 0.2 + 0.8 * k
+	end, function()
+		ring:Destroy()
+	end)
+end
+
+-- Short fading afterimage block (or ball if shape is given)
+function Core.ghost(cf, size, color, life, shape)
+	life = life or 0.3
+	local g = Core.part(shape or Enum.PartType.Block, size, cf, {
+		color = color, material = Enum.Material.Neon, transparency = 0.5,
+	})
+	Core.runFor(life, function(_, t)
+		g.Transparency = 0.5 + 0.5 * (t / life)
+	end, function()
+		g:Destroy()
+	end)
+	return g
+end
+
+-- Fading copy of a character's pose. o.at places it (default: where the character stands).
+-- o: at, color, life
+function Core.afterimage(character, o)
+	o = o or {}
+	if not character then
+		return
+	end
+	local ok, clone = pcall(function()
+		return character:Clone()
+	end)
+	if not ok or not clone then
+		return
+	end
+	local life = o.life or 0.35
+	local color = o.color or Color3.fromRGB(0, 200, 255)
+	local parts = {}
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Humanoid") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Material = Enum.Material.Neon
+			d.Color = color
+			d.Transparency = 0.5
+			table.insert(parts, d)
+		end
+	end
+	clone.Name = "Afterimage"
+	if o.at then
+		clone:PivotTo(o.at)
+	end
+	clone.Parent = folder
+	Core.runFor(life, function(_, t)
+		Core.setTransparency(parts, 0.5 + 0.5 * (t / life))
+	end, function()
+		clone:Destroy()
+	end)
+end
+
+-- Chunks that fly out, fall and fade.
+-- o: color, material, shape, speed, life, gravity, dirY (Vector2 range), minSize, maxSize
+function Core.fragments(pos, count, o)
+	o = o or {}
+	local rng = Random.new()
+	local speed = o.speed or 20
+	local life = o.life or 0.8
+	local gravity = o.gravity or 35
+	local dirY = o.dirY or Vector2.new(0.2, 1)
+	local list = {}
+	for _ = 1, count do
+		local s = rng:NextNumber(o.minSize or 0.3, o.maxSize or 0.8)
+		local p = Core.part(o.shape or Enum.PartType.Block, Vector3.new(s, s * rng:NextNumber(0.5, 1), s), CFrame.new(pos), {
+			color = o.color, material = o.material or Enum.Material.Rock, transparency = 0.1,
+		})
+		local dir = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(dirY.X, dirY.Y), rng:NextNumber(-1, 1))
+		if dir.Magnitude < 0.01 then
+			dir = Vector3.yAxis
+		end
+		table.insert(list, {
+			part = p,
+			pos = pos,
+			vel = dir.Unit * rng:NextNumber(speed * 0.5, speed),
+			rot = CFrame.new(),
+			spin = Vector3.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8), rng:NextNumber(-8, 8)),
+		})
+	end
+	Core.runFor(life, function(dt, t)
+		for _, f in ipairs(list) do
+			f.vel = f.vel - Vector3.new(0, gravity * dt, 0)
+			f.pos = f.pos + f.vel * dt
+			f.rot = f.rot * CFrame.Angles(f.spin.X * dt, f.spin.Y * dt, f.spin.Z * dt)
+			f.part.CFrame = CFrame.new(f.pos) * f.rot
+			f.part.Transparency = 0.1 + 0.9 * math.clamp((t - life * 0.6) / (life * 0.4), 0, 1)
+		end
+	end, function()
+		for _, f in ipairs(list) do
+			f.part:Destroy()
+		end
+	end)
+end
+
+-- Glowing particles that gather from a ring into a centre (charges, summons, pulls)
+function Core.converge(center, radius, count, life, color)
+	local rng = Random.new()
+	local list = {}
+	for _ = 1, count do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local start = center + Vector3.new(math.cos(a) * radius, rng:NextNumber(-1, 3), math.sin(a) * radius)
+		local p = Core.part(Enum.PartType.Ball, Vector3.one * rng:NextNumber(0.2, 0.5), CFrame.new(start), {
+			color = color, material = Enum.Material.Neon, transparency = 0.1,
+		})
+		table.insert(list, { part = p, from = start, delay = rng:NextNumber(0, life * 0.4) })
+	end
+	Core.runFor(life, function(_, t)
+		for _, c in ipairs(list) do
+			local k = math.clamp((t - c.delay) / (life - c.delay), 0, 1)
+			c.part.CFrame = CFrame.new(c.from:Lerp(center, Core.smooth(k)))
+		end
+	end, function()
+		for _, c in ipairs(list) do
+			c.part:Destroy()
+		end
+	end)
+end
+
+-- Random glitch flicker on parts for `duration` seconds (Error element)
+function Core.flicker(parts, duration, chance)
+	local rng = Random.new()
+	return Core.runFor(duration, function()
+		for _, p in ipairs(parts) do
+			if p.Parent and rng:NextNumber() < (chance or 0.25) then
+				p.Transparency = rng:NextNumber(0, 0.85)
+			end
+		end
+	end)
+end
+
+---------------------------------------------------------------------------
+-- Character helpers and move context
+---------------------------------------------------------------------------
+
+function Core.root(model)
+	return model and model:FindFirstChild("HumanoidRootPart")
+end
+
+-- First of `names` that exists on the character, else its root
+function Core.getPart(character, names)
+	for _, n in ipairs(names) do
+		local p = character and character:FindFirstChild(n)
+		if p then
+			return p
+		end
+	end
+	return Core.root(character)
+end
+
+-- A point `dist` studs behind a model's root
+function Core.behind(model, dist)
+	local r = Core.root(model)
+	if not r then
+		return nil
+	end
+	return r.Position - r.CFrame.LookVector * (dist or 3)
+end
+
+-- Fills in defaults so every move can rely on them.
+-- ctx fields: character, origin, direction, target, targetCharacter, targets,
+--             duration, radius, and move-specific extras.
+function Core.context(ctx)
+	local root = Core.root(ctx.character)
+	ctx.root = root
+	ctx.origin = ctx.origin or (root and root.Position) or Vector3.zero
+	local dir = ctx.direction or (root and root.CFrame.LookVector) or Vector3.new(0, 0, -1)
+	ctx.direction = dir.Unit
+	if not ctx.target then
+		local tr = Core.root(ctx.targetCharacter)
+		ctx.target = tr and tr.Position or (ctx.origin + ctx.direction * 30)
+	end
+	return ctx
+end
+
+return Core
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">Dispatcher</string>
+          <string name="Source"><![CDATA[-- Dispatcher.lua
+-- The one module you call from a LocalScript:
+--
+--   local VFX = require(ReplicatedStorage.ElementalVFX.Dispatcher)
+--   VFX.Play("Fire", "Move1", { character = char, target = hitPosition })
+--
+-- Element names: "Aqua", "Fire", "Earth", "Light", "Wind", "Error", "Time"
+-- Move names:    "M1", "Move1", "Move2", "Move3", "Move4", "Move5" (Error only)
+--
+-- Moves that keep something alive (Fire Move2, Aqua Move3, Earth Move1,
+-- Error Move3/Move4, Time Move3) return a handle from Play. See each module's header.
+
+local Core = require(script.Parent.Core)
+
+local Dispatcher = {}
+
+Dispatcher.Elements = {
+	Aqua = require(script.Parent.Aqua),
+	Fire = require(script.Parent.Fire),
+	Earth = require(script.Parent.Earth),
+	Light = require(script.Parent.Light),
+	Wind = require(script.Parent.Wind),
+	Error = require(script.Parent.Error),
+	Time = require(script.Parent.Time),
+}
+
+function Dispatcher.Play(element, move, ctx)
+	local mod = Dispatcher.Elements[element]
+	if not mod then
+		warn("[ElementalVFX] Unknown element: " .. tostring(element))
+		return nil
+	end
+	local fn = mod[move]
+	if not fn then
+		warn("[ElementalVFX] " .. tostring(element) .. " has no move " .. tostring(move))
+		return nil
+	end
+	return fn(Core.context(ctx or {}))
+end
+
+return Dispatcher
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
+          <string name="Name">Earth</string>
+          <string name="Source"><![CDATA[-- Earth.lua — Earth element
+--   M1    Earth Sword: rocky blade with a short stone trail
+--   Move1 Earthy Wall: returns a handle for the wall's state:
+--           handle:SetHealth(0..1)  shows cracks at 66% and 33%, shakes, shatters at 0
+--           handle:Shatter()        breaks it apart now
+--           handle:End()            sinks it into the ground now
+--         It also sinks by itself after Earth.WALL.duration seconds.
+--         Health and defence are server-owned. Collision: Earth.WALL.collidable is applied to the
+--         visual parts only, so the server must still block movement with its own check.
+--   Move2 Boulder of Destruction: rotating rock with orbiting debris and a dust trail
+--   Move3 Accelerated Earth Punch: fist with rock plates that close in right before impact
+--   Move4 The Master of Terra: five timed beats (launch, teleport, descend, dagger, strike).
+--         Timing is in seconds from the start. No graphic effects.
+
+local Core = require(script.Parent.Core)
+
+local STONE = Color3.fromRGB(140, 140, 140)
+local BROWN = Color3.fromRGB(110, 78, 50)
+local DUST = Color3.fromRGB(190, 180, 160)
+local DARK = Color3.fromRGB(80, 60, 45)
+local EARTH = Core.seq({ STONE, BROWN, DUST })
+local ROCK = Enum.Material.Rock
+local SMOKE = Core.Textures.Smoke
+
+local Earth = {}
+
+-- Wall settings
+Earth.WALL = {
+	duration = 8,
+	collidable = true,
+	sinkTime = 0.6,
+	cols = 4,
+	rows = 3,
+	blockW = 3,
+	blockH = 3,
+	blockD = 1.5,
+}
+
+-- M1: close-range earth sword with rocky chunks and a stone trail
+function Earth.M1(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	if not hand then
+		return
+	end
+	local dir = ctx.direction
+	local start = hand.Position
+
+	local blade = Core.part(Enum.PartType.Block, Vector3.new(0.5, 0.4, 3.6), Core.lookCF(start, dir), {
+		color = STONE, material = ROCK, transparency = 0,
+	})
+	local parts = { blade }
+	local chunks = {}
+	for i = 1, 3 do
+		local c = Core.part(Enum.PartType.Block, Vector3.new(0.7, 0.6, 0.7), blade.CFrame, {
+			color = BROWN, material = ROCK, transparency = 0,
+		})
+		table.insert(chunks, { part = c, z = -1.2 + (i - 1) * 1.2 })
+		table.insert(parts, c)
+	end
+	Core.trail(blade, Core.attach(blade, Vector3.new(0.2, 0, -1.8)), Core.attach(blade, Vector3.new(-0.2, 0, -1.8)), {
+		color = EARTH, lifetime = 0.25,
+	})
+
+	local dur = 0.3
+	Core.runFor(dur, function(_, t)
+		local k = Core.smooth(t / dur)
+		local pos = start + dir * 0.5
+		blade.CFrame = Core.lookCF(pos, dir) * CFrame.Angles(0, math.rad(120) * (k - 0.5), 0)
+		for _, c in ipairs(chunks) do
+			c.part.CFrame = blade.CFrame * CFrame.new(0.4, 0.3, c.z)
+		end
+	end, function()
+		Core.setTransparency(parts, 1)
+		Core.burst(start + dir * 2, 8, { texture = SMOKE, color = DUST, speed = 6, light = 0 })
+		Core.cleanupLater(parts, 0.5)
+	end)
+end
+
+-- Move1: stone wall rises in front of the caster. Returns a handle (see header).
+function Earth.Move1(ctx)
+	local cfg = Earth.WALL
+	local life = ctx.duration or cfg.duration
+	local rng = Random.new()
+
+	local flat = Vector3.new(ctx.direction.X, 0, ctx.direction.Z)
+	if flat.Magnitude < 0.01 then
+		flat = Vector3.new(0, 0, -1)
+	end
+	local groundPos = ctx.origin - Vector3.new(0, 3, 0) + flat.Unit * 7
+	local base = CFrame.lookAt(groundPos, groundPos + flat.Unit)
+
+	local W, H, D = cfg.blockW, cfg.blockH, cfg.blockD
+	local blocks = {}
+	for c = 1, cfg.cols do
+		for r = 1, cfg.rows do
+			local x = (c - (cfg.cols + 1) / 2) * W
+			local y = (r - 0.5) * H
+			local part = Core.part(Enum.PartType.Block, Vector3.new(W, H, D), base, {
+				color = rng:NextNumber() < 0.5 and STONE or BROWN,
+				material = ROCK,
+				transparency = 0,
+				collide = cfg.collidable,
+			})
+			table.insert(blocks, { part = part, x = x, y = y, delay = (c + r) * 0.05 })
+		end
+	end
+
+	local cracks = {}
+	local crackStage = 0
+	local shake = 0
+	local mode = nil
+
+	local function addCracks(n)
+		for _ = 1, n do
+			local part = Core.part(Enum.PartType.Block, Vector3.new(0.15, 1.6, 0.1), base, {
+				color = DARK, material = ROCK, transparency = 0.1,
+			})
+			table.insert(cracks, {
+				part = part,
+				x = rng:NextNumber(-cfg.cols * W / 2, cfg.cols * W / 2),
+				y = rng:NextNumber(0.5, cfg.rows * H - 0.5),
+				z = -D / 2 - 0.05,
+				rot = rng:NextNumber(0, math.pi),
+			})
+		end
+	end
+
+	local finish = Core.runFor(life, function(dt, t)
+		local jitter = Vector3.zero
+		if shake > 0 then
+			shake = math.max(shake - dt * 3, 0)
+			jitter = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(-1, 1), 0) * shake * 0.3
+		end
+		for _, b in ipairs(blocks) do
+			local k = Core.smooth((t - b.delay) / 0.5)
+			b.part.CFrame = base * CFrame.new(b.x + jitter.X, b.y + jitter.Y - (1 - k) * 10, 0)
+		end
+		for _, c in ipairs(cracks) do
+			c.part.CFrame = base * CFrame.new(c.x + jitter.X, c.y + jitter.Y, c.z) * CFrame.Angles(0, 0, c.rot)
+		end
+	end, function()
+		if mode == "shatter" then
+			for _, b in ipairs(blocks) do
+				Core.fragments(b.part.Position, 3, {
+					color = b.part.Color, material = ROCK, speed = 16, minSize = 0.6, maxSize = 1.4,
+				})
+			end
+			Core.burst(base.Position, 30, { texture = SMOKE, color = DUST, speed = 10, life = 0.8, size = NumberSequence.new(1.5, 4) })
+			for _, b in ipairs(blocks) do
+				b.part:Destroy()
+			end
+			for _, c in ipairs(cracks) do
+				c.part:Destroy()
+			end
+		else
+			-- sink into the ground (timeout or handle:End)
+			for _, c in ipairs(cracks) do
+				c.part:Destroy()
+			end
+			cracks = {}
+			Core.runFor(cfg.sinkTime, function(_, k)
+				for _, b in ipairs(blocks) do
+					b.part.CFrame = base * CFrame.new(b.x, b.y - (k / cfg.sinkTime) * 10, 0)
+				end
+			end, function()
+				for _, b in ipairs(blocks) do
+					b.part:Destroy()
+				end
+			end)
+		end
+	end)
+
+	local handle = {}
+	function handle:SetHealth(pct)
+		pct = math.clamp(pct, 0, 1)
+		if pct <= 0 then
+			return handle:Shatter()
+		end
+		if pct < 0.66 and crackStage < 1 then
+			crackStage = 1
+			addCracks(6)
+			shake = 0.6
+		end
+		if pct < 0.33 and crackStage < 2 then
+			crackStage = 2
+			addCracks(8)
+			shake = 1
+		end
+	end
+	function handle:Shatter()
+		if mode then
+			return
+		end
+		mode = "shatter"
+		finish()
+	end
+	function handle:End()
+		if mode then
+			return
+		end
+		mode = "sink"
+		finish()
+	end
+	return handle
+end
+
+-- Move2: giant rotating boulder with orbiting debris, dust trail and impact
+function Earth.Move2(ctx)
+	local origin = ctx.origin + ctx.direction * 3
+	local target = ctx.target
+	local dur = math.max((target - origin).Magnitude / 45, 0.4)
+
+	local rock = Core.part(Enum.PartType.Ball, Vector3.one * 5, CFrame.new(origin), {
+		color = BROWN, material = ROCK, transparency = 0,
+	})
+	local dust = Core.emitter(Core.attach(rock), {
+		texture = SMOKE, color = Core.seq(DUST), rate = 30, light = 0,
+		lifetime = NumberRange.new(0.8, 1.4), speed = NumberRange.new(1, 3),
+		size = NumberSequence.new(1.5, 4),
+	})
+	local all = { rock }
+	local bits = {}
+	for i = 1, 5 do
+		local b = Core.part(Enum.PartType.Block, Vector3.one, CFrame.new(origin), {
+			color = STONE, material = ROCK, transparency = 0,
+		})
+		table.insert(bits, { part = b, idx = i })
+		table.insert(all, b)
+	end
+
+	local spin = 0
+	Core.runFor(dur, function(dt, t)
+		spin += dt
+		local pos = origin:Lerp(target, math.min(t / dur, 1))
+		rock.CFrame = CFrame.new(pos) * CFrame.Angles(spin * 5, spin * 3, spin * 4)
+		for _, b in ipairs(bits) do
+			local a = spin * 5 + b.idx * (math.pi * 2 / 5)
+			b.part.CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 4, math.sin(a * 2) * 0.8, math.sin(a) * 4))
+				* CFrame.Angles(a, a, a)
+		end
+	end, function()
+		dust.Enabled = false
+		Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = DUST, from = 2, to = 18, duration = 0.6 })
+		Core.burst(target, 30, { texture = SMOKE, color = DUST, speed = 12, light = 0, size = NumberSequence.new(2, 4), life = 0.8 })
+		Core.fragments(target, 14, { color = BROWN, material = ROCK, speed = 25, minSize = 0.4, maxSize = 1.2 })
+		Core.setTransparency(all, 1)
+		Core.cleanupLater(all, 1)
+	end)
+end
+
+-- Move3: punch that turns earth-infused just before impact
+function Earth.Move3(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	if not hand then
+		return
+	end
+	local from = hand.Position
+	local to = ctx.target
+	local dir = (to - from).Unit
+
+	local fist = Core.part(Enum.PartType.Block, Vector3.one * 1.2, CFrame.new(from), {
+		color = BROWN, material = ROCK, transparency = 0,
+	})
+	local plates = {}
+	for i = 1, 4 do
+		plates[i] = Core.part(Enum.PartType.Block, Vector3.new(2.2, 0.4, 2.2), CFrame.new(from), {
+			color = STONE, material = ROCK, transparency = 1,
+		})
+	end
+	local all = { fist }
+	for _, p in ipairs(plates) do
+		table.insert(all, p)
+	end
+
+	local dur = 0.45
+	Core.runFor(dur, function(_, t)
+		local k = math.min(t / dur, 1)
+		local pos = from:Lerp(to, k * k) -- accelerates into the target
+		local F = Core.lookCF(pos, dir)
+		fist.CFrame = F
+
+		-- rock plates close in during the last ~25% of the travel
+		local p = math.clamp((t - 0.34) / 0.11, 0, 1)
+		for i, plate in ipairs(plates) do
+			local a = i * math.pi / 2 + t * 8
+			local radius = 2.5 - 1.1 * p
+			plate.Transparency = 1 - p * 0.9
+			plate.CFrame = F * CFrame.new(math.cos(a) * radius, math.sin(a) * radius, 0) * CFrame.Angles(0, 0, a)
+		end
+	end, function()
+		Core.burst(to, 30, { texture = SMOKE, color = Core.seq(DUST), speed = 14, life = 0.6, size = NumberSequence.new(1, 3) })
+		Core.fragments(to, 12, { color = STONE, material = ROCK, speed = 22 })
+		Core.shockwave(Core.groundCF(to - Vector3.new(0, 2.5, 0)), { color = DUST, from = 1, to = 10, duration = 0.4 })
+		Core.destroyAll(all)
+	end)
+end
+
+-- Move4: five timed beats. Validation and target reservation belong to the server.
+function Earth.Move4(ctx)
+	local target = ctx.target
+	local behind = ctx.targetCharacter and Core.behind(ctx.targetCharacter, 3) or (target - ctx.direction * 3)
+	local ground = target - Vector3.new(0, 3, 0)
+	local junk = {}
+
+	Core.timeline(3.0, {
+		{
+			t = 0.0, -- 1. launch: rock burst under the target, dust pushing up
+			run = function()
+				Core.burst(ground, 35, {
+					texture = SMOKE, color = Core.seq(DUST), speed = 22, life = 0.8,
+					size = NumberSequence.new(1.5, 4), aim = ground + Vector3.new(0, 12, 0),
+				})
+				Core.fragments(ground, 14, { color = STONE, material = ROCK, speed = 18, dirY = Vector2.new(0.6, 1) })
+			end,
+		},
+		{
+			t = 0.6, -- 2. teleport behind: afterimages along the path
+			run = function()
+				if ctx.root then
+					Core.afterimage(ctx.character, { at = ctx.root.CFrame, color = BROWN, life = 0.4 })
+				end
+				Core.afterimage(ctx.character, { at = CFrame.new(behind), color = BROWN, life = 0.4 })
+				Core.burst(behind, 16, { texture = SMOKE, color = Core.seq(DUST), speed = 8, life = 0.6 })
+			end,
+		},
+		{
+			t = 1.2, -- 3. both descend: falling rock above the target
+			run = function()
+				Core.fragments(target + Vector3.new(0, 8, 0), 16, {
+					color = BROWN, material = ROCK, speed = 6, dirY = Vector2.new(-1, -0.3), life = 1.0,
+				})
+			end,
+		},
+		{
+			t = 1.6, -- 4. earth dagger appears at the marker and drops onto the target
+			run = function()
+				local dagger = Core.part(Enum.PartType.Block, Vector3.new(0.6, 0.6, 4), CFrame.new(target + Vector3.new(0, 8, 0)), {
+					color = STONE, material = ROCK, transparency = 0,
+				})
+				table.insert(junk, dagger)
+				Core.runFor(0.25, function(_, t)
+					local pos = (target + Vector3.new(0, 8, 0)):Lerp(target, Core.smooth(t / 0.25))
+					dagger.CFrame = CFrame.new(pos) * CFrame.Angles(math.rad(90), 0, 0)
+				end, function()
+					dagger.Transparency = 1
+				end)
+			end,
+		},
+		{
+			t = 1.85, -- 5. finishing strike
+			run = function()
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = DUST, from = 2, to = 24, duration = 0.6 })
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = STONE, from = 1, to = 14, duration = 0.4 })
+				Core.burst(target, 60, { texture = SMOKE, color = Core.seq(DUST), speed = 28, life = 0.9, size = NumberSequence.new(1.5, 5) })
+				Core.fragments(target, 24, { color = STONE, material = ROCK, speed = 34, life = 1.0 })
+				for i = 1, 6 do
+					local crack = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.1, 6),
+						CFrame.new(ground + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.rad(i * 60), 0) * CFrame.new(0, 0, -3), {
+							color = DARK, material = ROCK, transparency = 0.2,
+						})
+					table.insert(junk, crack)
+				end
+			end,
+		},
+	}, function()
+		Core.cleanupLater(junk, 1)
+	end)
+end
+
+return Earth
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">Error</string>
+          <string name="Source"><![CDATA[-- Error.lua — Error element (secret)
+--   M1    Glitched Dash: dash with a glitch trail, afterimages and digital fragments
+--   Move1 Chaotic Destruction: glitched frame on the right hand, then a dash and shatter
+--   Move2 404 Not Found: eyes glow, a compressed dark-purple projectile, fragmented impact
+--   Move3 Got Glitched: caster breaks into fragments and goes hidden for ctx.duration (default 5).
+--         Returns a handle: handle:End() restores the character early.
+--         Invisibility and immunity are server-enforced. This only hides it on this client.
+--   Move4 Spatial Distortion: bubble, glitch portal and a glitched arena for ctx.duration
+--         (default 7). Returns a handle: handle:End() closes it early. ctx.arenaCFrame sets
+--         where the arena visual appears (default: high above the map). The server moves
+--         players and returns them, even if this is interrupted.
+--   Move5 Unparalleled: outlines, orbiting fragments and a distortion disc on each target
+--         for ctx.duration (default 5). ctx.targets is a list of models (or ctx.targetCharacter).
+--         The server prevents movement.
+--
+--   Error.Meter(character, pct): shows the Error Meter above the character's head (0..1).
+--         Glitch effects increase as it rises. Meter value and gains are server-owned.
+
+local Core = require(script.Parent.Core)
+
+local BLACK = Color3.fromRGB(15, 15, 20)
+local PURPLE = Color3.fromRGB(60, 20, 90)
+local BLUE = Color3.fromRGB(40, 90, 255)
+local GLITCH = Core.seq({ PURPLE, BLUE })
+local SPARK = Core.Textures.Sparkle
+
+local Error = {}
+
+-- Dash with a glitch trail: ghosts with distorted outlines and digital fragments
+local function glitchDash(from, dir, dist, dur)
+	local rng = Random.new()
+	local lastGhost = 0
+	Core.runFor(dur, function(_, t)
+		local pos = from + dir * (dist * (t / dur))
+		if t - lastGhost >= 0.04 then
+			lastGhost = t
+			local g = Core.ghost(Core.lookCF(pos, dir), Vector3.new(2, 5, 1), PURPLE, 0.35)
+			local outline = Instance.new("SelectionBox")
+			outline.Adornee = g
+			outline.Color3 = BLUE
+			outline.LineThickness = 0.03
+			outline.Transparency = 0.2
+			outline.Parent = Core.Folder
+			task.delay(0.35, function()
+				outline:Destroy()
+			end)
+		end
+		if rng:NextNumber() < 0.35 then
+			Core.fragments(pos + Vector3.new(0, rng:NextNumber(-1, 2), 0), 2, {
+				color = BLUE, material = Enum.Material.Neon, minSize = 0.2, maxSize = 0.4,
+				speed = 6, life = 0.4, gravity = 5,
+			})
+		end
+	end, function()
+		Core.burst(from + dir * dist, 12, { color = GLITCH, texture = SPARK, speed = 12, light = 1, life = 0.3 })
+	end)
+end
+
+-- Four-bar frame on a plane facing dir. Returns the parts.
+local function buildFrame(pos, dir, W, H)
+	local F = Core.lookCF(pos, dir)
+	local parts = {}
+	table.insert(parts, Core.part(Enum.PartType.Block, Vector3.new(W, H, 0.1), F, {
+		color = PURPLE, material = Enum.Material.Glass, transparency = 0.7,
+	}))
+	local bars = {
+		{ size = Vector3.new(W, 0.15, 0.15), off = Vector3.new(0, H / 2, 0) },
+		{ size = Vector3.new(W, 0.15, 0.15), off = Vector3.new(0, -H / 2, 0) },
+		{ size = Vector3.new(0.15, H, 0.15), off = Vector3.new(W / 2, 0, 0) },
+		{ size = Vector3.new(0.15, H, 0.15), off = Vector3.new(-W / 2, 0, 0) },
+	}
+	for _, b in ipairs(bars) do
+		table.insert(parts, Core.part(Enum.PartType.Block, b.size, F * CFrame.new(b.off), {
+			color = BLUE, material = Enum.Material.Neon, transparency = 0.1,
+		}))
+	end
+	return parts
+end
+
+-- M1: glitched dash
+function Error.M1(ctx)
+	glitchDash(ctx.origin, ctx.direction, ctx.dashDistance or 18, 0.3)
+end
+
+-- Move1: glitched frame appears around the right hand, then the dash and shatter
+function Error.Move1(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	local dir = ctx.direction
+	local dist = ctx.dashDistance or 22
+	local frame = buildFrame(hand and hand.Position or ctx.origin, dir, 3, 4)
+	Core.flicker(frame, 0.35, 0.4)
+
+	Core.runFor(0.35, nil, function()
+		Core.destroyAll(frame)
+		glitchDash(ctx.origin, dir, dist, 0.35)
+		task.delay(0.35, function()
+			local e = ctx.origin + dir * dist
+			Core.fragments(e, 16, { color = BLUE, material = Enum.Material.Neon, speed = 28, life = 0.7, minSize = 0.3, maxSize = 0.9 })
+			Core.fragments(e, 10, { color = PURPLE, material = Enum.Material.Neon, speed = 22, life = 0.7 })
+			Core.shockwave(Core.axisCF(e, dir), { color = BLUE, from = 1, to = 10, duration = 0.4 })
+		end)
+	end)
+end
+
+-- Move2: 404 Not Found projectile
+function Error.Move2(ctx)
+	local character = ctx.character
+	local head = character:FindFirstChild("Head")
+	local lh = Core.getPart(character, { "LeftHand", "Left Arm" })
+	local rh = Core.getPart(character, { "RightHand", "Right Arm" })
+
+	-- 1. eyes glow for a moment, following the head
+	local eyes = {}
+	for i = 1, 2 do
+		local eye = Core.part(Enum.PartType.Ball, Vector3.one * 0.35, CFrame.new(ctx.origin), {
+			color = BLUE, material = Enum.Material.Neon, transparency = 0,
+		})
+		local light = Instance.new("PointLight")
+		light.Color = BLUE
+		light.Range = 6
+		light.Brightness = 1.5
+		light.Parent = eye
+		table.insert(eyes, eye)
+	end
+	Core.runFor(0.6, function()
+		if head and head.Parent then
+			local cf = head.CFrame
+			eyes[1].CFrame = cf * CFrame.new(-0.4, 0.1, -0.5)
+			eyes[2].CFrame = cf * CFrame.new(0.4, 0.1, -0.5)
+		end
+	end, function()
+		Core.cleanupLater(eyes, 0.2)
+	end)
+
+	-- 2. glitch energy between the hands compresses into a projectile
+	local mid = ((lh and lh.Position or ctx.origin) + (rh and rh.Position or ctx.origin)) / 2
+	local orb = Core.part(Enum.PartType.Ball, Vector3.one * 3, CFrame.new(mid), {
+		color = PURPLE, material = Enum.Material.Neon, transparency = 0.1,
+	})
+	Core.flicker({ orb }, 0.6, 0.5)
+
+	Core.runFor(0.6, function(_, t)
+		orb.Size = Vector3.one * (3 - 1.8 * Core.smooth(t / 0.6))
+	end, function()
+		-- 3. fly to the target
+		local target = ctx.target
+		local flight = math.clamp((target - mid).Magnitude / 50, 0.2, 1.2)
+		Core.runFor(flight, function(_, t)
+			orb.CFrame = CFrame.new(mid:Lerp(target, t / flight))
+		end, function()
+			-- 4. impact: fragments, AoE ring, dark shell expanding out
+			orb.Transparency = 1
+			Core.fragments(target, 22, { color = PURPLE, material = Enum.Material.Neon, speed = 30, life = 0.8, minSize = 0.3, maxSize = 1.1 })
+			Core.fragments(target, 14, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.7 })
+			local R = ctx.radius or 10
+			Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = BLUE, from = 2, to = R * 2, duration = 0.5 })
+			local shell = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(target), {
+				color = BLACK, material = Enum.Material.Glass, transparency = 0.5,
+			})
+			Core.runFor(0.45, function(_, t)
+				local k = t / 0.45
+				shell.Size = Vector3.one * (2 + (R * 2 - 2) * Core.smooth(k))
+				shell.Transparency = 0.5 + 0.5 * k
+			end, function()
+				shell:Destroy()
+			end)
+			Core.cleanupLater({ orb }, 0.5)
+		end)
+	end)
+end
+
+-- Move3: got glitched (hidden + fragments). Returns a handle with :End().
+function Error.Move3(ctx)
+	local root = ctx.root
+	if not root then
+		return nil
+	end
+	local life = ctx.duration or 5
+	local fpos = root.Position - Vector3.new(0, 2.8, 0)
+
+	-- break into fragments
+	local hidden = {}
+	for _, d in ipairs(ctx.character:GetDescendants()) do
+		if d:IsA("BasePart") then
+			table.insert(hidden, d)
+			Core.fragments(d.Position, 1, {
+				color = d.Name == "Head" and BLUE or PURPLE,
+				material = Enum.Material.Neon, speed = 14, life = 0.8, minSize = 0.2, maxSize = 0.6,
+			})
+		end
+	end
+	for _, p in ipairs(hidden) do
+		p.LocalTransparencyModifier = 1
+	end
+
+	-- a spatial distortion remains where the caster vanished
+	local field = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 6, 6), Core.groundCF(fpos), {
+		color = PURPLE, material = Enum.Material.Neon, transparency = 0.5,
+	})
+
+	local lastRing = 0
+	local function restore()
+		for _, p in ipairs(hidden) do
+			if p.Parent then
+				p.LocalTransparencyModifier = 0
+			end
+		end
+		field.Transparency = 1
+		Core.cleanupLater({ field }, 0.4)
+	end
+
+	local finish = Core.runFor(life, function(_, t)
+		if t - lastRing >= 0.8 then
+			lastRing = t
+			Core.shockwave(Core.groundCF(fpos), { color = BLUE, from = 1, to = 7, duration = 0.6 })
+		end
+	end, restore)
+
+	return {
+		End = function()
+			finish()
+		end,
+	}
+end
+
+-- Move4: spatial distortion. Returns a handle with :End().
+function Error.Move4(ctx)
+	local life = ctx.duration or 7
+	local origin = ctx.origin
+	local dir = ctx.direction
+	local arenaCF = ctx.arenaCFrame or CFrame.new(origin + Vector3.new(0, 400, 0))
+	local arenaPos = arenaCF.Position
+
+	-- 1. distortion bubble expands around the caster, fragments fly out
+	local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 2, CFrame.new(origin), {
+		color = PURPLE, material = Enum.Material.Glass, transparency = 0.5,
+	})
+	Core.fragments(origin, 20, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.9 })
+	Core.runFor(1.4, function(_, t)
+		if t < 0.8 then
+			bubble.Size = Vector3.one * (2 + 26 * Core.smooth(t / 0.8))
+		else
+			bubble.Transparency = 0.5 + 0.5 * ((t - 0.8) / 0.6)
+		end
+		bubble.CFrame = CFrame.new(origin)
+	end, function()
+		bubble:Destroy()
+	end)
+
+	-- 2. glitch portal in front of the caster, flickering
+	local portal = buildFrame(origin + dir * 5, dir, 6, 9)
+	local portalFlicker = Core.flicker(portal, life, 0.2)
+
+	-- 3. glitched arena (visual only)
+	local arena = {}
+	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.3, 44, 44), Core.groundCF(arenaPos), {
+		color = PURPLE, material = Enum.Material.Neon, transparency = 0.4,
+	})
+	table.insert(arena, floor)
+	for i = -4, 4 do
+		local off = i * 5
+		table.insert(arena, Core.part(Enum.PartType.Block, Vector3.new(44, 0.1, 0.2),
+			CFrame.new(arenaPos + Vector3.new(0, 0.2, off)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+		table.insert(arena, Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.1, 44),
+			CFrame.new(arenaPos + Vector3.new(off, 0.2, 0)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+	end
+
+	local finish = Core.runFor(life, function(_, t)
+		if t > life - 0.6 then
+			local k = (t - (life - 0.6)) / 0.6
+			Core.setTransparency(arena, 0.4 + 0.6 * k)
+			Core.setTransparency(portal, 0.1 + 0.9 * k)
+		end
+	end, function()
+		portalFlicker()
+		Core.setTransparency(arena, 1)
+		Core.setTransparency(portal, 1)
+		Core.cleanupLater(arena, 0.1)
+		Core.cleanupLater(portal, 0.1)
+	end)
+
+	return {
+		End = function()
+			finish()
+		end,
+	}
+end
+
+-- Move5: unparalleled. Outlines, orbiting fragments and a distortion disc on each target.
+function Error.Move5(ctx)
+	local life = ctx.duration or 5
+	local targets = ctx.targets or { ctx.targetCharacter }
+	local rng = Random.new()
+
+	local parts, boxes, orbiters = {}, {}, {}
+	for _, model in ipairs(targets) do
+		local root = Core.root(model)
+		if root then
+			local box = Instance.new("BoxHandleAdornment")
+			box.Adornee = root
+			box.Size = model:GetExtentsSize() + Vector3.new(0.6, 0.6, 0.6)
+			box.Color3 = PURPLE
+			box.Transparency = 0.6
+			box.ZIndex = 1
+			box.Parent = Core.Folder
+			table.insert(boxes, box)
+
+			for i = 1, 6 do
+				local f = Core.part(Enum.PartType.Block, Vector3.one * 0.45, CFrame.new(root.Position), {
+					color = BLUE, material = Enum.Material.Neon, transparency = 0.1,
+				})
+				table.insert(orbiters, { part = f, root = root, idx = i })
+			end
+
+			table.insert(parts, Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 6, 6), Core.groundCF(root.Position - Vector3.new(0, 2.8, 0)), {
+				color = PURPLE, material = Enum.Material.Neon, transparency = 0.6,
+			}))
+
+			Core.fragments(root.Position, 8, { color = BLUE, material = Enum.Material.Neon, speed = 12, life = 0.6 })
+		end
+	end
+
+	local spin = 0
+	Core.runFor(life, function(dt, t)
+		spin += dt
+		for _, o in ipairs(orbiters) do
+			if o.root.Parent then
+				local a = spin * 4 + o.idx * (math.pi * 2 / 6)
+				o.part.CFrame = CFrame.new(o.root.Position + Vector3.new(math.cos(a) * 3.2, math.sin(a * 2) * 1.2, math.sin(a) * 3.2))
+			end
+		end
+		-- glitch: occasionally jump the outline transparency
+		if rng:NextNumber() < 0.2 then
+			for _, b in ipairs(boxes) do
+				b.Transparency = rng:NextNumber(0.3, 0.8)
+			end
+		end
+	end, function()
+		for _, o in ipairs(orbiters) do
+			o.part:Destroy()
+		end
+		Core.destroyAll(parts)
+		Core.destroyAll(boxes)
+	end)
+end
+
+-- Error Meter: a small bar above the character's head. pct is 0..1.
+-- Call whenever the meter changes. Glitch effects grow as it rises.
+local meters = {}
+
+function Error.Meter(character, pct)
+	pct = math.clamp(pct or 0, 0, 1)
+	local head = character and character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+
+	local m = meters[character]
+	if not m then
+		local gui = Instance.new("BillboardGui")
+		gui.Size = UDim2.fromOffset(140, 16)
+		gui.StudsOffset = Vector3.new(0, 3.2, 0)
+		gui.AlwaysOnTop = true
+		gui.Adornee = head
+		gui.Parent = head
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.fromScale(1, 1)
+		bg.BackgroundColor3 = BLACK
+		bg.BorderSizePixel = 0
+		bg.Parent = gui
+
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.fromScale(0, 1)
+		fill.BackgroundColor3 = BLUE
+		fill.BorderSizePixel = 0
+		fill.Parent = bg
+
+		m = { gui = gui, fill = fill }
+		meters[character] = m
+		character.Destroying:Connect(function()
+			meters[character] = nil
+		end)
+	end
+
+	m.fill.Size = UDim2.fromScale(pct, 1)
+	m.fill.BackgroundColor3 = PURPLE:Lerp(BLUE, pct)
+	if pct >= 0.5 then
+		local jitter = (pct - 0.5) * 2
+		m.fill.Position = UDim2.fromScale(math.random() * jitter * 0.02 - jitter * 0.01, 0)
+		if math.random() < pct * 0.4 then
+			Core.fragments(head.Position + Vector3.new(0, 2.5, 0), 2, {
+				color = BLUE, material = Enum.Material.Neon, speed = 6, life = 0.5, minSize = 0.2, maxSize = 0.4,
+			})
+		end
+	else
+		m.fill.Position = UDim2.fromScale(0, 0)
+	end
+end
+
+return Error
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="12">
+        <Properties>
+          <string name="Name">Fire</string>
+          <string name="Source"><![CDATA[-- Fire.lua — Fire element
+--   M1    Flame Dagger: fast strike with an orange-gold fire trail
+--   Move1 Scorching Fireball: rotating flame shells and an ember trail, bursts on arrival
+--   Move2 Infernal Beast: summons a small fire creature. Returns a handle:
+--           handle:Attack(pos) lunges at a position, handle:Despawn() removes it.
+--           It also despawns by itself after ctx.duration (default 10).
+--   Move3 Flames of Fury: fire builds, teleport streak behind target, beam and knockback burst
+--   Move4 Infernal Judgement: fire domain. Visual boundary at Fire.DOMAIN.radius, lasts
+--         Fire.DOMAIN.duration seconds, fades over the last Fire.DOMAIN.fadeOut seconds.
+--         The server does the damage and blocks entry/exit; this only draws it.
+
+local Core = require(script.Parent.Core)
+
+local CORE = Color3.fromRGB(255, 243, 176)
+local GOLD = Color3.fromRGB(255, 201, 60)
+local ORANGE = Color3.fromRGB(255, 122, 0)
+local DEEP = Color3.fromRGB(217, 72, 15)
+local FIRE = Core.seq({ CORE, GOLD, ORANGE, DEEP })
+local GOLD_SEQ = Core.seq({ CORE, GOLD })
+local EMBER = Core.seq({ GOLD, ORANGE })
+local FIRE_TEX = Core.Textures.Fire
+local SPARK = Core.Textures.Sparkle
+
+local Fire = {}
+
+-- Domain settings for Move4. Match these to the server's check.
+Fire.DOMAIN = { radius = 16, duration = 10, fadeOut = 1 }
+
+-- M1: flaming dagger with a fast orange-gold strike
+function Fire.M1(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	if not hand then
+		return
+	end
+	local dir = ctx.direction
+	local start = hand.Position
+	local blade = Core.part(Enum.PartType.Block, Vector3.new(0.25, 0.25, 2.6), Core.lookCF(start, dir), {
+		color = GOLD, material = Enum.Material.Neon, transparency = 0.15,
+	})
+	Core.trail(blade, Core.attach(blade, Vector3.new(0, 0.2, 0)), Core.attach(blade, Vector3.new(0, -0.2, 0)), {
+		color = FIRE, lifetime = 0.25,
+	})
+	local flame = Core.emitter(Core.attach(blade), {
+		texture = FIRE_TEX, color = FIRE, rate = 60, light = 0.8,
+		lifetime = NumberRange.new(0.2, 0.35), speed = NumberRange.new(1, 3), size = NumberSequence.new(0.6, 0.1),
+	})
+	Core.runFor(0.3, function(_, t)
+		local k = Core.smooth(t / 0.3)
+		local pos = start + dir * (k * 5)
+		blade.CFrame = Core.lookCF(pos, dir) * CFrame.Angles(0, 0, math.rad(60) * (1 - k))
+	end, function()
+		flame.Enabled = false
+		blade.Transparency = 1
+		Core.burst(start + dir * 5, 12, { color = GOLD_SEQ, texture = SPARK, speed = 12, light = 0.9 })
+		Core.cleanupLater({ blade }, 0.6)
+	end)
+end
+
+-- Move1: fireball with two rotating flame shells and an ember trail
+function Fire.Move1(ctx)
+	local origin = ctx.origin + ctx.direction * 3
+	local target = ctx.target
+	local dur = math.max((target - origin).Magnitude / 60, 0.2)
+
+	local core = Core.part(Enum.PartType.Ball, Vector3.one * 2.4, CFrame.new(origin), {
+		color = GOLD, material = Enum.Material.Neon, transparency = 0,
+	})
+	local shellA = Core.part(Enum.PartType.Ball, Vector3.one * 3.2, CFrame.new(origin), {
+		color = ORANGE, material = Enum.Material.Neon, transparency = 0.6,
+	})
+	local shellB = Core.part(Enum.PartType.Ball, Vector3.one * 3.8, CFrame.new(origin), {
+		color = ORANGE, material = Enum.Material.Neon, transparency = 0.7,
+	})
+	local embers = Core.emitter(Core.attach(core), {
+		texture = FIRE_TEX, color = FIRE, rate = 90, light = 0.9,
+		lifetime = NumberRange.new(0.4, 0.8), speed = NumberRange.new(0.5, 2), size = NumberSequence.new(0.7, 0.1),
+	})
+	local sparks = Core.emitter(Core.attach(core), {
+		texture = SPARK, color = GOLD_SEQ, rate = 40, light = 1,
+		lifetime = NumberRange.new(0.3, 0.6), speed = NumberRange.new(4, 8), size = NumberSequence.new(0.25, 0),
+	})
+
+	local spin = 0
+	Core.runFor(dur, function(dt, t)
+		spin += dt
+		local pos = origin:Lerp(target, math.min(t / dur, 1))
+		core.CFrame = CFrame.new(pos)
+		shellA.CFrame = CFrame.new(pos) * CFrame.Angles(spin * 6, spin * 4, 0)
+		shellB.CFrame = CFrame.new(pos) * CFrame.Angles(0, spin * -5, spin * 7)
+	end, function()
+		embers.Enabled = false
+		sparks.Enabled = false
+		core.Transparency = 1
+		shellA.Transparency = 1
+		shellB.Transparency = 1
+		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+			color = GOLD, from = 2, to = 22, duration = 0.5,
+		})
+		Core.burst(target, 40, { texture = FIRE_TEX, color = FIRE, speed = 22, light = 0.9 })
+		Core.cleanupLater({ core, shellA, shellB }, 1)
+	end)
+end
+
+-- Builds the small fire creature (visual only). Parts are placed relative to the body.
+local function buildBeast()
+	local model = Instance.new("Model")
+	model.Name = "InfernalBeast"
+
+	local function bp(shape, size, cf, color, transparency)
+		return Core.part(shape, size, cf, {
+			color = color, material = Enum.Material.Neon, transparency = transparency or 0.05, parent = model,
+		})
+	end
+
+	local body = bp(Enum.PartType.Ball, Vector3.one * 2.4, CFrame.new(0, 2.4, 0), ORANGE)
+	model.PrimaryPart = body
+	bp(Enum.PartType.Ball, Vector3.one * 1.5, CFrame.new(0, 3.6, -1.2), GOLD)
+	bp(Enum.PartType.Block, Vector3.new(0.3, 1, 0.3), CFrame.new(-0.5, 4.7, -1.2) * CFrame.Angles(0, 0, math.rad(20)), GOLD)
+	bp(Enum.PartType.Block, Vector3.new(0.3, 1, 0.3), CFrame.new(0.5, 4.7, -1.2) * CFrame.Angles(0, 0, math.rad(-20)), GOLD)
+	bp(Enum.PartType.Ball, Vector3.one * 0.35, CFrame.new(-0.4, 3.8, -2.0), CORE)
+	bp(Enum.PartType.Ball, Vector3.one * 0.35, CFrame.new(0.4, 3.8, -2.0), CORE)
+
+	for i = 1, 3 do
+		local seg = bp(Enum.PartType.Ball, Vector3.one * (1.2 - i * 0.25), CFrame.new(0, 2.2 + i * 0.3, 1.8 + i * 1.1), ORANGE)
+		Core.emitter(Core.attach(seg), {
+			texture = FIRE_TEX, color = FIRE, rate = 30, light = 0.9,
+			lifetime = NumberRange.new(0.3, 0.5), speed = NumberRange.new(0.5, 1.5), size = NumberSequence.new(0.6, 0.1),
+		})
+	end
+	Core.emitter(Core.attach(body), {
+		texture = FIRE_TEX, color = FIRE, rate = 50, light = 0.9,
+		lifetime = NumberRange.new(0.4, 0.7), speed = NumberRange.new(1, 3), size = NumberSequence.new(1, 0.2),
+	})
+
+	model.Parent = Core.Folder
+	return model, body
+end
+
+-- Move2: summon the fire creature. Returns a handle (see header).
+function Fire.Move2(ctx)
+	local life = ctx.duration or 10
+	local ground = Vector3.new(
+		(ctx.origin + ctx.direction * 4).X,
+		ctx.origin.Y - 3,
+		(ctx.origin + ctx.direction * 4).Z
+	)
+	local base = ground + Vector3.new(0, 2.4, 0)
+
+	-- summon circle and embers gathering into the creature
+	Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.1, 0)), { color = ORANGE, from = 1, to = 8, duration = 0.6 })
+	Core.converge(ground + Vector3.new(0, 1, 0), 5, 30, 0.9, GOLD)
+
+	local model, body = buildBeast()
+	model:PivotTo(CFrame.lookAt(base, base + ctx.direction))
+
+	local t = 0
+	local attackAt, attackTo = nil, nil
+
+	local function despawn()
+		Core.burst(base, 25, { texture = FIRE_TEX, color = EMBER, speed = 10, light = 0.9 })
+		local parts = {}
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				table.insert(parts, d)
+			end
+		end
+		Core.runFor(0.6, function(_, k)
+			Core.setTransparency(parts, 0.05 + 0.95 * (k / 0.6))
+		end, function()
+			model:Destroy()
+		end)
+	end
+
+	local finish = Core.runFor(life, function(_, time)
+		t = time
+		local bob = math.sin(time * 4) * 0.25
+		local lunge = Vector3.zero
+		if attackAt then
+			local k = (time - attackAt) / 0.35
+			if k >= 1 then
+				attackAt = nil
+			elseif attackTo then
+				local dirToTarget = attackTo - base
+				if dirToTarget.Magnitude > 0.1 then
+					lunge = dirToTarget.Unit * math.sin(k * math.pi) * 4
+				end
+			end
+		end
+		local pos = base + Vector3.new(0, bob, 0) + lunge
+		model:PivotTo(CFrame.lookAt(pos, pos + ctx.direction))
+	end, despawn)
+
+	local handle = {}
+	function handle:Attack(pos)
+		attackTo = pos
+		attackAt = t
+		Core.burst(pos, 14, { texture = FIRE_TEX, color = FIRE, speed = 16, light = 0.9 })
+	end
+	function handle:Despawn()
+		finish()
+	end
+	return handle
+end
+
+-- Move3: flames build, teleport streak behind the target, concentrated beam, knockback burst
+function Fire.Move3(ctx)
+	local root = ctx.root
+	if not root then
+		return
+	end
+	local from = root.Position
+	local tgt = ctx.target
+	local behind = ctx.targetCharacter and Core.behind(ctx.targetCharacter, 3) or (tgt - ctx.direction * 3)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+
+	local auraAtt = Core.attach(root)
+	local aura = Core.emitter(auraAtt, {
+		texture = FIRE_TEX, color = FIRE, rate = 80, light = 0.9,
+		lifetime = NumberRange.new(0.5, 0.9), speed = NumberRange.new(2, 5),
+		size = NumberSequence.new(1, 0.2), direction = Enum.NormalId.Top, spread = Vector2.new(90, 90),
+	})
+
+	Core.timeline(1.0, {
+		{
+			t = 0.25,
+			run = function()
+				aura.Enabled = false
+				Core.afterimage(ctx.character, { at = root.CFrame, color = ORANGE, life = 0.3 })
+				Core.tempBeam(from, behind, 0.25, { color = FIRE, width0 = 1.2, light = 1 })
+				Core.burst(from, 12, { texture = FIRE_TEX, color = FIRE, speed = 10 })
+			end,
+		},
+		{
+			t = 0.35,
+			run = function()
+				Core.shockwave(Core.groundCF(behind), { color = GOLD, from = 1, to = 8, duration = 0.35 })
+			end,
+		},
+		{
+			t = 0.45,
+			run = function()
+				local p0 = hand and hand.Position or from
+				Core.tempBeam(p0, tgt, 0.35, { color = GOLD_SEQ, width0 = 2.2, width1 = 0.6, light = 1 })
+			end,
+		},
+		{
+			t = 0.5,
+			run = function()
+				Core.burst(tgt, 50, { texture = FIRE_TEX, color = FIRE, speed = 30, light = 1 })
+				Core.shockwave(Core.groundCF(tgt - Vector3.new(0, 2.5, 0)), { color = ORANGE, from = 2, to = 16, duration = 0.4 })
+			end,
+		},
+	}, function()
+		aura.Enabled = false
+		Core.cleanupLater({ auraAtt }, 1)
+	end)
+end
+
+-- Move4: fire domain. See the header for the contract.
+function Fire.Move4(ctx)
+	local D = Fire.DOMAIN
+	local R = ctx.radius or D.radius
+	local life = ctx.duration or D.duration
+	local center = ctx.origin - Vector3.new(0, 3, 0) -- ground under the caster
+
+	local visible = {} -- faded out at the end
+	local emitters = {} -- disabled when fading starts
+	local junk = {} -- anchors and attachments, destroyed at the end
+
+	-- Ground: expanding ring, then a floor disc that stays for the duration
+	Core.shockwave(Core.groundCF(center + Vector3.new(0, 0.2, 0)), { color = ORANGE, from = 2, to = R * 2, duration = 0.8 })
+	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(center + Vector3.new(0, 0.1, 0)), {
+		color = DEEP, material = Enum.Material.Neon, transparency = 0.55,
+	})
+	table.insert(visible, floor)
+
+	-- Boundary: ring of flame pillars, joined at the top by glowing beams
+	local N = 28
+	local tops = {}
+	for i, p in ipairs(Core.circle(center, R, N, 2)) do
+		local pillar = Core.part(Enum.PartType.Block, Vector3.new(0.5, 4, 0.5), CFrame.new(p), {
+			color = ORANGE, material = Enum.Material.Neon, transparency = 0.4,
+		})
+		table.insert(visible, pillar)
+		tops[i] = Core.attach(pillar, Vector3.new(0, 2, 0))
+		table.insert(emitters, Core.emitter(Core.attach(pillar, Vector3.new(0, -1.5, 0)), {
+			texture = FIRE_TEX, color = FIRE, rate = 25, light = 0.9,
+			speed = NumberRange.new(5, 8), direction = Enum.NormalId.Top,
+			spread = Vector2.new(10, 10), lifetime = NumberRange.new(0.8, 1.2), size = NumberSequence.new(1.2, 0.2),
+		}))
+	end
+	for i = 1, N do
+		local b = Core.beam(tops[i], tops[i % N + 1], { color = GOLD_SEQ, width0 = 0.8, light = 1, curve = 1 })
+		table.insert(visible, b)
+	end
+
+	-- Rising flames inside the domain
+	local rng = Random.new()
+	for _ = 1, 10 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(0, R * 0.8)
+		local anchor = Core.anchor(center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
+		table.insert(junk, anchor)
+		table.insert(emitters, Core.emitter(Core.attach(anchor), {
+			texture = FIRE_TEX, color = FIRE, rate = 30, light = 0.9,
+			speed = NumberRange.new(4, 7), direction = Enum.NormalId.Top,
+			spread = Vector2.new(15, 15), lifetime = NumberRange.new(0.7, 1.1), size = NumberSequence.new(1.5, 0.2),
+		}))
+	end
+
+	-- Fire particles and embers drifting up from the centre
+	local emberAnchor = Core.anchor(center + Vector3.new(0, 1, 0))
+	table.insert(junk, emberAnchor)
+	table.insert(emitters, Core.emitter(Core.attach(emberAnchor), {
+		texture = SPARK, color = EMBER, rate = 40, light = 1,
+		speed = NumberRange.new(3, 6), direction = Enum.NormalId.Top,
+		spread = Vector2.new(60, 60), lifetime = NumberRange.new(1, 2),
+	}))
+
+	-- Rising column under the caster for the first second (the "rise" effect)
+	local columnAnchor = Core.anchor(center)
+	table.insert(junk, columnAnchor)
+	local column = Core.emitter(Core.attach(columnAnchor), {
+		texture = FIRE_TEX, color = FIRE, rate = 60, light = 1,
+		speed = NumberRange.new(8, 12), direction = Enum.NormalId.Top,
+		spread = Vector2.new(8, 8), lifetime = NumberRange.new(0.6, 0.9), size = NumberSequence.new(1.5, 0.3),
+	})
+	table.insert(emitters, column)
+
+	-- Central energy core
+	local core = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(center + Vector3.new(0, 4, 0)), {
+		color = CORE, material = Enum.Material.Neon, transparency = 0.2,
+	})
+	table.insert(visible, core)
+
+	local fadeStart = life - D.fadeOut
+	Core.runFor(life, function(_, t)
+		core.Size = Vector3.one * (4 + math.sin(t * 6) * 0.6)
+		if t >= 1 then
+			column.Enabled = false
+		end
+		if t >= fadeStart then
+			local k = (t - fadeStart) / D.fadeOut
+			Core.setTransparency(visible, 0.2 + 0.8 * k)
+			for _, e in ipairs(emitters) do
+				e.Enabled = false
+			end
+		end
+	end, function()
+		Core.destroyAll(visible)
+		Core.destroyAll(junk)
+	end)
+end
+
+return Fire
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">Guidelines</string>
+          <string name="Source"><![CDATA[--!strict
+--[[
+    ===========================================================================
+    ELEMENTAL WORLDS — VFX ARCHITECTURE & IMPLEMENTATION GUIDELINES
+    ===========================================================================
+    Client-side visual effects for all 36 abilities (M1 included) across 7 elements.
+    Animations are visual only. Damage, collision, cooldowns, and movement belong to server.
+
+    STRUCTURE:
+    ReplicatedStorage
+      └─ ElementalVFX
+           ├─ Core            (Shared math, parts, emitters, beams, rings, timing)
+           ├─ Dispatcher      (Unified entry: VFX.Play(element, move, ctx))
+           ├─ Aqua            (5 abilities: M1, Move1..Move4)
+           ├─ Fire            (5 abilities: M1, Move1..Move4)
+           ├─ Earth           (5 abilities: M1, Move1..Move4)
+           ├─ Light           (5 abilities: M1, Move1..Move4)
+           ├─ Wind            (5 abilities: M1, Move1..Move4)
+           ├─ Error           (6 abilities: M1, Move1..Move5)
+           ├─ Time            (5 abilities: M1, Move1..Move4)
+           └─ Guidelines      (This documentation module)
+
+    API USAGE:
+        local VFX = require(ReplicatedStorage.ElementalVFX.Dispatcher)
+        local handle = VFX.Play("Aqua", "Move3", {
+            character = character,
+            target = targetPosition,
+            direction = directionVector,
+            duration = 5,
+        })
+
+    LIFECYCLE HANDLES:
+    Moves that persist in world space return a lifecycle handle table:
+    1. Aqua Move3 (Water Dragon):
+       handle:End(hitPos)  -- bursts droplets at hitPos
+       handle:End()        -- gracefully dissolves
+    2. Fire Move2 (Infernal Beast):
+       handle:Attack(targetPos) -- creature dashes and strikes
+       handle:Despawn()         -- creature disperses into ash
+    3. Earth Move1 (Earthy Wall):
+       handle:SetHealth(0..1)   -- fractures wall progressively
+       handle:Shatter()         -- explodes into rock fragments
+       handle:End()             -- sinks into ground
+    4. Error Move3 (Got Glitched):
+       handle:End()             -- reappears and restores transparency
+    5. Error Move4 (Spatial Distortion):
+       handle:End()             -- collapses glitch domain
+    6. Time Move3 (Untouchable):
+       handle:Hit()             -- ripple wave when hit
+       handle:End()             -- dissolves time barrier
+
+    TOTAL ABILITIES: 36
+    ---------------------------------------------------------------------------
+    AQUA (5):
+      - M1: Water (Two compressed forward streams)
+      - Move1: Water Hand (Summon translucent hand, advance, ground slam)
+      - Move2: Vortex of Destruction (High-speed spinning water sphere)
+      - Move3: Water Dragon (Dragon wrap; returns handle :End(hitPos))
+      - Move4: Aqua Limitless Punches (14 rapid water strikes with afterimages)
+
+    FIRE (5):
+      - M1: Flame Dagger (Short-range flaming dagger slash with ember arc)
+      - Move1: Scorching Fireball (Rotating flame core projectile with impact burst)
+      - Move2: Infernal Beast (Fire NPC summon; returns handle :Attack(), :Despawn())
+      - Move3: Flames of Fury (Teleport behind target + concentrated fire beam)
+      - Move4: Infernal Judgement (Domain boundary, rising flame pillars)
+
+    EARTH (5):
+      - M1: Earth Sword (Rocky blade slash with stone debris)
+      - Move1: Earthy Wall (Summons 3-pillar wall; returns handle :SetHealth(), :Shatter(), :End())
+      - Move2: Boulder of Destruction (Massive rotating boulder launch)
+      - Move3: Accelerated Earth Punch (Rock gauntlet dash + ground crater)
+      - Move4: The Master of Terra (3-stage tectonic cataclysm sequence)
+
+    LIGHT (5):
+      - M1: Dim Light Ray (High-speed laser beam with lens flare)
+      - Move1: Amplified Light (Concentrated solar blast)
+      - Move2: Mirrors of Judgement (5 pentagonal mirrors, bouncing ray, orbital strike)
+      - Move3: Blinding Attack (Radiant flash + target halo)
+      - Move4: Divine Light Amplification (Ascension charge + divine orbital bombardment)
+
+    WIND (5):
+      - M1: Compressed Wind (Piercing aerodynamic lightning bolt)
+      - Move1: Airy Vortex (Expanding swirling wind cone)
+      - Move2: The Cyclone of Fury (Updraft whirlwind tornado)
+      - Move3: Maximum Speed (Aero condensation rings + high-speed dash trails)
+      - Move4: Wind Death Speed (Multi-angle supersonic slash blitz)
+
+    ERROR (6):
+      - M1: Glitched Dash (Chromatic aberration jitter teleport)
+      - Move1: Chaotic Destruction (RGB split energy sphere explosion)
+      - Move2: 404 Not Found (Corrupted data dome + matrix rain)
+      - Move3: Got Glitched (Stealth digital desync; returns handle :End())
+      - Move4: Spatial Distortion (Domain expansion; returns handle :End())
+      - Move5: Unparalleled (Multi-target digital slash execution)
+
+    TIME (5):
+      - M1: Time Punch (Clock dial burst + temporal delay impact)
+      - Move1: Got Throwed (Temporal stasis suspension + accelerated launch)
+      - Move2: Time Injection (Chronos needle barrage + delayed explosion)
+      - Move3: Untouchable (Time dilation barrier; returns handle :Hit(), :End())
+      - Move4: Virtual Kill (Monochrome world stop + shattered timeline climax)
+    ---------------------------------------------------------------------------
+]]
+
+local Guidelines = {
+    Version = "2.0.0",
+    TotalAbilities = 36,
+    Elements = {
+        "Aqua", "Fire", "Earth", "Light", "Wind", "Error", "Time"
+    },
+    AbilityMap = {
+        Aqua = { "M1", "Move1", "Move2", "Move3", "Move4" },
+        Fire = { "M1", "Move1", "Move2", "Move3", "Move4" },
+        Earth = { "M1", "Move1", "Move2", "Move3", "Move4" },
+        Light = { "M1", "Move1", "Move2", "Move3", "Move4" },
+        Wind = { "M1", "Move1", "Move2", "Move3", "Move4" },
+        Error = { "M1", "Move1", "Move2", "Move3", "Move4", "Move5" },
+        Time = { "M1", "Move1", "Move2", "Move3", "Move4" },
+    },
+    Handles = {
+        ["Aqua.Move3"] = { "End(hitPos)" },
+        ["Fire.Move2"] = { "Attack(targetPos)", "Despawn()" },
+        ["Earth.Move1"] = { "SetHealth(fraction)", "Shatter()", "End()" },
+        ["Error.Move3"] = { "End()" },
+        ["Error.Move4"] = { "End()" },
+        ["Time.Move3"] = { "Hit()", "End()" },
+    }
+}
+
+function Guidelines.GetSummary(): string
+    return string.format("Elemental Worlds VFX System: %d Elements, %d Abilities fully registered.", #Guidelines.Elements, Guidelines.TotalAbilities)
+end
+
+return table.freeze(Guidelines)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">Light</string>
+          <string name="Source"><![CDATA[-- Light.lua — Light element
+--   M1    Dim Light Ray: narrow controlled ray
+--   Move1 Amplified Light: brighter, wider ray with a glowing core
+--   Move2 Mirrors of Judgement: five mirrors, a ray bouncing between them, then a luminous slam
+--   Move3 Blinding Attack: small flash, short ray, and a soft glow on the target's head for 2 seconds
+--         (no screen overlay, so it stays fair and non-disruptive)
+--   Move4 Divine Light Amplification: 1.2s charge, then a large projectile with layered rays
+
+local Core = require(script.Parent.Core)
+
+local LAV = Color3.fromRGB(200, 162, 240) -- #C8A2F0
+local BRIGHT = Color3.fromRGB(233, 216, 255) -- #E9D8FF
+local VIOLET = Color3.fromRGB(139, 91, 214) -- #8B5BD6
+local WHITE = Color3.fromRGB(255, 255, 255)
+local LIGHT = Core.seq({ LAV, BRIGHT, VIOLET })
+local SPARK = Core.Textures.Sparkle
+
+local Light = {}
+
+-- A glowing ray that travels from `from` to `to`. Returns its travel time.
+-- o: color, width, length, speed, transparency, rate
+local function ray(from, to, o)
+	o = o or {}
+	local delta = to - from
+	local dist = delta.Magnitude
+	if dist < 0.1 then
+		return 0
+	end
+	local dir = delta.Unit
+	local dur = math.clamp(dist / (o.speed or 120), 0.12, 1)
+	local w = o.width or 0.4
+	local body = Core.part(Enum.PartType.Cylinder, Vector3.new(o.length or 6, w, w), Core.axisCF(from, dir), {
+		color = o.color or LAV, material = Enum.Material.Neon, transparency = o.transparency or 0.1,
+	})
+	local glitter = Core.emitter(Core.attach(body), {
+		texture = SPARK, color = LIGHT, rate = o.rate or 40, light = 1,
+		lifetime = NumberRange.new(0.2, 0.4), speed = NumberRange.new(0.5, 2), size = NumberSequence.new(0.4, 0.05),
+	})
+	Core.runFor(dur, function(_, t)
+		local pos = from + dir * (dist * (t / dur))
+		body.CFrame = Core.axisCF(pos, dir)
+	end, function()
+		glitter.Enabled = false
+		body.Transparency = 1
+		Core.cleanupLater({ body }, 0.5)
+	end)
+	return dur
+end
+
+-- Straight radiating spoke that grows out from a centre and fades
+local function spoke(center, dir, len, color)
+	local cyl = Core.part(Enum.PartType.Cylinder, Vector3.new(1, 0.4, 0.4), Core.axisCF(center, dir), {
+		color = color, material = Enum.Material.Neon, transparency = 0.1,
+	})
+	Core.runFor(0.5, function(_, t)
+		local k = Core.smooth(t / 0.5)
+		local L = math.max(len * k, 0.1)
+		local w = 0.4 * (1 - k * 0.7)
+		cyl.Size = Vector3.new(L, w, w)
+		cyl.CFrame = Core.axisCF(center + dir * (L / 2), dir)
+		cyl.Transparency = 0.1 + 0.9 * k
+	end, function()
+		cyl:Destroy()
+	end)
+end
+
+local function handOrOrigin(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	return hand and hand.Position or ctx.origin
+end
+
+-- M1: dim ray
+function Light.M1(ctx)
+	local from = handOrOrigin(ctx)
+	local dur = ray(from, ctx.target, { color = LAV, width = 0.4, length = 6, speed = 120 })
+	task.delay(dur, function()
+		Core.burst(ctx.target, 8, { color = LIGHT, texture = SPARK, speed = 8, light = 1 })
+	end)
+end
+
+-- Move1: amplified ray. Outer glow and a bright core travel together.
+function Light.Move1(ctx)
+	local from = handOrOrigin(ctx)
+	local dur = ray(from, ctx.target, { color = LAV, width = 1.6, length = 8, speed = 90, transparency = 0.5, rate = 80 })
+	ray(from, ctx.target, { color = BRIGHT, width = 0.6, length = 8, speed = 90, transparency = 0.05 })
+	task.delay(dur, function()
+		Core.burst(ctx.target, 30, { color = LIGHT, texture = SPARK, speed = 22, light = 1 })
+		Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 10, duration = 0.4 })
+	end)
+end
+
+-- Move2: five mirrors around the target; a ray bounces between them, then slams the target
+function Light.Move2(ctx)
+	local center = ctx.target + Vector3.new(0, 2, 0)
+	local N, R = 5, 9
+	local mirrors, mirrorPos = {}, {}
+
+	for i = 1, N do
+		local a = (i - 1) / N * math.pi * 2
+		local pos = center + Vector3.new(math.cos(a) * R, 0, math.sin(a) * R)
+		mirrorPos[i] = pos
+		local toCenter = (center - pos).Unit
+		table.insert(mirrors, Core.part(Enum.PartType.Block, Vector3.new(4, 5, 0.3), Core.lookCF(pos, toCenter), {
+			color = BRIGHT, material = Enum.Material.Glass, transparency = 0.25, reflectance = 0.8,
+		}))
+	end
+
+	-- bounce order around the ring, then the target
+	local order = { 1, 3, 5, 2, 4 }
+	local pts = { ctx.origin + Vector3.new(0, 2, 0) }
+	for _, idx in ipairs(order) do
+		table.insert(pts, mirrorPos[idx])
+	end
+	table.insert(pts, center)
+
+	local segs = {}
+	local events = {}
+	for i = 1, #pts - 1 do
+		local p0, p1 = pts[i], pts[i + 1]
+		table.insert(events, {
+			t = 0.2 + (i - 1) * 0.2,
+			run = function()
+				local d = p1 - p0
+				local seg = Core.part(Enum.PartType.Cylinder, Vector3.new(d.Magnitude, 0.5, 0.5), Core.axisCF(p0 + d / 2, d.Unit), {
+					color = BRIGHT, material = Enum.Material.Neon, transparency = 0.05,
+				})
+				table.insert(segs, seg)
+				Core.burst(p1, 8, { color = LIGHT, texture = SPARK, speed = 8, light = 1 })
+			end,
+		})
+	end
+
+	local slamT = 0.2 + (#pts - 1) * 0.2
+	table.insert(events, {
+		t = slamT,
+		run = function()
+			Core.burst(center, 60, { color = BRIGHT, texture = SPARK, speed = 30, light = 1 })
+			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 16, duration = 0.5 })
+			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 1.8, 0)), { color = VIOLET, from = 1, to = 10, duration = 0.35 })
+		end,
+	})
+
+	Core.timeline(slamT + 0.8, events, function()
+		Core.setTransparency(segs, 1)
+		Core.cleanupLater(segs, 0.2)
+		Core.cleanupLater(mirrors, 0.2)
+	end)
+end
+
+-- Move3: blinding attack
+function Light.Move3(ctx)
+	local from = handOrOrigin(ctx)
+	local head = ctx.targetCharacter and ctx.targetCharacter:FindFirstChild("Head")
+	local hitPos = head and head.Position or (ctx.target + Vector3.new(0, 2, 0))
+	local BLIND = 2
+
+	local dur = ray(from, hitPos, { color = BRIGHT, width = 0.5, length = 7, speed = 150 })
+	task.delay(dur, function()
+		-- small controlled flash at the target
+		local flash = Core.part(Enum.PartType.Ball, Vector3.one * 0.5, CFrame.new(hitPos), {
+			color = WHITE, material = Enum.Material.Neon, transparency = 0.1,
+		})
+		Core.runFor(0.25, function(_, t)
+			local k = t / 0.25
+			flash.Size = Vector3.one * (0.5 + 3 * k)
+			flash.Transparency = 0.1 + 0.9 * k
+		end, function()
+			flash:Destroy()
+		end)
+
+		-- blind: soft glow that follows the head for 2 seconds
+		local glow = Core.part(Enum.PartType.Ball, Vector3.one * 2.6, CFrame.new(hitPos), {
+			color = BRIGHT, material = Enum.Material.Neon, transparency = 0.9,
+		})
+		local sparks = Core.emitter(Core.attach(glow), {
+			texture = SPARK, color = LIGHT, rate = 12, light = 0.8,
+			lifetime = NumberRange.new(0.4, 0.8), speed = NumberRange.new(0.5, 1.5), size = NumberSequence.new(0.3, 0.05),
+		})
+		Core.runFor(BLIND, function(_, t)
+			local p = (head and head.Parent) and head.Position or hitPos
+			glow.CFrame = CFrame.new(p)
+			local k = math.sin(math.min(t / BLIND, 1) * math.pi)
+			glow.Transparency = 0.95 - 0.8 * k
+		end, function()
+			sparks.Enabled = false
+			Core.cleanupLater({ glow }, 1)
+		end)
+	end)
+end
+
+-- Move4: divine light amplification
+function Light.Move4(ctx)
+	local root = ctx.root
+	if not root then
+		return
+	end
+	local origin = root.Position
+	local target = ctx.target
+	local CHARGE = 1.2
+	local flight = math.clamp((target - origin).Magnitude / 80, 0.35, 0.8)
+
+	-- 1. charge: light gathers around the caster and a glow grows
+	Core.converge(origin, 6, 40, CHARGE, BRIGHT)
+	local charge = Core.part(Enum.PartType.Ball, Vector3.one * 0.5, CFrame.new(origin), {
+		color = BRIGHT, material = Enum.Material.Neon, transparency = 0.2,
+	})
+	Core.runFor(CHARGE, function(_, t)
+		local k = Core.smooth(t / CHARGE)
+		charge.Size = Vector3.one * (0.5 + 4.5 * k)
+		charge.CFrame = CFrame.new(origin)
+	end, function()
+		charge:Destroy()
+
+		-- 2. release: big luminous projectile with layered rays along its path
+		local orb = Core.part(Enum.PartType.Ball, Vector3.one * 5, CFrame.new(origin), {
+			color = LAV, material = Enum.Material.Neon, transparency = 0.05,
+		})
+		local dist = (target - origin).Magnitude
+		ray(origin, target, { color = LAV, width = 1.2, length = 8, speed = dist / flight, transparency = 0.5, rate = 60 })
+		ray(origin, target, { color = VIOLET, width = 2.4, length = 8, speed = dist / flight, transparency = 0.7, rate = 30 })
+		ray(origin, target, { color = WHITE, width = 0.4, length = 8, speed = dist / flight, transparency = 0.05, rate = 40 })
+
+		Core.runFor(flight, function(_, t)
+			orb.CFrame = CFrame.new(origin:Lerp(target, Core.smooth(t / flight)))
+		end, function()
+			-- 3. impact: burst, staggered rings, radiating spokes
+			orb.Transparency = 1
+			Core.burst(target, 80, { color = LIGHT, texture = SPARK, speed = 40, light = 1, life = 0.5 })
+			for i = 1, 3 do
+				task.delay((i - 1) * 0.08, function()
+					Core.shockwave(Core.groundCF(target - Vector3.new(0, 2, 0)), {
+						color = i == 1 and WHITE or LAV, from = 1, to = 6 + i * 6, duration = 0.5,
+					})
+				end)
+			end
+			for i = 1, 8 do
+				local a = (i - 1) / 8 * math.pi * 2
+				spoke(target, Vector3.new(math.cos(a), 0, math.sin(a)), 10, BRIGHT)
+			end
+			Core.cleanupLater({ orb }, 0.6)
+		end)
+	end)
+end
+
+return Light
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">Time</string>
+          <string name="Source"><![CDATA[-- Time.lua — Time element (secret)
+--   M1    Time Punch: cyan-blue aura around the fist, ripple at impact
+--   Move1 Got Throwed: temporal ring holds the target, afterimages mark the teleport,
+--         then a hard punch. The 0.5s hold is enforced by the server.
+--   Move2 Time Injection: clock ring freezes, abstract symbol streams, echoes, then a high-damage
+--         impact. Symbols are abstract glyphs, not graphic imagery.
+--   Move3 Untouchable: translucent temporal shield with concentric rings that follows the caster.
+--         Returns a handle: handle:Hit() flashes the shield when an attack is blocked,
+--         handle:End() ends it early. Duration is ctx.duration (default 4), a balance setting.
+--         Blocking and cooldown are server-side.
+--   Move4 Virtual Kill: rings close on the target, the scene distorts, then a blue release.
+--         No graphic imagery. The 150s cooldown and KO rules are server-side.
+
+local Core = require(script.Parent.Core)
+
+local DEEP = Color3.fromRGB(20, 60, 200)
+local CYAN = Color3.fromRGB(0, 255, 255)
+local BRIGHT = Color3.fromRGB(210, 245, 255)
+local TIME = Core.seq({ DEEP, CYAN, BRIGHT })
+local SPARK = Core.Textures.Sparkle
+
+local SYMBOLS = { "Ω", "∑", "≈", "◆", "▲", "∆", "0", "1" }
+
+local Time = {}
+local rng = Random.new()
+
+-- Abstract symbol drifting outward from a centre and fading
+local function symbol(center)
+	local a = rng:NextNumber(0, math.pi * 2)
+	local dir = Vector3.new(math.cos(a), rng:NextNumber(0.1, 0.6), math.sin(a))
+	local anchor = Core.anchor(center + dir * 2)
+
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(40, 40)
+	gui.AlwaysOnTop = true
+	gui.Adornee = anchor
+	gui.Parent = anchor
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Font = Enum.Font.Code
+	label.TextColor3 = BRIGHT
+	label.Text = SYMBOLS[rng:NextInteger(1, #SYMBOLS)]
+	label.Parent = gui
+
+	Core.runFor(0.6, function(_, t)
+		local k = t / 0.6
+		anchor.CFrame = CFrame.new(center + dir * (2 + 6 * k))
+		label.TextTransparency = k
+	end, function()
+		anchor:Destroy()
+	end)
+end
+
+-- M1: time punch
+function Time.M1(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	local from = hand and hand.Position or ctx.origin
+	local to = ctx.target
+	local dir = (to - from).Unit
+
+	local fist = Core.part(Enum.PartType.Ball, Vector3.one * 1.4, CFrame.new(from), {
+		color = CYAN, material = Enum.Material.ForceField, transparency = 0.1,
+	})
+	local aura1 = Core.part(Enum.PartType.Ball, Vector3.one * 3, CFrame.new(from), {
+		color = CYAN, material = Enum.Material.Glass, transparency = 0.75,
+	})
+	local aura2 = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(from), {
+		color = DEEP, material = Enum.Material.Glass, transparency = 0.85,
+	})
+	local parts = { fist, aura1, aura2 }
+	local glow = Core.emitter(Core.attach(fist), {
+		texture = SPARK, color = TIME, rate = 60, light = 1,
+		lifetime = NumberRange.new(0.2, 0.4), speed = NumberRange.new(1, 3), size = NumberSequence.new(0.4, 0.05),
+	})
+
+	local dur = math.clamp((to - from).Magnitude / 110, 0.15, 0.6)
+	Core.runFor(dur, function(_, t)
+		local pos = from:Lerp(to, t / dur)
+		fist.CFrame = CFrame.new(pos)
+		aura1.CFrame = CFrame.new(pos)
+		aura2.CFrame = CFrame.new(pos)
+	end, function()
+		glow.Enabled = false
+		Core.shockwave(Core.axisCF(to, dir), { color = BRIGHT, from = 1, to = 10, duration = 0.4 })
+		Core.shockwave(Core.axisCF(to, dir), { color = CYAN, from = 1, to = 6, duration = 0.3 })
+		Core.burst(to, 20, { color = TIME, texture = SPARK, speed = 18, light = 1 })
+		Core.setTransparency(parts, 1)
+		Core.cleanupLater(parts, 0.5)
+	end)
+end
+
+-- Move1: temporal ring, afterimages during the teleport, then a hard punch
+function Time.Move1(ctx)
+	local root = ctx.root
+	if not root then
+		return
+	end
+	local target = ctx.target
+	local behind = ctx.targetCharacter and Core.behind(ctx.targetCharacter, 3) or (target - ctx.direction * 3)
+
+	Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.8, 0)), { color = CYAN, from = 7, to = 2, duration = 0.5 })
+
+	Core.timeline(1.1, {
+		{
+			t = 0.5,
+			run = function()
+				Core.afterimage(ctx.character, { at = root.CFrame, color = CYAN, life = 0.3 })
+			end,
+		},
+		{
+			t = 0.6,
+			run = function()
+				Core.afterimage(ctx.character, { at = CFrame.new((ctx.origin + behind) / 2), color = CYAN, life = 0.3 })
+			end,
+		},
+		{
+			t = 0.7,
+			run = function()
+				Core.afterimage(ctx.character, { at = CFrame.new(behind), color = CYAN, life = 0.3 })
+			end,
+		},
+		{
+			t = 0.75,
+			run = function()
+				Core.tempBeam(ctx.origin, behind, 0.2, { color = TIME, width0 = 0.8, light = 1 })
+			end,
+		},
+		{
+			t = 0.85,
+			run = function()
+				local fist = Core.part(Enum.PartType.Ball, Vector3.one * 1.6, CFrame.new(behind), {
+					color = CYAN, material = Enum.Material.ForceField, transparency = 0.1,
+				})
+				Core.runFor(0.12, function(_, t)
+					fist.CFrame = CFrame.new(behind:Lerp(target, t / 0.12))
+				end, function()
+					fist:Destroy()
+					Core.shockwave(Core.axisCF(target, ctx.direction), { color = BRIGHT, from = 1, to = 12, duration = 0.4 })
+					Core.burst(target, 30, { color = TIME, texture = SPARK, speed = 24, light = 1 })
+				end)
+			end,
+		},
+	})
+end
+
+-- Move2: time injection
+function Time.Move2(ctx)
+	local tr = Core.root(ctx.targetCharacter)
+	local center = tr and tr.Position or ctx.target
+	local feet = center - Vector3.new(0, 2.8, 0)
+
+	local parts = {}
+	local ring = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 7, 7), Core.groundCF(feet), {
+		color = CYAN, material = Enum.Material.Neon, transparency = 0.5,
+	})
+	table.insert(parts, ring)
+
+	-- clock ticks around the ring
+	for i = 1, 12 do
+		local a = (i - 1) / 12 * math.pi * 2
+		table.insert(parts, Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.6),
+			CFrame.new(feet + Vector3.new(math.cos(a) * 3.5, 0.05, math.sin(a) * 3.5)) * CFrame.Angles(0, math.pi / 2 - a, 0), {
+				color = BRIGHT, material = Enum.Material.Neon, transparency = 0.1,
+			}))
+	end
+
+	-- two clock hands that spin, then freeze
+	local hands = {}
+	for i = 1, 2 do
+		hands[i] = Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.2, 2.4), CFrame.new(feet), {
+			color = BRIGHT, material = Enum.Material.Neon, transparency = 0.1,
+		})
+		table.insert(parts, hands[i])
+	end
+
+	local sparkAnchor = Core.anchor(center)
+	table.insert(parts, sparkAnchor)
+	local sparks = Core.emitter(Core.attach(sparkAnchor), {
+		texture = SPARK, color = TIME, rate = 60, light = 1,
+		lifetime = NumberRange.new(0.4, 0.8), speed = NumberRange.new(2, 6),
+		spread = Vector2.new(180, 180), size = NumberSequence.new(0.4, 0.05),
+	})
+
+	-- symbol streams and overlapping echoes
+	for i = 1, 14 do
+		task.delay(i * 0.04, function()
+			symbol(center)
+		end)
+	end
+	if tr then
+		for i = 1, 4 do
+			task.delay(0.05 * i, function()
+				if tr.Parent then
+					Core.ghost(tr.CFrame * CFrame.new(rng:NextNumber(-1.5, 1.5), 0, rng:NextNumber(-1.5, 1.5)),
+						Vector3.new(2, 5, 1), CYAN, 0.6)
+				end
+			end)
+		end
+	end
+
+	Core.runFor(1.2, function(_, t)
+		for i, h in ipairs(hands) do
+			local th = math.min(t, 0.4) * 12 * i -- spin, then freeze at 0.4s
+			h.CFrame = CFrame.new(feet) * CFrame.Angles(0, th, 0) * CFrame.new(0, 0, -1.2)
+		end
+	end, function()
+		sparks.Enabled = false
+		Core.shockwave(Core.groundCF(feet), { color = BRIGHT, from = 8, to = 1, duration = 0.4 })
+		Core.burst(center, 40, { color = BRIGHT, texture = SPARK, speed = 26, light = 1 })
+		Core.setTransparency(parts, 1)
+		Core.cleanupLater(parts, 0.3)
+	end)
+end
+
+-- Move3: untouchable shield. Returns a handle with :Hit() and :End().
+function Time.Move3(ctx)
+	local root = ctx.root
+	if not root then
+		return nil
+	end
+	local life = ctx.duration or 4
+
+	local shield = Core.part(Enum.PartType.Ball, Vector3.one * 7, CFrame.new(root.Position), {
+		color = CYAN, material = Enum.Material.ForceField, transparency = 0.6,
+	})
+	local rings = {}
+	for i = 1, 3 do
+		rings[i] = Core.part(Enum.PartType.Cylinder, Vector3.new(0.12, 8, 8), CFrame.new(root.Position), {
+			color = BRIGHT, material = Enum.Material.Neon, transparency = 0.5,
+		})
+	end
+
+	local flash = 0
+	local finish = Core.runFor(life, function(dt, t)
+		local p = root.Position
+		shield.CFrame = CFrame.new(p)
+		for i, r in ipairs(rings) do
+			r.CFrame = CFrame.new(p) * CFrame.Angles(math.rad(30 * i), t * (1 + i * 0.6), 0) * CFrame.Angles(0, 0, math.rad(90))
+		end
+		if flash > 0 then
+			flash = math.max(flash - dt * 4, 0)
+			shield.Transparency = 0.6 - 0.4 * flash
+		end
+	end, function()
+		shield.Transparency = 1
+		for _, r in ipairs(rings) do
+			r.Transparency = 1
+		end
+		Core.cleanupLater({ shield }, 0.2)
+		Core.cleanupLater(rings, 0.2)
+	end)
+
+	return {
+		Hit = function()
+			flash = 1
+			Core.shockwave(Core.groundCF(root.Position), { color = CYAN, from = 1, to = 8, duration = 0.4 })
+		end,
+		End = function()
+			finish()
+		end,
+	}
+end
+
+-- Move4: virtual kill sequence
+function Time.Move4(ctx)
+	local tr = Core.root(ctx.targetCharacter)
+	local center = tr and tr.Position or ctx.target
+	local ground = center - Vector3.new(0, 2.8, 0)
+
+	-- 1. four temporal rings close in on the target
+	for i = 1, 4 do
+		task.delay((i - 1) * 0.12, function()
+			Core.shockwave(Core.groundCF(ground + Vector3.new(0, (i - 1) * 0.6, 0)), {
+				color = i % 2 == 0 and BRIGHT or CYAN, from = 14, to = 2, duration = 1.0,
+			})
+		end)
+	end
+
+	Core.timeline(2.4, {
+		{
+			t = 1.0, -- 2. scene distortion around the target
+			run = function()
+				local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(center), {
+					color = CYAN, material = Enum.Material.Glass, transparency = 0.6,
+				})
+				Core.runFor(0.5, function(_, t)
+					local k = t / 0.5
+					bubble.Size = Vector3.one * (4 + 2 * math.sin(k * math.pi))
+					bubble.Transparency = 0.6 + 0.3 * k
+				end, function()
+					bubble:Destroy()
+				end)
+			end,
+		},
+		{
+			t = 1.5, -- 3. concentrated blue release
+			run = function()
+				local core = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(center), {
+					color = BRIGHT, material = Enum.Material.Neon, transparency = 0,
+				})
+				Core.runFor(0.25, function(_, t)
+					local k = t / 0.25
+					core.Size = Vector3.one * (1 + 6 * Core.smooth(k))
+					core.Transparency = k * 0.8
+				end, function()
+					core:Destroy()
+				end)
+				Core.tempBeam(center, center + Vector3.new(0, 40, 0), 0.5, {
+					color = TIME, width0 = 3, width1 = 0.5, light = 1,
+				})
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = BRIGHT, from = 1, to = 14, duration = 0.4 })
+				Core.burst(center, 50, { color = TIME, texture = SPARK, speed = 30, light = 1 })
+			end,
+		},
+	})
+end
+
+return Time
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="16">
+        <Properties>
+          <string name="Name">Wind</string>
+          <string name="Source"><![CDATA[-- Wind.lua — Wind element
+--   M1    Compressed Wind: lightning-bolt shaped projectile with compressed-air rings
+--   Move1 Airy Vortex: rotating cone of compressed wind thrown forward
+--   Move2 The Cyclone of Fury: tall rotating tornado at the target. ctx.radius sets the pull area
+--         (default 14). ctx.duration sets how long it lasts (default 5).
+--   Move3 Maximum Speed: wind rings around the caster for ctx.duration (default 5), with a trail
+--         while moving fast. Speed boost itself is server-side.
+--   Move4 Wind: Death Speed: timed sequence (lift, spiral, dive, impact, ride a rock,
+--         form the bolt, dash). Debris and rings are temporary. The map is never changed.
+
+local Core = require(script.Parent.Core)
+
+local WHITE = Color3.fromRGB(255, 255, 255)
+local PCYAN = Color3.fromRGB(180, 240, 255)
+local MINT = Color3.fromRGB(170, 255, 220)
+local WIND = Core.seq({ WHITE, PCYAN, MINT })
+local DUST = Color3.fromRGB(215, 225, 220)
+local ROCK_C = Color3.fromRGB(120, 115, 110)
+local SPARK = Core.Textures.Sparkle
+local SMOKE = Core.Textures.Smoke
+local ROCK = Enum.Material.Rock
+
+local Wind = {}
+
+-- Lightning bolt: zigzag points along the travel axis (local Z)
+local BOLT_PTS = {
+	Vector3.new(0, 0, -1.8),
+	Vector3.new(0.9, 0, -0.9),
+	Vector3.new(-0.6, 0, 0),
+	Vector3.new(0.8, 0, 0.9),
+	Vector3.new(0, 0, 1.8),
+}
+
+-- Places bolt segments so the bolt sits at cf
+function Wind.placeBolt(segs, cf)
+	for i, seg in ipairs(segs) do
+		local a = cf * BOLT_PTS[i]
+		local b = cf * BOLT_PTS[i + 1]
+		local d = b - a
+		seg.Size = Vector3.new(0.3, 0.3, d.Magnitude)
+		seg.CFrame = CFrame.lookAt(a + d / 2, b)
+	end
+end
+
+-- Creates the bolt segments at cf and returns them
+local function buildBolt(cf)
+	local segs = {}
+	for i = 1, #BOLT_PTS - 1 do
+		table.insert(segs, Core.part(Enum.PartType.Block, Vector3.new(0.3, 0.3, 1), cf, {
+			color = WHITE, material = Enum.Material.Neon, transparency = 0.05,
+		}))
+	end
+	Wind.placeBolt(segs, cf)
+	return segs
+end
+
+-- Travels a bolt from `from` to `to`, leaving compressed-air rings and a trail.
+-- Returns the travel time.
+function Wind.dashBolt(from, to, speed)
+	local delta = to - from
+	local dist = delta.Magnitude
+	if dist < 0.5 then
+		return 0
+	end
+	local dir = delta.Unit
+	local dur = math.clamp(dist / (speed or 120), 0.15, 1.5)
+	local segs = buildBolt(Core.lookCF(from, dir))
+
+	local tip = Core.anchor(from)
+	Core.trail(tip, Core.attach(tip, Vector3.new(0.6, 0, 0)), Core.attach(tip, Vector3.new(-0.6, 0, 0)), {
+		color = WIND, lifetime = 0.35,
+	})
+
+	local lastRing = 0
+	Core.runFor(dur, function(_, t)
+		local pos = from + dir * (dist * (t / dur))
+		local cf = Core.lookCF(pos, dir)
+		Wind.placeBolt(segs, cf)
+		tip.CFrame = cf
+		if t - lastRing >= 0.06 then
+			lastRing = t
+			Core.shockwave(Core.axisCF(pos, dir), { color = PCYAN, from = 0.8, to = 3.2, duration = 0.25 })
+		end
+	end, function()
+		Core.setTransparency(segs, 1)
+		Core.cleanupLater(segs, 0.1)
+		Core.cleanupLater({ tip }, 0.4)
+	end)
+	return dur
+end
+
+-- Blocks spiral from a to b over `dur` seconds (compressed-air spiral)
+function Wind.spiral(a, b, dur, radius, count, color)
+	local parts = {}
+	for i = 1, count do
+		parts[i] = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.4, 0.9), CFrame.new(a), {
+			color = color, material = Enum.Material.Neon, transparency = 0.2,
+		})
+	end
+	Core.runFor(dur, function(_, t)
+		local k = t / dur
+		local c = a:Lerp(b, k)
+		local r = radius * (1 - k * 0.5)
+		for i, p in ipairs(parts) do
+			local ang = k * math.pi * 8 + i * (math.pi * 2 / count)
+			local pos = c + Vector3.new(math.cos(ang) * r, 0, math.sin(ang) * r)
+			p.CFrame = CFrame.new(pos) * CFrame.Angles(0, -ang, 0)
+		end
+	end, function()
+		Core.setTransparency(parts, 1)
+		Core.cleanupLater(parts, 0.1)
+	end)
+end
+
+-- M1: compressed-wind lightning bolt
+function Wind.M1(ctx)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	local from = (hand and hand.Position or ctx.origin) + ctx.direction * 2
+	local dur = Wind.dashBolt(from, ctx.target, 110)
+	task.delay(dur, function()
+		Core.burst(ctx.target, 10, { color = WIND, texture = SPARK, speed = 12, light = 1 })
+	end)
+end
+
+-- Move1: rotating cone of compressed wind, thrown forward
+function Wind.Move1(ctx)
+	local dir = ctx.direction
+	local origin = ctx.origin + dir * 3
+	local target = ctx.target
+	local dur = math.max((target - origin).Magnitude / 50, 0.4)
+
+	local tip = Core.anchor(origin)
+	local dust = Core.emitter(Core.attach(tip), {
+		texture = SMOKE, color = Core.seq(DUST), rate = 25, light = 0,
+		lifetime = NumberRange.new(0.6, 1.0), speed = NumberRange.new(1, 3), size = NumberSequence.new(1, 3),
+	})
+
+	local LAYERS, PER = 6, 4
+	local parts, bits = { tip }, {}
+	for i = 1, LAYERS do
+		for k = 1, PER do
+			local p = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.6, 0.6), CFrame.new(origin), {
+				color = PCYAN, material = Enum.Material.Neon, transparency = 0.2,
+			})
+			table.insert(bits, { part = p, layer = i, idx = k })
+			table.insert(parts, p)
+		end
+	end
+
+	local spin = 0
+	Core.runFor(dur, function(dt, t)
+		spin += dt
+		local base = origin:Lerp(target, math.min(t / dur, 1))
+		tip.CFrame = CFrame.new(base)
+		for _, b in ipairs(bits) do
+			-- narrow at the front, wider behind
+			local r = 0.5 + b.layer * 0.5
+			local a = spin * (4 + b.layer * 0.6) + b.idx * (math.pi / 2)
+			local F = Core.axisCF(base - dir * (b.layer * 0.6), dir)
+			b.part.CFrame = F * CFrame.new(0, math.cos(a) * r, math.sin(a) * r)
+		end
+	end, function()
+		dust.Enabled = false
+		Core.burst(target, 20, { texture = SMOKE, color = Core.seq(DUST), speed = 10, light = 0 })
+		Core.setTransparency(parts, 1)
+		Core.cleanupLater(parts, 0.4)
+	end)
+end
+
+-- Move2: tall cyclone at the target. Pulls particles inward every 0.8s.
+function Wind.Move2(ctx)
+	local ground = Vector3.new(ctx.target.X, ctx.target.Y - 3, ctx.target.Z)
+	local life = ctx.duration or 5
+	local R = ctx.radius or 14
+	local H, LAYERS, PER = 18, 12, 5
+
+	local boundary = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(ground + Vector3.new(0, 0.1, 0)), {
+		color = MINT, material = Enum.Material.Neon, transparency = 0.7,
+	})
+	local anchor = Core.anchor(ground + Vector3.new(0, 1, 0))
+	local leaves = Core.emitter(Core.attach(anchor), {
+		texture = SPARK, color = Core.seq(MINT), rate = 25, light = 0.5,
+		lifetime = NumberRange.new(1.2, 1.8), speed = NumberRange.new(4, 8),
+		spread = Vector2.new(180, 180), direction = Enum.NormalId.Top,
+	})
+
+	local layers, parts = {}, { boundary, anchor }
+	for i = 1, LAYERS do
+		for k = 1, PER do
+			local p = Core.part(Enum.PartType.Block, Vector3.new(1.4, 0.3, 0.5), CFrame.new(ground), {
+				color = WHITE, material = Enum.Material.Glass, transparency = 0.25,
+			})
+			table.insert(layers, { part = p, layer = i, idx = k })
+			table.insert(parts, p)
+		end
+	end
+
+	local spin, lastPull = 0, 0
+	Core.runFor(life, function(dt, t)
+		spin += dt
+		if t - lastPull >= 0.8 then
+			lastPull = t
+			Core.converge(ground + Vector3.new(0, 3, 0), R, 14, 0.8, MINT)
+		end
+		for _, b in ipairs(layers) do
+			local y = (b.layer - 1) * (H / LAYERS)
+			local r = 2 + (b.layer - 1) * 0.6
+			local a = spin * (10 - b.layer * 0.4) + b.idx * (math.pi * 2 / PER)
+			local p = ground + Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
+			b.part.CFrame = CFrame.new(p) * CFrame.Angles(0, -(a + math.pi / 2), 0)
+		end
+	end, function()
+		leaves.Enabled = false
+		Core.setTransparency(parts, 1)
+		Core.cleanupLater(parts, 0.5)
+	end)
+end
+
+-- Move3: wind rings around the caster, with a short trail while moving fast
+function Wind.Move3(ctx)
+	local root = ctx.root
+	if not root then
+		return
+	end
+	local life = ctx.duration or 5
+	local heights = { -2.4, 0, 1.8 }
+	local rings = {}
+	for j = 1, #heights do
+		for i = 1, 6 do
+			table.insert(rings, { part = Core.part(Enum.PartType.Block, Vector3.new(0.5, 0.4, 0.9), CFrame.new(root.Position), {
+				color = PCYAN, material = Enum.Material.Neon, transparency = 0.2,
+			}), layer = j, idx = i })
+		end
+	end
+
+	local spin, lastPuff = 0, 0
+	Core.runFor(life, function(dt, t)
+		spin += dt
+		local base = root.Position
+		for _, r in ipairs(rings) do
+			local a = spin * (8 + r.layer * 2) + r.idx * (math.pi / 3)
+			local pos = base + Vector3.new(math.cos(a) * 2.2, heights[r.layer], math.sin(a) * 2.2)
+			r.part.CFrame = CFrame.new(pos) * CFrame.Angles(0, -(a + math.pi / 2), 0)
+		end
+		-- short wind trail while moving fast
+		if root.Parent and root.AssemblyLinearVelocity.Magnitude > 10 and t - lastPuff >= 0.08 then
+			lastPuff = t
+			Core.ghost(CFrame.new(base - Vector3.new(0, 1, 0)), Vector3.one * 1.2, PCYAN, 0.35, Enum.PartType.Ball)
+		end
+	end, function()
+		local parts = {}
+		for _, r in ipairs(rings) do
+			table.insert(parts, r.part)
+		end
+		Core.setTransparency(parts, 1)
+		Core.cleanupLater(parts, 0.1)
+	end)
+end
+
+-- Move4: death speed sequence. Times are seconds from the start.
+function Wind.Move4(ctx)
+	local root = ctx.root
+	local target = ctx.target
+	local ground = target - Vector3.new(0, 3, 0)
+	local top = ground + Vector3.new(0, 10, 0)
+	local junk = {}
+	local boltFrom = nil
+	local boltSegs = {}
+
+	Core.timeline(4.4, {
+		{
+			t = 0.0, -- 1. lift the target: spiral rising from the ground
+			run = function()
+				Wind.spiral(ground, top, 1.0, 3, 10, PCYAN)
+			end,
+		},
+		{
+			t = 1.1, -- 2. rise with them: second spiral above
+			run = function()
+				Wind.spiral(top, top + Vector3.new(0, 4, 0), 0.6, 4, 8, WHITE)
+			end,
+		},
+		{
+			t = 1.8, -- 3. dive: streaks and a downward spiral
+			run = function()
+				for i = 1, 6 do
+					local a = i * math.pi / 3
+					local off = Vector3.new(math.cos(a) * 3, 0, math.sin(a) * 3)
+					Core.tempBeam(ground + Vector3.new(0, 14, 0) + off, ground + off, 0.4, {
+						color = PCYAN, width0 = 0.4, width1 = 0.1, light = 1,
+					})
+				end
+				Wind.spiral(top, ground, 0.5, 4, 10, WHITE)
+			end,
+		},
+		{
+			t = 2.2, -- 4. impact: rings, dust, and rock debris (temporary, nothing is changed)
+			run = function()
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = 22, duration = 0.6 })
+				Core.burst(ground, 40, { texture = SMOKE, color = Core.seq(DUST), speed = 18, life = 0.8, size = NumberSequence.new(1.5, 4) })
+				Core.fragments(ground, 16, { color = ROCK_C, material = ROCK, speed = 26, life = 1.0 })
+			end,
+		},
+		{
+			t = 2.5, -- 5. ride a rock that follows the caster for a moment
+			run = function()
+				local rock = Core.part(Enum.PartType.Block, Vector3.new(5, 1.5, 5), CFrame.new(ground), {
+					color = ROCK_C, material = ROCK, transparency = 0,
+				})
+				table.insert(junk, rock)
+				Core.runFor(1.0, function()
+					if root and root.Parent then
+						rock.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.5, 0))
+					end
+				end, function()
+					rock:Destroy()
+				end)
+			end,
+		},
+		{
+			t = 3.5, -- 6. form the lightning bolt in front of the caster
+			run = function()
+				boltFrom = (root and root.Position or ctx.origin) + ctx.direction * 4
+				boltSegs = buildBolt(Core.lookCF(boltFrom, ctx.direction))
+			end,
+		},
+		{
+			t = 3.9, -- 7. dash toward the target, then impact
+			run = function()
+				Core.destroyAll(boltSegs)
+				local dur = Wind.dashBolt(boltFrom, target, 150)
+				task.delay(dur, function()
+					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = 26, duration = 0.6 })
+					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = PCYAN, from = 1, to = 12, duration = 0.4 })
+					Core.burst(target, 70, { texture = SMOKE, color = Core.seq(DUST), speed = 30, life = 0.6, light = 0.5 })
+					Core.burst(target, 40, { color = WIND, texture = SPARK, speed = 36, light = 1 })
+					Core.fragments(target, 18, { color = ROCK_C, material = ROCK, speed = 34 })
+				end)
+			end,
+		},
+	}, function()
+		Core.cleanupLater(junk, 0.2)
+	end)
+end
+
+return Wind
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Folder" referent="17">
+      <Properties>
         <string name="Name">Shared</string>
       </Properties>
-      <Item class="Folder" referent="7">
+      <Item class="Folder" referent="18">
         <Properties>
           <string name="Name">Config</string>
         </Properties>
-        <Item class="ModuleScript" referent="8">
+        <Item class="ModuleScript" referent="19">
           <Properties>
             <string name="Name">AbilityConfig</string>
             <string name="Source"><![CDATA[--!strict
@@ -762,7 +3890,7 @@ return table.freeze(AbilityConfig)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="9">
+        <Item class="ModuleScript" referent="20">
           <Properties>
             <string name="Name">AdminConfig</string>
             <string name="Source"><![CDATA[--!strict
@@ -820,7 +3948,7 @@ return table.freeze(AdminConfig)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="10">
+        <Item class="ModuleScript" referent="21">
           <Properties>
             <string name="Name">GameConfig</string>
             <string name="Source"><![CDATA[--!strict
@@ -967,7 +4095,7 @@ return table.freeze(GameConfig)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="11">
+        <Item class="ModuleScript" referent="22">
           <Properties>
             <string name="Name">ShopConfig</string>
             <string name="Source"><![CDATA[--!strict
@@ -1101,7 +4229,7 @@ return table.freeze(ShopConfig)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="12">
+        <Item class="ModuleScript" referent="23">
           <Properties>
             <string name="Name">VFXAssetIds</string>
             <string name="Source"><![CDATA[--!strict
@@ -1566,11 +4694,11 @@ return table.freeze(VFXAssetIds)
           </Properties>
         </Item>
       </Item>
-      <Item class="Folder" referent="13">
+      <Item class="Folder" referent="24">
         <Properties>
           <string name="Name">Modules</string>
         </Properties>
-        <Item class="ModuleScript" referent="14">
+        <Item class="ModuleScript" referent="25">
           <Properties>
             <string name="Name">AnimationMarkerUtil</string>
             <string name="Source"><![CDATA[--!strict
@@ -1673,7 +4801,7 @@ return table.freeze(AnimationMarkerUtil)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="15">
+        <Item class="ModuleScript" referent="26">
           <Properties>
             <string name="Name">CombatHelper</string>
             <string name="Source"><![CDATA[--!strict
@@ -1757,7 +4885,7 @@ return table.freeze(CombatHelper)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="16">
+        <Item class="ModuleScript" referent="27">
           <Properties>
             <string name="Name">StatusEffectTypes</string>
             <string name="Source"><![CDATA[--!strict
@@ -1789,7 +4917,7 @@ return {}
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="17">
+        <Item class="ModuleScript" referent="28">
           <Properties>
             <string name="Name">VFXHelper</string>
             <string name="Source"><![CDATA[--!strict
@@ -3847,7 +6975,7 @@ return table.freeze(VFXHelper)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="18">
+        <Item class="ModuleScript" referent="29">
           <Properties>
             <string name="Name">VFXModelBuilder</string>
             <string name="Source"><![CDATA[--!strict
@@ -4919,60 +8047,25 @@ return table.freeze(VFXModelBuilder)
         </Item>
       </Item>
     </Item>
-    <Item class="Folder" referent="19">
+    <Item class="Folder" referent="30">
       <Properties>
         <string name="Name">VFX</string>
       </Properties>
-      <Item class="Folder" referent="20">
-        <Properties>
-          <string name="Name">Aqua</string>
-        </Properties>
-      </Item>
-      <Item class="Folder" referent="21">
-        <Properties>
-          <string name="Name">Earth</string>
-        </Properties>
-      </Item>
-      <Item class="Folder" referent="22">
-        <Properties>
-          <string name="Name">Error</string>
-        </Properties>
-      </Item>
-      <Item class="Folder" referent="23">
-        <Properties>
-          <string name="Name">Fire</string>
-        </Properties>
-      </Item>
-      <Item class="Folder" referent="24">
-        <Properties>
-          <string name="Name">Light</string>
-        </Properties>
-      </Item>
-      <Item class="Folder" referent="25">
-        <Properties>
-          <string name="Name">Time</string>
-        </Properties>
-      </Item>
-      <Item class="Folder" referent="26">
-        <Properties>
-          <string name="Name">Wind</string>
-        </Properties>
-      </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="27">
+  <Item class="ServerScriptService" referent="31">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="28">
+    <Item class="Folder" referent="32">
       <Properties>
         <string name="Name">ElementalWorlds</string>
       </Properties>
-      <Item class="Folder" referent="29">
+      <Item class="Folder" referent="33">
         <Properties>
           <string name="Name">Elements</string>
         </Properties>
-        <Item class="ModuleScript" referent="30">
+        <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">AquaElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -5006,6 +8099,15 @@ function AquaElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 16,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual dual water spray from hands
     VFXBroadcastService.Broadcast("WaterSpray", {
         CFrame = rootPart.CFrame,
@@ -5025,6 +8127,13 @@ function AquaElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local strikeCFrame = rootPart.CFrame * CFrame.new(0, 0, -8)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "Move1",
+        Character = character,
+        Target = strikeCFrame.Position,
+        Direction = rootPart.CFrame.LookVector,
+    })
     VFXBroadcastService.Broadcast("WaterHand", {
         Position = strikeCFrame.Position,
         SFXId = ability.SFXId,
@@ -5049,11 +8158,18 @@ function AquaElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Aqua",
+            Move = "Move2",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
         VFXBroadcastService.Broadcast("VortexSphere", {
             StartPos = spawnPos,
             EndPos = impactPos,
@@ -5078,6 +8194,12 @@ function AquaElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "WaterDragon", duration, player)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
     VFXBroadcastService.Broadcast("WaterDragon", {
         Character = character,
         Duration = duration,
@@ -5089,6 +8211,14 @@ end
 function AquaElement.CastMove4(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Aqua", "4")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "Move4",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 10,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Rapid strikes: 8 hits over 1.5 seconds totaling crazy damage
     local totalHits = 8
@@ -5142,7 +8272,7 @@ return table.freeze(AquaElement)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="31">
+        <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">EarthElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -5176,6 +8306,15 @@ function EarthElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 12,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual stone blade slash
     VFXBroadcastService.Broadcast("SlashArc", {
         CFrame = rootPart.CFrame * CFrame.new(0, 0, -3),
@@ -5205,6 +8344,15 @@ function EarthElement.CastMove1(player: Player, character: Model, rootPart: Base
     wallPart.CanCollide = true
     wallPart.Parent = Workspace:FindFirstChild("Map") or Workspace
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "Move1",
+        Character = character,
+        Target = wallPart.Position,
+        Direction = rootPart.CFrame.LookVector,
+        Duration = wallDuration,
+    })
+
     -- Visual 3-pillar rock eruption
     VFXBroadcastService.Broadcast("EarthPillars", {
         CFrame = wallPart.CFrame,
@@ -5226,10 +8374,18 @@ function EarthElement.CastMove2(player: Player, character: Model, rootPart: Base
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Earth",
+            Move = "Move2",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
 
         -- Visual giant rolling boulder and shatter impact
         VFXBroadcastService.Broadcast("Boulder", {
@@ -5253,6 +8409,14 @@ function EarthElement.CastMove3(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Earth", "3")
     if not ability then return end
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "Move3",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 16,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual stone gauntlet manifests on punch
     VFXBroadcastService.Broadcast("StoneGauntlet", {
         Character = character,
@@ -5273,6 +8437,14 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
 
     -- 1. Validate and reserve target
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "Move4",
+        Character = character,
+        Target = if target and target.RootPart then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 10),
+        TargetCharacter = if target then target.Model else nil,
+        Direction = rootPart.CFrame.LookVector,
+    })
     if not target or not target.Character.Parent then
         -- Whiff feedback: Colossal Earth Terra Ground Shatter
         local strikePos = rootPart.Position + (rootPart.CFrame.LookVector * 10)
@@ -5341,7 +8513,7 @@ return table.freeze(EarthElement)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="32">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">ErrorElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -5381,6 +8553,15 @@ function ErrorElement.CastM1(player: Player, character: Model, rootPart: BasePar
     -- Dash forward
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -12)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual chromatic aberration glitch trail
     VFXBroadcastService.Broadcast("GlitchedTrail", {
         StartPos = prevPos,
@@ -5401,6 +8582,14 @@ end
 function ErrorElement.CastMove1(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Error", "1")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 18,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Visual holographic digital arm shield
     VFXBroadcastService.Broadcast("GlitchWall", {
@@ -5451,10 +8640,18 @@ function ErrorElement.CastMove2(player: Player, character: Model, rootPart: Base
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Error",
+            Move = "Move2",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
 
         -- Visual pulsating chromatic aberration 404 ball
         VFXBroadcastService.Broadcast("404Ball", {
@@ -5483,6 +8680,13 @@ function ErrorElement.CastMove3(player: Player, character: Model, rootPart: Base
 
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "GotGlitched", duration, player)
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
 
     -- Visual scanline glitch dissolution and shimmer silhouette
     VFXBroadcastService.Broadcast("GlitchInvis", {
@@ -5533,6 +8737,15 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
     local duration = ability.Duration or 7.0
     local domainRadius = 35
     local domainCenter = rootPart.Position
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move4",
+        Character = character,
+        Target = domainCenter,
+        Duration = duration,
+        Radius = domainRadius,
+    })
 
     -- Spawn Grounded Cyber Glitched Domain Arena (NO sky teleport, NO void plummet!)
     VFXBroadcastService.Broadcast("SpatialDistortionDomain", {
@@ -5623,6 +8836,18 @@ function ErrorElement.CastMove5(player: Player, character: Model, rootPart: Base
 
     local duration = ability.Duration or 5.0
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, 360, character)
+
+    local targetModels = {}
+    for _, t in targets do
+        if t.Character then table.insert(targetModels, t.Character) end
+    end
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move5",
+        Character = character,
+        Targets = targetModels,
+        Direction = rootPart.CFrame.LookVector,
+    })
     if #targets > 0 then
         for _, target in targets do
             StatusEffectService.ApplyEffect(target.Character, "UnparalleledStun", duration, player)
@@ -5647,7 +8872,7 @@ return table.freeze(ErrorElement)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">FireElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -5681,6 +8906,15 @@ function FireElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local isFinisher = (step == 4)
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
+
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Fire",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 12,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Visual fiery slash arc (Finisher triggers circular fire slash wheel)
     if isFinisher then
@@ -5720,10 +8954,19 @@ function FireElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        -- Broadcast to ElementalVFX Dispatcher
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Fire",
+            Move = "Move1",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
 
         -- Visual fireball projectile with traveling flame sphere and burst on arrival
         VFXBroadcastService.Broadcast("Fireball", {
@@ -5786,6 +9029,15 @@ function FireElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     beast.PrimaryPart = bRoot
     beast.Parent = Workspace:FindFirstChild("NPCs") or Workspace
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Fire",
+        Move = "Move2",
+        Character = character,
+        Target = bRoot.Position,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Beast auto-targeting loop
     local duration = ability.Duration or 15
     local alive = true
@@ -5834,6 +9086,16 @@ function FireElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     end
 
     if target and target.Character.Parent then
+        -- Broadcast to ElementalVFX Dispatcher
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Fire",
+            Move = "Move3",
+            Character = character,
+            Target = target.RootPart.Position,
+            TargetCharacter = target.Model,
+            Direction = rootPart.CFrame.LookVector,
+        })
+
         -- Teleport behind target
         rootPart.CFrame = target.RootPart.CFrame * CFrame.new(0, 0, 4)
 
@@ -5909,6 +9171,16 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 8, 0)
     rootPart.Anchored = true
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Fire",
+        Move = "Move4",
+        Character = character,
+        Target = domainCenter,
+        Duration = duration,
+        Radius = domainRadius,
+    })
+
     -- VFX: Converging charge wind-up, impact frame, massive eruption crater and shockwave
     VFXBroadcastService.Broadcast("ImpactFrame", {
         Duration = 0.08,
@@ -5979,7 +9251,7 @@ return table.freeze(FireElement)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">LightElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -6012,8 +9284,17 @@ function LightElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
-    -- Visual dim light beam
+    -- Broadcast to ElementalVFX Dispatcher
     local m1End = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "M1",
+        Character = character,
+        Target = m1End,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
+    -- Visual dim light beam
     VFXBroadcastService.Broadcast("Beam", {
         StartPos = rootPart.Position + Vector3.new(0, 1.2, 0),
         EndPos = m1End,
@@ -6034,6 +9315,13 @@ function LightElement.CastMove1(player: Player, character: Model, rootPart: Base
     if not ability then return end
 
     local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move1",
+        Character = character,
+        Target = beamEnd,
+        Direction = rootPart.CFrame.LookVector,
+    })
     VFXBroadcastService.Broadcast("Beam", {
         StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
         EndPos = beamEnd,
@@ -6064,6 +9352,14 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     local mirrorPos = if target and target.Character.Parent then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 14)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move2",
+        Character = character,
+        Target = mirrorPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual crystalline mirrors with bouncing light rays and inward slam
     VFXBroadcastService.Broadcast("MirrorsOfJudgement", {
         Position = mirrorPos,
@@ -6093,9 +9389,18 @@ function LightElement.CastMove3(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Light", "3")
     if not ability then return end
 
+    local flashPos = rootPart.Position + (rootPart.CFrame.LookVector * 10)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move3",
+        Character = character,
+        Target = flashPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Always broadcast blinding flash forward
     VFXBroadcastService.Broadcast("BlindingFlash", {
-        Position = rootPart.Position + (rootPart.CFrame.LookVector * 10),
+        Position = flashPos,
         SFXId = ability.SFXId,
     })
 
@@ -6111,6 +9416,14 @@ end
 function LightElement.CastMove4(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Light", "4")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move4",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 30,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Broadcast converging charge during 0.4s wind-up
     VFXBroadcastService.Broadcast("ConvergingCharge", {
@@ -6171,7 +9484,7 @@ return table.freeze(LightElement)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="39">
           <Properties>
             <string name="Name">TimeElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -6204,6 +9517,15 @@ function TimeElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 12,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual glowing clock dial aura on striking fist
     VFXBroadcastService.Broadcast("ClockAura", {
         Character = character,
@@ -6222,6 +9544,13 @@ function TimeElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move1",
+        Character = character,
+        Target = if target and target.RootPart then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 18),
+        Direction = rootPart.CFrame.LookVector,
+    })
     if target and target.Character.Parent then
         local tRoot = target.RootPart
         local tHum = target.Humanoid
@@ -6268,6 +9597,14 @@ function TimeElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local castPos = rootPart.Position + (rootPart.CFrame.LookVector * 12)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move2",
+        Character = character,
+        Target = castPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual abstract timeline streams & spinning clock rings
     VFXBroadcastService.Broadcast("TimeInjection", {
         Position = castPos,
@@ -6296,6 +9633,13 @@ function TimeElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     -- Applies Untouchable status: StatusEffectService.CanTakeDamage returns false!
     StatusEffectService.ApplyEffect(character, "Untouchable", duration, player)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
+
     -- Visual revolving chronological forcefield with ethereal clock gears
     VFXBroadcastService.Broadcast("UntouchableBarrier", {
         Character = character,
@@ -6310,6 +9654,15 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    local strikePos = if target and target.Character.Parent then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 15)
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move4",
+        Character = character,
+        Target = strikePos,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     VFXBroadcastService.Broadcast("ConvergingCharge", {
         Position = rootPart.Position,
@@ -6357,7 +9710,7 @@ return table.freeze(TimeElement)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="40">
           <Properties>
             <string name="Name">WindElement</string>
             <string name="Source"><![CDATA[--!strict
@@ -6390,8 +9743,17 @@ function WindElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
-    -- Visual wind lightning projectile
+    -- Broadcast to ElementalVFX Dispatcher
     local m1End = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "M1",
+        Character = character,
+        Target = m1End,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
+    -- Visual wind lightning projectile
     VFXBroadcastService.Broadcast("WindLightning", {
         StartPos = rootPart.Position + Vector3.new(0, 1.2, 0),
         EndPos = m1End,
@@ -6411,6 +9773,14 @@ function WindElement.CastMove1(player: Player, character: Model, rootPart: BaseP
 
     local spawnPos = rootPart.Position + (rootPart.CFrame.LookVector * 2)
     local endPos = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move1",
+        Character = character,
+        Target = endPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Visual mini tornado traveling forward
     VFXBroadcastService.Broadcast("Tornado", {
@@ -6435,6 +9805,14 @@ function WindElement.CastMove2(player: Player, character: Model, rootPart: BaseP
 
     local cycloneCenter = rootPart.Position + (rootPart.CFrame.LookVector * 10)
     local duration = ability.Duration or 4.0
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move2",
+        Character = character,
+        Target = cycloneCenter,
+        Duration = duration,
+    })
 
     -- Visual massive swirling cyclone with suction particles
     VFXBroadcastService.Broadcast("Cyclone", {
@@ -6470,6 +9848,13 @@ function WindElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "SpeedBoost", duration, player)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
+
     -- Visual sonic wind trails and foot ring emitters
     VFXBroadcastService.Broadcast("SpeedBoost", {
         Character = character,
@@ -6484,6 +9869,15 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move4",
+        Character = character,
+        Target = if target and target.RootPart then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 28),
+        TargetCharacter = if target then target.Model else nil,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     if not target or not target.Character.Parent then
         -- Whiff action: Supersonic wind dive dash forward 28 studs with massive shockwave and crater
         rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -28)
@@ -6556,7 +9950,7 @@ return table.freeze(WindElement)
           </Properties>
         </Item>
       </Item>
-      <Item class="Script" referent="37">
+      <Item class="Script" referent="41">
         <Properties>
           <string name="Name">ServerMain</string>
           <token name="RunContext">0</token>
@@ -6762,11 +10156,11 @@ print("[Elemental Worlds] Server initialized — Map, Monetization, Creator Perk
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="38">
+      <Item class="Folder" referent="42">
         <Properties>
           <string name="Name">Services</string>
         </Properties>
-        <Item class="ModuleScript" referent="39">
+        <Item class="ModuleScript" referent="43">
           <Properties>
             <string name="Name">AdminService</string>
             <string name="Source"><![CDATA[--!strict
@@ -7030,7 +10424,7 @@ return table.freeze(AdminService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="40">
+        <Item class="ModuleScript" referent="44">
           <Properties>
             <string name="Name">CombatService</string>
             <string name="Source"><![CDATA[--!strict
@@ -7144,7 +10538,7 @@ return table.freeze(CombatService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="41">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">CooldownService</string>
             <string name="Source"><![CDATA[--!strict
@@ -7203,7 +10597,7 @@ return table.freeze(CooldownService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="42">
+        <Item class="ModuleScript" referent="46">
           <Properties>
             <string name="Name">CreatorPerksService</string>
             <string name="Source"><![CDATA[--!strict
@@ -7368,12 +10762,10 @@ function CreatorPerksService.ApplyCreatorVisuals(player: Player)
     local hasVIP = profile and profile.GamePasses["VIPMaster"] or false
 
     if isOwner then
-        -- Creator modern title and void aura
-        CreateOverheadBadge(char, "[CREATOR]", "coolzgamer9", CREATOR_ACCENT)
+        -- Creator aura (subtle ambient lighting only, no overhead card)
         AttachModernAura(char, CREATOR_ACCENT, true)
     elseif hasVIP then
-        -- VIP modern title and azure aura
-        CreateOverheadBadge(char, "[VIP]", player.Name, VIP_ACCENT)
+        -- VIP aura
         AttachModernAura(char, VIP_ACCENT, false)
     end
 end
@@ -7382,7 +10774,7 @@ return table.freeze(CreatorPerksService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="43">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">HitboxService</string>
             <string name="Source"><![CDATA[--!strict
@@ -7592,7 +10984,7 @@ return table.freeze(HitboxService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="44">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">MapService</string>
             <string name="Source"><![CDATA[--!strict
@@ -7619,48 +11011,67 @@ local RaidService = require(script.Parent.RaidService)
 
 local MapService = {}
 
--- Configures high-end modern anime lighting (Blox Fruits style)
+-- Configures high-end modern anime lighting (Unified Anime RPG Preset)
 local function SetupAnimeLighting()
-    Lighting.ClockTime = 14.5
-    Lighting.GeographicLatitude = 40
-    Lighting.Brightness = 2.2
+    Lighting.ClockTime = 14.2
+    Lighting.Brightness = 2.1
+    Lighting.ExposureCompensation = -0.05
     Lighting.GlobalShadows = true
-    Lighting.Ambient = Color3.fromRGB(80, 85, 100)
-    Lighting.OutdoorAmbient = Color3.fromRGB(110, 120, 140)
+    pcall(function() Lighting.ShadowSoftness = 0.25 end)
+    pcall(function() Lighting.EnvironmentDiffuseScale = 0.40 end)
+    pcall(function() Lighting.EnvironmentSpecularScale = 0.25 end)
+
+    Lighting.Ambient = Color3.fromRGB(84, 94, 110)
+    Lighting.OutdoorAmbient = Color3.fromRGB(139, 148, 164)
+    Lighting.ColorShift_Top = Color3.fromRGB(255, 248, 238)
+    Lighting.ColorShift_Bottom = Color3.fromRGB(213, 225, 240)
+
+    -- Atmosphere
+    local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+    if not atmosphere then
+        atmosphere = Instance.new("Atmosphere")
+        atmosphere.Name = "AnimeAtmosphere"
+        atmosphere.Parent = Lighting
+    end
+    atmosphere.Density = 0.20
+    atmosphere.Offset = 0.20
+    atmosphere.Haze = 0.70
+    atmosphere.Glare = 0.08
+    atmosphere.Color = Color3.fromRGB(199, 222, 255)
+    atmosphere.Decay = Color3.fromRGB(112, 130, 157)
 
     -- ColorCorrection for anime vibrancy
-    local cc = Lighting:FindFirstChild("AnimeColorCorrection") :: ColorCorrectionEffect?
+    local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
     if not cc then
         cc = Instance.new("ColorCorrectionEffect")
         cc.Name = "AnimeColorCorrection"
         cc.Parent = Lighting
     end
-    cc.Brightness = 0.02
-    cc.Contrast = 0.12
-    cc.Saturation = 0.16
-    cc.TintColor = Color3.fromRGB(255, 252, 248)
+    cc.Brightness = -0.02
+    cc.Contrast = 0.08
+    cc.Saturation = 0.06
+    cc.TintColor = Color3.fromRGB(255, 248, 241)
 
-    -- Subtle bloom tuned to prevent text blooming/blinding glare while preserving vibrant VFX
-    local bloom = Lighting:FindFirstChild("SubtleBloom") :: BloomEffect? or Lighting:FindFirstChild("AnimeBloom") :: BloomEffect?
+    -- BloomEffect tuned to prevent text blooming/blinding glare while preserving vibrant VFX
+    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
     if not bloom then
         bloom = Instance.new("BloomEffect")
-        bloom.Name = "SubtleBloom"
+        bloom.Name = "AnimeBloom"
         bloom.Parent = Lighting
     end
-    bloom.Name = "SubtleBloom"
-    bloom.Intensity = 0.10
-    bloom.Size = 14
-    bloom.Threshold = 2.2
+    bloom.Intensity = 0.18
+    bloom.Size = 24
+    bloom.Threshold = 1.5
 
     -- SunRays for anime atmosphere
-    local sunRays = Lighting:FindFirstChild("AnimeSunRays") :: SunRaysEffect?
+    local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
     if not sunRays then
         sunRays = Instance.new("SunRaysEffect")
         sunRays.Name = "AnimeSunRays"
         sunRays.Parent = Lighting
     end
-    sunRays.Intensity = 0.12
-    sunRays.Spread = 0.8
+    sunRays.Intensity = 0.025
+    sunRays.Spread = 0.65
 end
 
 -- World spawn positions
@@ -7961,7 +11372,7 @@ return table.freeze(MapService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">MonetizationService</string>
             <string name="Source"><![CDATA[--!strict
@@ -8107,7 +11518,7 @@ return table.freeze(MonetizationService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">PlayerDataService</string>
             <string name="Source"><![CDATA[--!strict
@@ -8468,7 +11879,7 @@ return table.freeze(PlayerDataService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">RNGSystem</string>
             <string name="Source"><![CDATA[--!strict
@@ -8656,7 +12067,7 @@ return table.freeze(RNGSystem)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">RaidService</string>
             <string name="Source"><![CDATA[--!strict
@@ -8991,7 +12402,7 @@ return table.freeze(RaidService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">StatusEffectService</string>
             <string name="Source"><![CDATA[--!strict
@@ -9069,12 +12480,12 @@ function StatusEffectService.ApplyEffect(
         -- Set character invisible on server (never touch HumanoidRootPart)
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                if part:GetAttribute("OrigTrans") == nil then
+                if part:GetAttribute("OrigTrans") == nil and part.Transparency < 0.9 then
                     part:SetAttribute("OrigTrans", part.Transparency)
                 end
                 part.Transparency = 1
             elseif part:IsA("Decal") then
-                if part:GetAttribute("OrigTrans") == nil then
+                if part:GetAttribute("OrigTrans") == nil and part.Transparency < 0.9 then
                     part:SetAttribute("OrigTrans", part.Transparency)
                 end
                 part.Transparency = 1
@@ -9166,11 +12577,11 @@ function StatusEffectService.RemoveEffect(character: Model, effectName: StatusEf
         for _, part in character:GetDescendants() do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                 local orig = part:GetAttribute("OrigTrans")
-                part.Transparency = if typeof(orig) == "number" then orig else 0
+                part.Transparency = if (typeof(orig) == "number" and orig < 0.9) then orig else 0
                 part:SetAttribute("OrigTrans", nil)
             elseif part:IsA("Decal") then
                 local orig = part:GetAttribute("OrigTrans")
-                part.Transparency = if typeof(orig) == "number" then orig else 0
+                part.Transparency = if (typeof(orig) == "number" and orig < 0.9) then orig else 0
                 part:SetAttribute("OrigTrans", nil)
             end
         end
@@ -9195,7 +12606,7 @@ return table.freeze(StatusEffectService)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">VFXBroadcastService</string>
             <string name="Source"><![CDATA[--!strict
@@ -9243,19 +12654,19 @@ return table.freeze(VFXBroadcastService)
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="51">
+  <Item class="StarterPlayer" referent="55">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="52">
+    <Item class="StarterPlayerScripts" referent="56">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="53">
+      <Item class="Folder" referent="57">
         <Properties>
           <string name="Name">ElementalWorldsClient</string>
         </Properties>
-        <Item class="LocalScript" referent="54">
+        <Item class="LocalScript" referent="58">
           <Properties>
             <string name="Name">ClientMain</string>
             <string name="Source"><![CDATA[--!strict
@@ -9378,11 +12789,11 @@ print("[Elemental Worlds] Client initialized — HUD, Admin Suite, Spin Gacha, S
 ]]></string>
           </Properties>
         </Item>
-        <Item class="Folder" referent="55">
+        <Item class="Folder" referent="59">
           <Properties>
             <string name="Name">Controllers</string>
           </Properties>
-          <Item class="ModuleScript" referent="56">
+          <Item class="ModuleScript" referent="60">
             <Properties>
               <string name="Name">AdminPanelController</string>
               <string name="Source"><![CDATA[--!strict
@@ -9804,7 +13215,7 @@ return table.freeze(AdminPanelController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="57">
+          <Item class="ModuleScript" referent="61">
             <Properties>
               <string name="Name">CameraShakeController</string>
               <string name="Source"><![CDATA[--!strict
@@ -9859,7 +13270,7 @@ return table.freeze(CameraShakeController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="58">
+          <Item class="ModuleScript" referent="62">
             <Properties>
               <string name="Name">CombatController</string>
               <string name="Source"><![CDATA[--!strict
@@ -10156,7 +13567,7 @@ return table.freeze(CombatController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="59">
+          <Item class="ModuleScript" referent="63">
             <Properties>
               <string name="Name">DamageNumbersController</string>
               <string name="Source"><![CDATA[--!strict
@@ -10245,7 +13656,7 @@ return table.freeze(DamageNumbersController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="60">
+          <Item class="ModuleScript" referent="64">
             <Properties>
               <string name="Name">MobileController</string>
               <string name="Source"><![CDATA[--!strict
@@ -10372,7 +13783,7 @@ return table.freeze(MobileController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="61">
+          <Item class="ModuleScript" referent="65">
             <Properties>
               <string name="Name">ProceduralAnimController</string>
               <string name="Source"><![CDATA[--!strict
@@ -10534,7 +13945,7 @@ return table.freeze(ProceduralAnimController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="62">
+          <Item class="ModuleScript" referent="66">
             <Properties>
               <string name="Name">ShopUIController</string>
               <string name="Source"><![CDATA[--!strict
@@ -10933,7 +14344,7 @@ return table.freeze(ShopUIController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="63">
+          <Item class="ModuleScript" referent="67">
             <Properties>
               <string name="Name">SoundController</string>
               <string name="Source"><![CDATA[--!strict
@@ -11093,7 +14504,7 @@ return table.freeze(SoundController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="64">
+          <Item class="ModuleScript" referent="68">
             <Properties>
               <string name="Name">SpinUIController</string>
               <string name="Source"><![CDATA[--!strict
@@ -11472,7 +14883,7 @@ return table.freeze(SpinUIController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="65">
+          <Item class="ModuleScript" referent="69">
             <Properties>
               <string name="Name">UIController</string>
               <string name="Source"><![CDATA[--!strict
@@ -12262,7 +15673,7 @@ return table.freeze(UIController)
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="66">
+          <Item class="ModuleScript" referent="70">
             <Properties>
               <string name="Name">VFXController</string>
               <string name="Source"><![CDATA[--!strict
@@ -12342,7 +15753,27 @@ function VFXController.Init()
     local vfxEvent = remotes:WaitForChild(GameConfig.REMOTES.VFX_TRIGGER, 5) :: RemoteEvent?
     if vfxEvent then
         vfxEvent.OnClientEvent:Connect(function(vfxType: string, data: any)
-            if vfxType == "Blind" then
+            if vfxType == "ElementalMove" and data and data.Element and data.Move then
+                local evfx = ReplicatedStorage:FindFirstChild("ElementalVFX")
+                if evfx then
+                    local disp = evfx:FindFirstChild("Dispatcher")
+                    if disp then
+                        local ok, dmod = pcall(require, disp)
+                        if ok and dmod and dmod.Play then
+                            dmod.Play(data.Element, data.Move, {
+                                character = data.Character,
+                                target = data.Target,
+                                direction = data.Direction,
+                                duration = data.Duration,
+                                radius = data.Radius,
+                                targetCharacter = data.TargetCharacter,
+                                targets = data.Targets,
+                            })
+                        end
+                    end
+                end
+
+            elseif vfxType == "Blind" then
                 local duration = (data and data.Duration) or 2.0
                 UIController.TriggerBlind(duration)
 
@@ -12705,7 +16136,7 @@ return table.freeze(VFXController)
             </Properties>
           </Item>
         </Item>
-        <Item class="ModuleScript" referent="67">
+        <Item class="ModuleScript" referent="71">
           <Properties>
             <string name="Name">SharedLoader</string>
             <string name="Source"><![CDATA[--!strict
@@ -12745,16 +16176,188 @@ return table.freeze(SharedLoader)
 ]]></string>
           </Properties>
         </Item>
+        <Item class="LocalScript" referent="72">
+          <Properties>
+            <string name="Name">TestElementalVFX</string>
+            <string name="Source"><![CDATA[--!strict
+--[[
+    ===========================================================================
+    ELEMENTAL WORLDS — CLIENT VFX TEST & SHOWCASE HARNESS
+    ===========================================================================
+    Location: StarterPlayer.StarterPlayerScripts.TestElementalVFX
+    Demonstrates and tests all 36 ability visual effects from ReplicatedStorage.ElementalVFX.
+
+    CONTROLS:
+    - [T]: Cycle selected test element (Fire -> Aqua -> Earth -> Light -> Wind -> Error -> Time)
+    - [M] / [F]: Cast M1
+    - [1]: Cast Move 1
+    - [2]: Cast Move 2
+    - [3]: Cast Move 3 (handles auto-cycled/ended if persistent)
+    - [4]: Cast Move 4
+    - [5]: Cast Move 5 (Error only)
+    - [P]: Run Automatic Showcase Demo across all 7 elements & 36 abilities!
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+end)
+
+local elementalVFXFolder = ReplicatedStorage:WaitForChild("ElementalVFX", 10)
+if not elementalVFXFolder then
+    warn("[TestElementalVFX] ReplicatedStorage.ElementalVFX not found!")
+    return
+end
+
+local DispatcherMod = elementalVFXFolder:WaitForChild("Dispatcher", 5) :: ModuleScript?
+if not DispatcherMod then
+    warn("[TestElementalVFX] ReplicatedStorage.ElementalVFX.Dispatcher not found!")
+    return
+end
+
+local VFX = require(DispatcherMod)
+
+local ELEMENTS = { "Fire", "Aqua", "Earth", "Light", "Wind", "Error", "Time" }
+local currentElementIndex = 1
+local activeHandles = {}
+
+local function GetContext()
+    local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if not root then return nil end
+    local targetPos = root.Position + root.CFrame.LookVector * 28
+    return {
+        character = character,
+        target = targetPos,
+        origin = root.Position,
+        direction = root.CFrame.LookVector,
+        duration = 5,
+        radius = 16,
+    }
+end
+
+local function PlayMove(element: string, move: string)
+    local ctx = GetContext()
+    if not ctx then return end
+
+    print(string.format("[VFX Test] Playing %s %s...", element, move))
+    local handle = VFX.Play(element, move, ctx)
+
+    if handle then
+        print(string.format("[VFX Test] %s %s returned active handle.", element, move))
+        table.insert(activeHandles, {
+            element = element,
+            move = move,
+            handle = handle,
+            time = os.clock(),
+        })
+
+        -- Auto-demonstrate handle methods after delay
+        task.delay(2.5, function()
+            if handle.Hit then
+                pcall(function() handle:Hit() end)
+            end
+            if handle.SetHealth then
+                pcall(function() handle:SetHealth(0.4) end)
+            end
+            if handle.Attack then
+                pcall(function() handle:Attack(ctx.target) end)
+            end
+        end)
+
+        task.delay(4.5, function()
+            if handle.Shatter then
+                pcall(function() handle:Shatter() end)
+            elseif handle.End then
+                pcall(function() handle:End(ctx.target) end)
+            elseif handle.Despawn then
+                pcall(function() handle:Despawn() end)
+            end
+        end)
+    end
+end
+
+-- Automatic Showcase
+local isShowcaseRunning = false
+local function RunShowcase()
+    if isShowcaseRunning then return end
+    isShowcaseRunning = true
+    print("==================================================")
+    print("STARTING COMPLETE 36-ABILITY VFX SHOWCASE DEMO...")
+    print("==================================================")
+
+    task.spawn(function()
+        for _, elem in ipairs(ELEMENTS) do
+            local moves = { "M1", "Move1", "Move2", "Move3", "Move4" }
+            if elem == "Error" then
+                table.insert(moves, "Move5")
+            end
+
+            for _, mv in ipairs(moves) do
+                PlayMove(elem, mv)
+                task.wait(1.4)
+            end
+            task.wait(0.8)
+        end
+        print("==================================================")
+        print("VFX SHOWCASE DEMO COMPLETED!")
+        print("==================================================")
+        isShowcaseRunning = false
+    end)
+end
+
+-- Keybind listener
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.T then
+        currentElementIndex = (currentElementIndex % #ELEMENTS) + 1
+        local selected = ELEMENTS[currentElementIndex]
+        print(string.format("[VFX Test] Selected Element: %s (Press M/1/2/3/4/5 or P for Showcase)", selected))
+
+    elseif input.KeyCode == Enum.KeyCode.M or input.KeyCode == Enum.KeyCode.F then
+        PlayMove(ELEMENTS[currentElementIndex], "M1")
+
+    elseif input.KeyCode == Enum.KeyCode.One then
+        PlayMove(ELEMENTS[currentElementIndex], "Move1")
+
+    elseif input.KeyCode == Enum.KeyCode.Two then
+        PlayMove(ELEMENTS[currentElementIndex], "Move2")
+
+    elseif input.KeyCode == Enum.KeyCode.Three then
+        PlayMove(ELEMENTS[currentElementIndex], "Move3")
+
+    elseif input.KeyCode == Enum.KeyCode.Four then
+        PlayMove(ELEMENTS[currentElementIndex], "Move4")
+
+    elseif input.KeyCode == Enum.KeyCode.Five then
+        if ELEMENTS[currentElementIndex] == "Error" then
+            PlayMove("Error", "Move5")
+        end
+
+    elseif input.KeyCode == Enum.KeyCode.P then
+        RunShowcase()
+    end
+end)
+
+print("[Elemental Worlds VFX] Test Harness loaded! Press 'T' to switch element, 'M'/'1'-'4' to cast, 'P' for showcase.")
+]]></string>
+          </Properties>
+        </Item>
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="68">
+  <Item class="Workspace" referent="73">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="FilteringEnabled">true</bool>
       <bool name="NeedsPivotMigration">false</bool>
     </Properties>
-    <Item class="Part" referent="69">
+    <Item class="Part" referent="74">
       <Properties>
         <string name="Name">Baseplate</string>
         <bool name="Anchored">true</bool>
@@ -12783,37 +16386,37 @@ return table.freeze(SharedLoader)
         </Vector3>
       </Properties>
     </Item>
-    <Item class="Folder" referent="70">
+    <Item class="Folder" referent="75">
       <Properties>
         <string name="Name">Map</string>
       </Properties>
-      <Item class="Folder" referent="71">
+      <Item class="Folder" referent="76">
         <Properties>
           <string name="Name">Cave</string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="72">
+      <Item class="Folder" referent="77">
         <Properties>
           <string name="Name">Forest</string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="73">
+      <Item class="Folder" referent="78">
         <Properties>
           <string name="Name">Ruins</string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="74">
+      <Item class="Folder" referent="79">
         <Properties>
           <string name="Name">Village</string>
         </Properties>
       </Item>
     </Item>
-    <Item class="Folder" referent="75">
+    <Item class="Folder" referent="80">
       <Properties>
         <string name="Name">NPCs</string>
       </Properties>
     </Item>
-    <Item class="SpawnLocation" referent="76">
+    <Item class="SpawnLocation" referent="81">
       <Properties>
         <string name="Name">SpawnLocation</string>
         <bool name="Anchored">true</bool>
@@ -12841,12 +16444,12 @@ return table.freeze(SharedLoader)
         </Vector3>
       </Properties>
     </Item>
-    <Item class="Folder" referent="77">
+    <Item class="Folder" referent="82">
       <Properties>
         <string name="Name">SpawnLocations</string>
       </Properties>
     </Item>
-    <Item class="Folder" referent="78">
+    <Item class="Folder" referent="83">
       <Properties>
         <string name="Name">VFX</string>
       </Properties>

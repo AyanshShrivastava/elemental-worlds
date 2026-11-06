@@ -22,48 +22,67 @@ local RaidService = require(script.Parent.RaidService)
 
 local MapService = {}
 
--- Configures high-end modern anime lighting (Blox Fruits style)
+-- Configures high-end modern anime lighting (Unified Anime RPG Preset)
 local function SetupAnimeLighting()
-    Lighting.ClockTime = 14.5
-    Lighting.GeographicLatitude = 40
-    Lighting.Brightness = 2.2
+    Lighting.ClockTime = 14.2
+    Lighting.Brightness = 2.1
+    Lighting.ExposureCompensation = -0.05
     Lighting.GlobalShadows = true
-    Lighting.Ambient = Color3.fromRGB(80, 85, 100)
-    Lighting.OutdoorAmbient = Color3.fromRGB(110, 120, 140)
+    pcall(function() Lighting.ShadowSoftness = 0.25 end)
+    pcall(function() Lighting.EnvironmentDiffuseScale = 0.40 end)
+    pcall(function() Lighting.EnvironmentSpecularScale = 0.25 end)
+
+    Lighting.Ambient = Color3.fromRGB(84, 94, 110)
+    Lighting.OutdoorAmbient = Color3.fromRGB(139, 148, 164)
+    Lighting.ColorShift_Top = Color3.fromRGB(255, 248, 238)
+    Lighting.ColorShift_Bottom = Color3.fromRGB(213, 225, 240)
+
+    -- Atmosphere
+    local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+    if not atmosphere then
+        atmosphere = Instance.new("Atmosphere")
+        atmosphere.Name = "AnimeAtmosphere"
+        atmosphere.Parent = Lighting
+    end
+    atmosphere.Density = 0.20
+    atmosphere.Offset = 0.20
+    atmosphere.Haze = 0.70
+    atmosphere.Glare = 0.08
+    atmosphere.Color = Color3.fromRGB(199, 222, 255)
+    atmosphere.Decay = Color3.fromRGB(112, 130, 157)
 
     -- ColorCorrection for anime vibrancy
-    local cc = Lighting:FindFirstChild("AnimeColorCorrection") :: ColorCorrectionEffect?
+    local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
     if not cc then
         cc = Instance.new("ColorCorrectionEffect")
         cc.Name = "AnimeColorCorrection"
         cc.Parent = Lighting
     end
-    cc.Brightness = 0.02
-    cc.Contrast = 0.12
-    cc.Saturation = 0.16
-    cc.TintColor = Color3.fromRGB(255, 252, 248)
+    cc.Brightness = -0.02
+    cc.Contrast = 0.08
+    cc.Saturation = 0.06
+    cc.TintColor = Color3.fromRGB(255, 248, 241)
 
-    -- Subtle bloom tuned to prevent text blooming/blinding glare while preserving vibrant VFX
-    local bloom = Lighting:FindFirstChild("SubtleBloom") :: BloomEffect? or Lighting:FindFirstChild("AnimeBloom") :: BloomEffect?
+    -- BloomEffect tuned to prevent text blooming/blinding glare while preserving vibrant VFX
+    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
     if not bloom then
         bloom = Instance.new("BloomEffect")
-        bloom.Name = "SubtleBloom"
+        bloom.Name = "AnimeBloom"
         bloom.Parent = Lighting
     end
-    bloom.Name = "SubtleBloom"
-    bloom.Intensity = 0.10
-    bloom.Size = 14
-    bloom.Threshold = 2.2
+    bloom.Intensity = 0.18
+    bloom.Size = 24
+    bloom.Threshold = 1.5
 
     -- SunRays for anime atmosphere
-    local sunRays = Lighting:FindFirstChild("AnimeSunRays") :: SunRaysEffect?
+    local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
     if not sunRays then
         sunRays = Instance.new("SunRaysEffect")
         sunRays.Name = "AnimeSunRays"
         sunRays.Parent = Lighting
     end
-    sunRays.Intensity = 0.12
-    sunRays.Spread = 0.8
+    sunRays.Intensity = 0.025
+    sunRays.Spread = 0.65
 end
 
 -- World spawn positions

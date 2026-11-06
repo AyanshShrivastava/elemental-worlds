@@ -28,8 +28,17 @@ function LightElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
-    -- Visual dim light beam
+    -- Broadcast to ElementalVFX Dispatcher
     local m1End = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "M1",
+        Character = character,
+        Target = m1End,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
+    -- Visual dim light beam
     VFXBroadcastService.Broadcast("Beam", {
         StartPos = rootPart.Position + Vector3.new(0, 1.2, 0),
         EndPos = m1End,
@@ -50,6 +59,13 @@ function LightElement.CastMove1(player: Player, character: Model, rootPart: Base
     if not ability then return end
 
     local beamEnd = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move1",
+        Character = character,
+        Target = beamEnd,
+        Direction = rootPart.CFrame.LookVector,
+    })
     VFXBroadcastService.Broadcast("Beam", {
         StartPos = rootPart.Position + Vector3.new(0, 1.5, 0),
         EndPos = beamEnd,
@@ -80,6 +96,14 @@ function LightElement.CastMove2(player: Player, character: Model, rootPart: Base
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
     local mirrorPos = if target and target.Character.Parent then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 14)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move2",
+        Character = character,
+        Target = mirrorPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual crystalline mirrors with bouncing light rays and inward slam
     VFXBroadcastService.Broadcast("MirrorsOfJudgement", {
         Position = mirrorPos,
@@ -109,9 +133,18 @@ function LightElement.CastMove3(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Light", "3")
     if not ability then return end
 
+    local flashPos = rootPart.Position + (rootPart.CFrame.LookVector * 10)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move3",
+        Character = character,
+        Target = flashPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Always broadcast blinding flash forward
     VFXBroadcastService.Broadcast("BlindingFlash", {
-        Position = rootPart.Position + (rootPart.CFrame.LookVector * 10),
+        Position = flashPos,
         SFXId = ability.SFXId,
     })
 
@@ -127,6 +160,14 @@ end
 function LightElement.CastMove4(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Light", "4")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Light",
+        Move = "Move4",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 30,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Broadcast converging charge during 0.4s wind-up
     VFXBroadcastService.Broadcast("ConvergingCharge", {

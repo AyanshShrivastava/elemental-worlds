@@ -28,8 +28,17 @@ function WindElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
-    -- Visual wind lightning projectile
+    -- Broadcast to ElementalVFX Dispatcher
     local m1End = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "M1",
+        Character = character,
+        Target = m1End,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
+    -- Visual wind lightning projectile
     VFXBroadcastService.Broadcast("WindLightning", {
         StartPos = rootPart.Position + Vector3.new(0, 1.2, 0),
         EndPos = m1End,
@@ -49,6 +58,14 @@ function WindElement.CastMove1(player: Player, character: Model, rootPart: BaseP
 
     local spawnPos = rootPart.Position + (rootPart.CFrame.LookVector * 2)
     local endPos = rootPart.Position + (rootPart.CFrame.LookVector * ability.Range)
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move1",
+        Character = character,
+        Target = endPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Visual mini tornado traveling forward
     VFXBroadcastService.Broadcast("Tornado", {
@@ -73,6 +90,14 @@ function WindElement.CastMove2(player: Player, character: Model, rootPart: BaseP
 
     local cycloneCenter = rootPart.Position + (rootPart.CFrame.LookVector * 10)
     local duration = ability.Duration or 4.0
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move2",
+        Character = character,
+        Target = cycloneCenter,
+        Duration = duration,
+    })
 
     -- Visual massive swirling cyclone with suction particles
     VFXBroadcastService.Broadcast("Cyclone", {
@@ -108,6 +133,13 @@ function WindElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "SpeedBoost", duration, player)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
+
     -- Visual sonic wind trails and foot ring emitters
     VFXBroadcastService.Broadcast("SpeedBoost", {
         Character = character,
@@ -122,6 +154,15 @@ function WindElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Wind",
+        Move = "Move4",
+        Character = character,
+        Target = if target and target.RootPart then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 28),
+        TargetCharacter = if target then target.Model else nil,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     if not target or not target.Character.Parent then
         -- Whiff action: Supersonic wind dive dash forward 28 studs with massive shockwave and crater
         rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -28)

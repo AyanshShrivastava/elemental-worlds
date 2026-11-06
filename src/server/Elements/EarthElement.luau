@@ -29,6 +29,15 @@ function EarthElement.CastM1(player: Player, character: Model, rootPart: BasePar
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 12,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual stone blade slash
     VFXBroadcastService.Broadcast("SlashArc", {
         CFrame = rootPart.CFrame * CFrame.new(0, 0, -3),
@@ -58,6 +67,15 @@ function EarthElement.CastMove1(player: Player, character: Model, rootPart: Base
     wallPart.CanCollide = true
     wallPart.Parent = Workspace:FindFirstChild("Map") or Workspace
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "Move1",
+        Character = character,
+        Target = wallPart.Position,
+        Direction = rootPart.CFrame.LookVector,
+        Duration = wallDuration,
+    })
+
     -- Visual 3-pillar rock eruption
     VFXBroadcastService.Broadcast("EarthPillars", {
         CFrame = wallPart.CFrame,
@@ -79,10 +97,18 @@ function EarthElement.CastMove2(player: Player, character: Model, rootPart: Base
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Earth",
+            Move = "Move2",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
 
         -- Visual giant rolling boulder and shatter impact
         VFXBroadcastService.Broadcast("Boulder", {
@@ -106,6 +132,14 @@ function EarthElement.CastMove3(player: Player, character: Model, rootPart: Base
     local ability = AbilityConfig.GetAbility("Earth", "3")
     if not ability then return end
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "Move3",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 16,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual stone gauntlet manifests on punch
     VFXBroadcastService.Broadcast("StoneGauntlet", {
         Character = character,
@@ -126,6 +160,14 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
 
     -- 1. Validate and reserve target
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Earth",
+        Move = "Move4",
+        Character = character,
+        Target = if target and target.RootPart then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 10),
+        TargetCharacter = if target then target.Model else nil,
+        Direction = rootPart.CFrame.LookVector,
+    })
     if not target or not target.Character.Parent then
         -- Whiff feedback: Colossal Earth Terra Ground Shatter
         local strikePos = rootPart.Position + (rootPart.CFrame.LookVector * 10)

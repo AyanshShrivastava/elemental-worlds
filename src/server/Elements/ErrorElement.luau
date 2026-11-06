@@ -35,6 +35,15 @@ function ErrorElement.CastM1(player: Player, character: Model, rootPart: BasePar
     -- Dash forward
     rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, -12)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual chromatic aberration glitch trail
     VFXBroadcastService.Broadcast("GlitchedTrail", {
         StartPos = prevPos,
@@ -55,6 +64,14 @@ end
 function ErrorElement.CastMove1(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Error", "1")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 18,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Visual holographic digital arm shield
     VFXBroadcastService.Broadcast("GlitchWall", {
@@ -105,10 +122,18 @@ function ErrorElement.CastMove2(player: Player, character: Model, rootPart: Base
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
+
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Error",
+            Move = "Move2",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
 
         -- Visual pulsating chromatic aberration 404 ball
         VFXBroadcastService.Broadcast("404Ball", {
@@ -137,6 +162,13 @@ function ErrorElement.CastMove3(player: Player, character: Model, rootPart: Base
 
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "GotGlitched", duration, player)
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
 
     -- Visual scanline glitch dissolution and shimmer silhouette
     VFXBroadcastService.Broadcast("GlitchInvis", {
@@ -187,6 +219,15 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
     local duration = ability.Duration or 7.0
     local domainRadius = 35
     local domainCenter = rootPart.Position
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move4",
+        Character = character,
+        Target = domainCenter,
+        Duration = duration,
+        Radius = domainRadius,
+    })
 
     -- Spawn Grounded Cyber Glitched Domain Arena (NO sky teleport, NO void plummet!)
     VFXBroadcastService.Broadcast("SpatialDistortionDomain", {
@@ -277,6 +318,18 @@ function ErrorElement.CastMove5(player: Player, character: Model, rootPart: Base
 
     local duration = ability.Duration or 5.0
     local targets = HitboxService.FindTargetsInCone(rootPart.CFrame, ability.Range, 360, character)
+
+    local targetModels = {}
+    for _, t in targets do
+        if t.Character then table.insert(targetModels, t.Character) end
+    end
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Error",
+        Move = "Move5",
+        Character = character,
+        Targets = targetModels,
+        Direction = rootPart.CFrame.LookVector,
+    })
     if #targets > 0 then
         for _, target in targets do
             StatusEffectService.ApplyEffect(target.Character, "UnparalleledStun", duration, player)

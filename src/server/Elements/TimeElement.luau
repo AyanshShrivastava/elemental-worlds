@@ -28,6 +28,15 @@ function TimeElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 40 + Vector3.new(0, 15, 0)) else (rootPart.CFrame.LookVector * 15)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 12,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual glowing clock dial aura on striking fist
     VFXBroadcastService.Broadcast("ClockAura", {
         Character = character,
@@ -46,6 +55,13 @@ function TimeElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move1",
+        Character = character,
+        Target = if target and target.RootPart then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 18),
+        Direction = rootPart.CFrame.LookVector,
+    })
     if target and target.Character.Parent then
         local tRoot = target.RootPart
         local tHum = target.Humanoid
@@ -92,6 +108,14 @@ function TimeElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local castPos = rootPart.Position + (rootPart.CFrame.LookVector * 12)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move2",
+        Character = character,
+        Target = castPos,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual abstract timeline streams & spinning clock rings
     VFXBroadcastService.Broadcast("TimeInjection", {
         Position = castPos,
@@ -120,6 +144,13 @@ function TimeElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     -- Applies Untouchable status: StatusEffectService.CanTakeDamage returns false!
     StatusEffectService.ApplyEffect(character, "Untouchable", duration, player)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
+
     -- Visual revolving chronological forcefield with ethereal clock gears
     VFXBroadcastService.Broadcast("UntouchableBarrier", {
         Character = character,
@@ -134,6 +165,15 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local target = HitboxService.FindClosestTargetInCone(rootPart.CFrame, ability.Range, ability.ConeAngle, character)
+    local strikePos = if target and target.Character.Parent then target.RootPart.Position else (rootPart.Position + rootPart.CFrame.LookVector * 15)
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Time",
+        Move = "Move4",
+        Character = character,
+        Target = strikePos,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     VFXBroadcastService.Broadcast("ConvergingCharge", {
         Position = rootPart.Position,

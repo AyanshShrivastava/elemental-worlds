@@ -29,6 +29,15 @@ function AquaElement.CastM1(player: Player, character: Model, rootPart: BasePart
     local damage = if isFinisher then math.round(ability.BaseDamage * 1.6) else ability.BaseDamage
     local knockback = if isFinisher then (rootPart.CFrame.LookVector * 35 + Vector3.new(0, 12, 0)) else (rootPart.CFrame.LookVector * 10)
 
+    -- Broadcast to ElementalVFX Dispatcher
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "M1",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 16,
+        Direction = rootPart.CFrame.LookVector,
+    })
+
     -- Visual dual water spray from hands
     VFXBroadcastService.Broadcast("WaterSpray", {
         CFrame = rootPart.CFrame,
@@ -48,6 +57,13 @@ function AquaElement.CastMove1(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local strikeCFrame = rootPart.CFrame * CFrame.new(0, 0, -8)
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "Move1",
+        Character = character,
+        Target = strikeCFrame.Position,
+        Direction = rootPart.CFrame.LookVector,
+    })
     VFXBroadcastService.Broadcast("WaterHand", {
         Position = strikeCFrame.Position,
         SFXId = ability.SFXId,
@@ -72,11 +88,18 @@ function AquaElement.CastMove2(player: Player, character: Model, rootPart: BaseP
     task.spawn(function()
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = { character }
-        raycastParams.FilterType = RaycastParamsFilterType.Exclude
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local hitResult = Workspace:Raycast(spawnPos, dir * ability.Range, raycastParams)
         local impactPos = if hitResult then hitResult.Position else (spawnPos + dir * ability.Range)
 
+        VFXBroadcastService.Broadcast("ElementalMove", {
+            Element = "Aqua",
+            Move = "Move2",
+            Character = character,
+            Target = impactPos,
+            Direction = dir,
+        })
         VFXBroadcastService.Broadcast("VortexSphere", {
             StartPos = spawnPos,
             EndPos = impactPos,
@@ -101,6 +124,12 @@ function AquaElement.CastMove3(player: Player, character: Model, rootPart: BaseP
     local duration = ability.Duration or 5.0
     StatusEffectService.ApplyEffect(character, "WaterDragon", duration, player)
 
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "Move3",
+        Character = character,
+        Duration = duration,
+    })
     VFXBroadcastService.Broadcast("WaterDragon", {
         Character = character,
         Duration = duration,
@@ -112,6 +141,14 @@ end
 function AquaElement.CastMove4(player: Player, character: Model, rootPart: BasePart)
     local ability = AbilityConfig.GetAbility("Aqua", "4")
     if not ability then return end
+
+    VFXBroadcastService.Broadcast("ElementalMove", {
+        Element = "Aqua",
+        Move = "Move4",
+        Character = character,
+        Target = rootPart.Position + rootPart.CFrame.LookVector * 10,
+        Direction = rootPart.CFrame.LookVector,
+    })
 
     -- Rapid strikes: 8 hits over 1.5 seconds totaling crazy damage
     local totalHits = 8
