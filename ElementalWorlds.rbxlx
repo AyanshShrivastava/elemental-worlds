@@ -177,10 +177,20 @@ function Aqua.Move1(ctx)
 			if not struck then
 				struck = true
 				gather.Enabled = false
+				Core.animeSpikeBurst(ctx.target, {
+					color = BLUE,
+					coreColor = CYAN,
+					outlineColor = Color3.fromRGB(12, 16, 28),
+					count = 8,
+					radius = 7,
+					minHeight = 7,
+					maxHeight = 14,
+					duration = 0.55,
+				})
 				Core.burst(ctx.target, 60, { color = WATER, texture = SPARK, speed = 25, light = 1 })
 			end
 			local k = math.clamp((t - 0.75) / 0.4, 0, 1)
-			local d = 2 + 12 * k
+			local d = 2 + 16 * k
 			ring.Size = Vector3.new(0.2, d, d)
 			ring.CFrame = Core.axisCF(ctx.target, dir)
 			ring.Transparency = 0.35 + 0.65 * k
@@ -236,7 +246,17 @@ function Aqua.Move2(ctx)
 			d.CFrame = CFrame.new(c + Vector3.new(math.cos(a) * 3.2, math.sin(a * 2) * 0.9, math.sin(a) * 3.2))
 		end
 	end, function()
-		Core.burst(target, 50, { color = WATER, texture = SPARK, speed = 22, light = 1 })
+		Core.animeSpikeBurst(target, {
+			color = BLUE,
+			coreColor = CYAN,
+			outlineColor = Color3.fromRGB(10, 14, 25),
+			count = 10,
+			radius = 9,
+			minHeight = 8,
+			maxHeight = 17,
+			duration = 0.65,
+		})
+		Core.burst(target, 50, { color = WATER, texture = SPARK, speed = 25, light = 1 })
 		Core.destroyAll(all)
 	end)
 end
@@ -385,6 +405,18 @@ function Aqua.Move4(ctx)
 				-- layered impact: splash, a second splash slightly later, and a ring
 				if not hit and k >= 1 then
 					hit = true
+					if last then
+						Core.animeSpikeBurst(to, {
+							color = BLUE,
+							coreColor = CYAN,
+							outlineColor = Color3.fromRGB(10, 15, 30),
+							count = 12,
+							radius = 10,
+							minHeight = 10,
+							maxHeight = 20,
+							duration = 0.75,
+						})
+					end
 					Core.burst(to, last and 60 or 18, {
 						color = WATER, texture = SPARK, speed = last and 35 or 20, light = 1,
 					})
@@ -392,7 +424,7 @@ function Aqua.Move4(ctx)
 						Core.burst(to, last and 40 or 10, { color = WATER, texture = SPARK, speed = 25 })
 					end)
 					Core.shockwave(Core.axisCF(to, dir), {
-						color = CYAN, from = 1, to = last and 14 or 5, duration = 0.3,
+						color = CYAN, from = 1, to = last and 20 or 5, duration = 0.35,
 					})
 				end
 			end, function()
@@ -451,19 +483,27 @@ Core.Folder = folder
 -- Colour and math
 ---------------------------------------------------------------------------
 
--- A Color3, or a list of Color3s spread evenly into a gradient
+-- A Color3, a ColorSequence, or a list of Color3s spread evenly into a gradient
 function Core.seq(colors)
+	if typeof(colors) == "ColorSequence" then
+		return colors
+	end
 	if typeof(colors) == "Color3" then
 		return ColorSequence.new(colors)
 	end
-	if #colors == 1 then
-		return ColorSequence.new(colors[1])
+	if typeof(colors) == "table" then
+		if #colors == 0 then
+			return ColorSequence.new(Color3.new(1, 1, 1))
+		elseif #colors == 1 then
+			return ColorSequence.new(colors[1])
+		end
+		local keys = {}
+		for i, c in ipairs(colors) do
+			table.insert(keys, ColorSequenceKeypoint.new((i - 1) / (#colors - 1), c))
+		end
+		return ColorSequence.new(keys)
 	end
-	local keys = {}
-	for i, c in ipairs(colors) do
-		table.insert(keys, ColorSequenceKeypoint.new((i - 1) / (#colors - 1), c))
-	end
-	return ColorSequence.new(keys)
+	return ColorSequence.new(Color3.new(1, 1, 1))
 end
 
 function Core.smooth(x)
@@ -621,10 +661,10 @@ function Core.emitter(parent, o)
 	o = o or {}
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = o.texture or Core.Textures.Sparkle
-	e.Color = o.color or Core.seq(Color3.new(1, 1, 1))
+	e.Color = Core.seq(o.color or Color3.new(1, 1, 1))
 	e.LightEmission = o.light or 0.6
-	e.Transparency = o.transparency or Core.FADE
-	e.Size = o.size or NumberSequence.new(0.5, 0.1)
+	e.Transparency = if typeof(o.transparency) == "NumberSequence" then o.transparency elseif typeof(o.transparency) == "number" then NumberSequence.new(o.transparency) else Core.FADE
+	e.Size = if typeof(o.size) == "NumberSequence" then o.size elseif typeof(o.size) == "number" then NumberSequence.new(o.size) else NumberSequence.new(0.5, 0.1)
 	e.Lifetime = o.lifetime or NumberRange.new(0.4, 0.7)
 	e.Speed = o.speed or NumberRange.new(2, 5)
 	e.SpreadAngle = o.spread or Vector2.new(180, 180)
@@ -673,8 +713,8 @@ function Core.trail(part, a0, a1, o)
 	t.Attachment0 = a0
 	t.Attachment1 = a1
 	t.Lifetime = o.lifetime or 0.3
-	t.Color = o.color or Core.seq(Color3.new(1, 1, 1))
-	t.Transparency = o.transparency or Core.FADE
+	t.Color = Core.seq(o.color or Color3.new(1, 1, 1))
+	t.Transparency = if typeof(o.transparency) == "NumberSequence" then o.transparency elseif typeof(o.transparency) == "number" then NumberSequence.new(o.transparency) else Core.FADE
 	t.LightEmission = o.light or 0.5
 	t.FaceCamera = true
 	t.Parent = part
@@ -688,8 +728,8 @@ function Core.beam(a0, a1, o)
 	local b = Instance.new("Beam")
 	b.Attachment0 = a0
 	b.Attachment1 = a1
-	b.Color = o.color or Core.seq(Color3.new(1, 1, 1))
-	b.Transparency = o.transparency or NumberSequence.new(0.1)
+	b.Color = Core.seq(o.color or Color3.new(1, 1, 1))
+	b.Transparency = if typeof(o.transparency) == "NumberSequence" then o.transparency elseif typeof(o.transparency) == "number" then NumberSequence.new(o.transparency) else NumberSequence.new(0.1)
 	b.Width0 = o.width0 or 1
 	b.Width1 = o.width1 or o.width0 or 1
 	b.LightEmission = o.light or 0.7
@@ -739,6 +779,320 @@ function Core.shockwave(cf, o)
 		ring.Transparency = 0.2 + 0.8 * k
 	end, function()
 		ring:Destroy()
+	end)
+end
+
+-- Sweeping Curved Anime Slash Ribbon Arc
+function Core.animeSlashArc(p0, p1, color, coreColor, curve, width, life)
+	local a0 = Core.anchor(p0)
+	local a1 = Core.anchor(p1)
+	local att0 = Core.attach(a0)
+	local att1 = Core.attach(a1)
+
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = att0
+	beam.Attachment1 = att1
+	beam.Texture = Core.Textures.AnimeSlashArc
+	beam.CurveSize0 = curve or 8
+	beam.CurveSize1 = curve or 8
+	beam.Width0 = width or 3
+	beam.Width1 = (width or 3) * 0.15
+	beam.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, coreColor or Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.5, color or Color3.fromRGB(255, 120, 20)),
+		ColorSequenceKeypoint.new(1, color or Color3.fromRGB(255, 60, 0)),
+	})
+	beam.LightEmission = 1
+	beam.FaceCamera = true
+	beam.Parent = folder
+
+	Core.runFor(life or 0.4, function(_, t)
+		local k = t / (life or 0.4)
+		beam.Transparency = NumberSequence.new(math.clamp(0.05 + 0.95 * k, 0, 1))
+	end, function()
+		Core.destroyAll({ beam, a0, a1 })
+	end)
+end
+
+-- 3-Layer Stylized Anime Spike Burst (matching reference: dark outline, vibrant body, neon core)
+-- o: color, coreColor, outlineColor, count, radius, minHeight, maxHeight, duration, aimDir, slashArc, groundRing
+function Core.animeSpikeBurst(pos, o)
+	o = o or {}
+	local color = o.color or Color3.fromRGB(255, 120, 20)
+	local coreColor = o.coreColor or Color3.fromRGB(255, 255, 220)
+	local outlineColor = o.outlineColor or Color3.fromRGB(18, 16, 22)
+	local count = o.count or 8
+	local radius = o.radius or 5
+	local minH = o.minHeight or 7
+	local maxH = o.maxHeight or 15
+	local dur = o.duration or 0.55
+	local aimDir = o.aimDir
+	local rng = Random.new()
+
+	local parts = {}
+	local spikeData = {}
+
+	-- Ground shockwave & crack ring
+	if o.groundRing ~= false then
+		Core.shockwave(Core.groundCF(pos + Vector3.new(0, 0.1, 0)), {
+			color = color,
+			from = 1,
+			to = radius * 2.8,
+			duration = dur * 0.7,
+		})
+	end
+
+	-- Directional / fan angle calculations
+	for i = 1, count do
+		local angle
+		if aimDir then
+			local baseA = math.atan2(aimDir.X, aimDir.Z)
+			angle = baseA + (i - (count + 1) * 0.5) * (math.rad(80) / count) + rng:NextNumber(-0.15, 0.15)
+		else
+			angle = (i - 1) * (math.pi * 2 / count) + rng:NextNumber(-0.2, 0.2)
+		end
+
+		local dist = rng:NextNumber(radius * 0.35, radius)
+		local h = rng:NextNumber(minH, maxH)
+		local w = rng:NextNumber(1.2, 2.4)
+		local d = rng:NextNumber(1.8, 3.2)
+
+		local spikePos = pos + Vector3.new(math.sin(angle) * dist, 0, math.cos(angle) * dist)
+		local cf = CFrame.new(spikePos)
+			* CFrame.Angles(0, angle + math.pi, 0)
+			* CFrame.Angles(math.rad(rng:NextNumber(-10, 15)), 0, math.rad(rng:NextNumber(8, 22)))
+
+		-- 1. Dark silhouette outline (back/under)
+		local outline = Instance.new("WedgePart")
+		outline.Size = Vector3.new(w * 1.25, h * 1.05, d * 1.25)
+		outline.CFrame = cf * CFrame.new(0, 0, -0.1)
+		outline.Color = outlineColor
+		outline.Material = Enum.Material.SmoothPlastic
+		outline.Transparency = 0.05
+		outline.Anchored = true
+		outline.CanCollide = false
+		outline.CanQuery = false
+		outline.CanTouch = false
+		outline.CastShadow = false
+		outline.Parent = folder
+		table.insert(parts, outline)
+
+		-- 2. Vibrant elemental body
+		local body = Instance.new("WedgePart")
+		body.Size = Vector3.new(w, h, d)
+		body.CFrame = cf
+		body.Color = color
+		body.Material = Enum.Material.Neon
+		body.Transparency = 0.1
+		body.Anchored = true
+		body.CanCollide = false
+		body.CanQuery = false
+		body.CanTouch = false
+		body.CastShadow = false
+		body.Parent = folder
+		table.insert(parts, body)
+
+		-- 3. Neon white/hot core
+		local inner = Instance.new("WedgePart")
+		inner.Size = Vector3.new(w * 0.55, h * 0.85, d * 0.55)
+		inner.CFrame = cf * CFrame.new(0, 0, 0.15)
+		inner.Color = coreColor
+		inner.Material = Enum.Material.Neon
+		inner.Transparency = 0.05
+		inner.Anchored = true
+		inner.CanCollide = false
+		inner.CanQuery = false
+		inner.CanTouch = false
+		inner.CastShadow = false
+		inner.Parent = folder
+		table.insert(parts, inner)
+
+		table.insert(spikeData, {
+			outline = outline,
+			body = body,
+			inner = inner,
+			cf = cf,
+			targetSize = Vector3.new(w, h, d),
+		})
+	end
+
+	-- Curved Anime Slash Arc sweeping across the spike tips
+	if o.slashArc ~= false then
+		local p0 = pos + Vector3.new(rng:NextNumber(-radius, -radius * 0.4), rng:NextNumber(2, 4), rng:NextNumber(-radius, radius))
+		local p1 = pos + Vector3.new(rng:NextNumber(radius * 0.4, radius), rng:NextNumber(minH * 0.6, maxH * 0.9), rng:NextNumber(-radius, radius))
+		Core.animeSlashArc(p0, p1, color, coreColor, rng:NextNumber(6, 12), rng:NextNumber(2.5, 4.5), dur * 0.8)
+	end
+
+	-- High speed spark burst
+	Core.burst(pos + Vector3.new(0, 1, 0), o.sparkCount or 16, {
+		texture = Core.Textures.Sparkle,
+		color = Core.seq({ coreColor, color }),
+		speed = 24,
+		life = 0.45,
+		light = 1,
+	})
+
+	-- Animate: Fast erupt (0 -> 0.12s), hold (0.12 -> 0.35s), smooth dissolve (0.35 -> dur)
+	Core.runFor(dur, function(_, t)
+		if t <= 0.12 then
+			local grow = Core.smooth(t / 0.12)
+			for _, s in ipairs(spikeData) do
+				local sz = s.targetSize * Vector3.new(1, grow, 1)
+				s.body.Size = sz
+				s.outline.Size = sz * Vector3.new(1.25, 1.05, 1.25)
+				s.inner.Size = sz * Vector3.new(0.55, 0.85, 0.55)
+			end
+		elseif t >= dur * 0.65 then
+			local fade = (t - dur * 0.65) / (dur * 0.35)
+			local shrink = 1 - fade * 0.4
+			for _, s in ipairs(spikeData) do
+				local sz = s.targetSize * Vector3.new(shrink, shrink, shrink)
+				s.body.Size = sz
+				s.outline.Size = sz * Vector3.new(1.25, 1.05, 1.25)
+				s.inner.Size = sz * Vector3.new(0.55, 0.85, 0.55)
+				s.body.Transparency = 0.1 + 0.9 * fade
+				s.outline.Transparency = 0.05 + 0.95 * fade
+				s.inner.Transparency = 0.05 + 0.95 * fade
+			end
+		end
+	end, function()
+		Core.destroyAll(parts)
+	end)
+end
+
+-- Colossal Anime Domain Expansion Builder (Huge radius 60-80 studs, towering boundary)
+-- o: radius, height, duration, fadeOut, color, accentColor, coreColor, pillarCount, pillarHeight
+function Core.animeDomain(center, o)
+	o = o or {}
+	local R = o.radius or 75
+	local H = o.height or 45
+	local life = o.duration or 10
+	local fadeOut = o.fadeOut or 1.2
+	local color = o.color or Color3.fromRGB(255, 100, 20)
+	local accent = o.accentColor or Color3.fromRGB(255, 200, 50)
+	local coreCol = o.coreColor or Color3.fromRGB(255, 255, 220)
+	local N = o.pillarCount or 32
+	local pH = o.pillarHeight or 35
+
+	local visible = {}
+	local emitters = {}
+	local junk = {}
+
+	-- 1. Initial Domain Expansion Blast: Massive double shockwave
+	Core.shockwave(Core.groundCF(center + Vector3.new(0, 0.2, 0)), {
+		color = color,
+		from = 2,
+		to = R * 2.2,
+		duration = 0.8,
+	})
+	Core.shockwave(Core.groundCF(center + Vector3.new(0, 0.4, 0)), {
+		color = accent,
+		from = 1,
+		to = R * 1.6,
+		duration = 0.6,
+	})
+
+	-- 2. Colossal Domain Floor Disc
+	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.25, R * 2, R * 2), Core.groundCF(center + Vector3.new(0, 0.05, 0)), {
+		color = color, material = Enum.Material.Neon, transparency = 0.65,
+	})
+	table.insert(visible, floor)
+
+	-- 3. Concentric Inner Rune Rings
+	local innerRing = Core.part(Enum.PartType.Cylinder, Vector3.new(0.28, R * 1.2, R * 1.2), Core.groundCF(center + Vector3.new(0, 0.08, 0)), {
+		color = accent, material = Enum.Material.Neon, transparency = 0.75,
+	})
+	table.insert(visible, innerRing)
+
+	-- 4. Towering Perimeter Anime Pillars with glowing beams
+	local tops = {}
+	local pts = Core.circle(center, R, N, 2)
+	for i, p in ipairs(pts) do
+		local pillar = Core.part(Enum.PartType.Block, Vector3.new(1.2, pH, 1.2), CFrame.new(p + Vector3.new(0, pH * 0.5 - 2, 0)), {
+			color = color, material = Enum.Material.Neon, transparency = 0.35,
+		})
+		table.insert(visible, pillar)
+		tops[i] = Core.attach(pillar, Vector3.new(0, pH * 0.5, 0))
+
+		local e = Core.emitter(tops[i], {
+			texture = o.pillarTexture or Core.Textures.Fire,
+			color = Core.seq({ accent, color }),
+			rate = 20,
+			light = 0.9,
+			speed = NumberRange.new(8, 14),
+			direction = Enum.NormalId.Top,
+			spread = Vector2.new(12, 12),
+			lifetime = NumberRange.new(0.8, 1.4),
+			size = NumberSequence.new(1.8, 0.3),
+		})
+		table.insert(emitters, e)
+	end
+
+	for i = 1, N do
+		local b = Core.beam(tops[i], tops[i % N + 1], {
+			color = Core.seq({ accent, coreCol, accent }),
+			width0 = 1.6,
+			light = 1,
+			curve = 0.5,
+		})
+		table.insert(visible, b)
+	end
+
+	-- 5. Translucent Outer Forcefield Shell
+	local shell = Core.part(Enum.PartType.Cylinder, Vector3.new(H, R * 2, R * 2), Core.groundCF(center + Vector3.new(0, H * 0.5, 0)), {
+		color = color, material = Enum.Material.ForceField, transparency = 0.82,
+	})
+	table.insert(visible, shell)
+
+	-- 6. Floating Central Core / Sun
+	local coreBall = Core.part(Enum.PartType.Ball, Vector3.one * 8, CFrame.new(center + Vector3.new(0, H * 0.65, 0)), {
+		color = coreCol, material = Enum.Material.Neon, transparency = 0.15,
+	})
+	table.insert(visible, coreBall)
+
+	local coreHalo = Core.part(Enum.PartType.Ball, Vector3.one * 12, CFrame.new(center + Vector3.new(0, H * 0.65, 0)), {
+		color = accent, material = Enum.Material.Neon, transparency = 0.65,
+	})
+	table.insert(visible, coreHalo)
+
+	local coreLight = Instance.new("PointLight")
+	coreLight.Color = accent
+	coreLight.Brightness = 6
+	coreLight.Range = R * 1.2
+	coreLight.Parent = coreBall
+	table.insert(visible, coreLight)
+
+	-- Periodic anime spike eruptions inside domain
+	for i = 1, 6 do
+		local a = (i - 1) * (math.pi * 2 / 6)
+		local burstPos = center + Vector3.new(math.sin(a) * (R * 0.5), 0, math.cos(a) * (R * 0.5))
+		task.delay(0.2 + i * 0.1, function()
+			Core.animeSpikeBurst(burstPos, {
+				color = color,
+				coreColor = coreCol,
+				count = 8,
+				radius = 8,
+				minHeight = 10,
+				maxHeight = 20,
+				duration = 1.2,
+			})
+		end)
+	end
+
+	local fadeStart = life - fadeOut
+	Core.runFor(life, function(_, t)
+		coreBall.Size = Vector3.one * (8 + math.sin(t * 5) * 1.2)
+		coreHalo.Size = Vector3.one * (12 + math.sin(t * 3) * 2.0)
+		if t >= fadeStart then
+			local k = (t - fadeStart) / fadeOut
+			Core.setTransparency(visible, 0.3 + 0.7 * k)
+			for _, e in ipairs(emitters) do
+				e.Enabled = false
+			end
+		end
+	end, function()
+		Core.destroyAll(visible)
+		Core.destroyAll(junk)
 	end)
 end
 
@@ -1216,8 +1570,12 @@ function Earth.Move2(ctx)
 		end
 	end, function()
 		dust.Enabled = false
-		Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = DUST, from = 2, to = 18, duration = 0.6 })
-		Core.burst(target, 30, { texture = SMOKE, color = DUST, speed = 12, light = 0, size = NumberSequence.new(2, 4), life = 0.8 })
+		Core.animeSpikeBurst(target, {
+			color = STONE, coreColor = DUST, outlineColor = DARK,
+			count = 10, radius = 9, minHeight = 9, maxHeight = 17, duration = 0.65,
+		})
+		Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = DUST, from = 2, to = 20, duration = 0.6 })
+		Core.burst(target, 30, { texture = SMOKE, color = DUST, speed = 16, light = 0, size = NumberSequence.new(2, 4), life = 0.8 })
 		Core.fragments(target, 14, { color = BROWN, material = ROCK, speed = 25, minSize = 0.4, maxSize = 1.2 })
 		Core.setTransparency(all, 1)
 		Core.cleanupLater(all, 1)
@@ -1264,6 +1622,10 @@ function Earth.Move3(ctx)
 			plate.CFrame = F * CFrame.new(math.cos(a) * radius, math.sin(a) * radius, 0) * CFrame.Angles(0, 0, a)
 		end
 	end, function()
+		Core.animeSpikeBurst(to, {
+			color = STONE, coreColor = DUST, outlineColor = DARK,
+			count = 8, radius = 6, minHeight = 6, maxHeight = 12, duration = 0.5,
+		})
 		Core.burst(to, 30, { texture = SMOKE, color = Core.seq(DUST), speed = 14, life = 0.6, size = NumberSequence.new(1, 3) })
 		Core.fragments(to, 12, { color = STONE, material = ROCK, speed = 22 })
 		Core.shockwave(Core.groundCF(to - Vector3.new(0, 2.5, 0)), { color = DUST, from = 1, to = 10, duration = 0.4 })
@@ -1271,14 +1633,15 @@ function Earth.Move3(ctx)
 	end)
 end
 
--- Move4: five timed beats. Validation and target reservation belong to the server.
+-- Move4: colossal terra domain (70 studs radius)
 function Earth.Move4(ctx)
 	local target = ctx.target
 	local behind = ctx.targetCharacter and Core.behind(ctx.targetCharacter, 3) or (target - ctx.direction * 3)
 	local ground = target - Vector3.new(0, 3, 0)
 	local junk = {}
+	local R = ctx.radius or 70
 
-	Core.timeline(3.0, {
+	Core.timeline(3.5, {
 		{
 			t = 0.0, -- 1. launch: rock burst under the target, dust pushing up
 			run = function()
@@ -1323,19 +1686,32 @@ function Earth.Move4(ctx)
 			end,
 		},
 		{
-			t = 1.85, -- 5. finishing strike
+			t = 1.85, -- 5. colossal terra domain eruption finishing strike
 			run = function()
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = DUST, from = 2, to = 24, duration = 0.6 })
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = STONE, from = 1, to = 14, duration = 0.4 })
+				Core.animeDomain(ground, {
+					radius = R,
+					height = 40,
+					duration = 3.5,
+					fadeOut = 0.8,
+					color = DARK,
+					accentColor = STONE,
+					coreColor = DUST,
+					pillarCount = 20,
+					pillarHeight = 35,
+				})
+				Core.animeSpikeBurst(ground, {
+					color = STONE,
+					coreColor = DUST,
+					outlineColor = DARK,
+					count = 16,
+					radius = 14,
+					minHeight = 14,
+					maxHeight = 26,
+					duration = 0.9,
+				})
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = DUST, from = 2, to = R, duration = 0.6 })
 				Core.burst(target, 60, { texture = SMOKE, color = Core.seq(DUST), speed = 28, life = 0.9, size = NumberSequence.new(1.5, 5) })
-				Core.fragments(target, 24, { color = STONE, material = ROCK, speed = 34, life = 1.0 })
-				for i = 1, 6 do
-					local crack = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.1, 6),
-						CFrame.new(ground + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.rad(i * 60), 0) * CFrame.new(0, 0, -3), {
-							color = DARK, material = ROCK, transparency = 0.2,
-						})
-					table.insert(junk, crack)
-				end
+				Core.fragments(target, 28, { color = STONE, material = ROCK, speed = 36, life = 1.1 })
 			end,
 		},
 	}, function()
@@ -1447,6 +1823,10 @@ function Error.Move1(ctx)
 		glitchDash(ctx.origin, dir, dist, 0.35)
 		task.delay(0.35, function()
 			local e = ctx.origin + dir * dist
+			Core.animeSpikeBurst(e, {
+				color = PURPLE, coreColor = BLUE, outlineColor = BLACK,
+				count = 9, radius = 7, minHeight = 7, maxHeight = 15, duration = 0.55,
+			})
 			Core.fragments(e, 16, { color = BLUE, material = Enum.Material.Neon, speed = 28, life = 0.7, minSize = 0.3, maxSize = 0.9 })
 			Core.fragments(e, 10, { color = PURPLE, material = Enum.Material.Neon, speed = 22, life = 0.7 })
 			Core.shockwave(Core.axisCF(e, dir), { color = BLUE, from = 1, to = 10, duration = 0.4 })
@@ -1499,12 +1879,15 @@ function Error.Move2(ctx)
 		local flight = math.clamp((target - mid).Magnitude / 50, 0.2, 1.2)
 		Core.runFor(flight, function(_, t)
 			orb.CFrame = CFrame.new(mid:Lerp(target, t / flight))
-		end, function()
-			-- 4. impact: fragments, AoE ring, dark shell expanding out
+			-- 4. impact: anime glitch spike burst, fragments, AoE ring, dark shell expanding out
 			orb.Transparency = 1
+			Core.animeSpikeBurst(target, {
+				color = PURPLE, coreColor = BLUE, outlineColor = BLACK,
+				count = 11, radius = 9, minHeight = 9, maxHeight = 18, duration = 0.65,
+			})
 			Core.fragments(target, 22, { color = PURPLE, material = Enum.Material.Neon, speed = 30, life = 0.8, minSize = 0.3, maxSize = 1.1 })
 			Core.fragments(target, 14, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.7 })
-			local R = ctx.radius or 10
+			local R = ctx.radius or 14
 			Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = BLUE, from = 2, to = R * 2, duration = 0.5 })
 			local shell = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(target), {
 				color = BLACK, material = Enum.Material.Glass, transparency = 0.5,
@@ -1575,24 +1958,24 @@ function Error.Move3(ctx)
 	}
 end
 
--- Move4: spatial distortion. Returns a handle with :End().
+-- Move4: colossal spatial distortion glitched domain (80 studs radius). Returns a handle with :End().
 function Error.Move4(ctx)
 	local life = ctx.duration or 7
 	local origin = ctx.origin
 	local dir = ctx.direction
-	local arenaCF = ctx.arenaCFrame or CFrame.new(origin + Vector3.new(0, 400, 0))
-	local arenaPos = arenaCF.Position
+	local R = ctx.radius or 80
+	local center = ctx.target or (origin - Vector3.new(0, 3, 0))
 
 	-- 1. distortion bubble expands around the caster, fragments fly out
-	local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 2, CFrame.new(origin), {
-		color = PURPLE, material = Enum.Material.Glass, transparency = 0.5,
+	local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(origin), {
+		color = PURPLE, material = Enum.Material.Glass, transparency = 0.4,
 	})
-	Core.fragments(origin, 20, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.9 })
-	Core.runFor(1.4, function(_, t)
-		if t < 0.8 then
-			bubble.Size = Vector3.one * (2 + 26 * Core.smooth(t / 0.8))
+	Core.fragments(origin, 30, { color = BLUE, material = Enum.Material.Neon, speed = 36, life = 1.0 })
+	Core.runFor(1.2, function(_, t)
+		if t < 0.6 then
+			bubble.Size = Vector3.one * (4 + (R * 1.5) * Core.smooth(t / 0.6))
 		else
-			bubble.Transparency = 0.5 + 0.5 * ((t - 0.8) / 0.6)
+			bubble.Transparency = 0.4 + 0.6 * ((t - 0.6) / 0.6)
 		end
 		bubble.CFrame = CFrame.new(origin)
 	end, function()
@@ -1600,35 +1983,45 @@ function Error.Move4(ctx)
 	end)
 
 	-- 2. glitch portal in front of the caster, flickering
-	local portal = buildFrame(origin + dir * 5, dir, 6, 9)
-	local portalFlicker = Core.flicker(portal, life, 0.2)
+	local portal = buildFrame(origin + dir * 6, dir, 8, 12)
+	local portalFlicker = Core.flicker(portal, life, 0.25)
 
-	-- 3. glitched arena (visual only)
-	local arena = {}
-	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.3, 44, 44), Core.groundCF(arenaPos), {
-		color = PURPLE, material = Enum.Material.Neon, transparency = 0.4,
+	-- 3. Colossal Grounded Anime Domain (80 studs radius)
+	Core.animeDomain(center, {
+		radius = R,
+		height = 50,
+		duration = life,
+		fadeOut = 1.0,
+		color = PURPLE,
+		accentColor = BLUE,
+		coreColor = Color3.fromRGB(0, 255, 255),
+		pillarCount = 32,
+		pillarHeight = 40,
 	})
-	table.insert(arena, floor)
+
+	-- 4. Cybernetic grid floor lines across the entire 160-stud arena
+	local gridParts = {}
+	local step = 16
 	for i = -4, 4 do
-		local off = i * 5
-		table.insert(arena, Core.part(Enum.PartType.Block, Vector3.new(44, 0.1, 0.2),
-			CFrame.new(arenaPos + Vector3.new(0, 0.2, off)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
-		table.insert(arena, Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.1, 44),
-			CFrame.new(arenaPos + Vector3.new(off, 0.2, 0)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+		local off = i * step
+		table.insert(gridParts, Core.part(Enum.PartType.Block, Vector3.new(R * 2, 0.15, 0.4),
+			CFrame.new(center + Vector3.new(0, 0.2, off)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+		table.insert(gridParts, Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.15, R * 2),
+			CFrame.new(center + Vector3.new(off, 0.2, 0)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
 	end
+	local gridFlicker = Core.flicker(gridParts, life, 0.3)
 
 	local finish = Core.runFor(life, function(_, t)
-		if t > life - 0.6 then
-			local k = (t - (life - 0.6)) / 0.6
-			Core.setTransparency(arena, 0.4 + 0.6 * k)
+		if t > life - 0.8 then
+			local k = (t - (life - 0.8)) / 0.8
+			Core.setTransparency(gridParts, 0.3 + 0.7 * k)
 			Core.setTransparency(portal, 0.1 + 0.9 * k)
 		end
 	end, function()
 		portalFlicker()
-		Core.setTransparency(arena, 1)
-		Core.setTransparency(portal, 1)
-		Core.cleanupLater(arena, 0.1)
-		Core.cleanupLater(portal, 0.1)
+		gridFlicker()
+		Core.destroyAll(portal)
+		Core.destroyAll(gridParts)
 	end)
 
 	return {
@@ -1782,10 +2175,10 @@ local SPARK = Core.Textures.Sparkle
 
 local Fire = {}
 
--- Domain settings for Move4. Match these to the server's check.
-Fire.DOMAIN = { radius = 16, duration = 10, fadeOut = 1 }
+-- Domain settings for Move4: Colossal 75-stud anime domain arena
+Fire.DOMAIN = { radius = 75, height = 45, duration = 10, fadeOut = 1.2 }
 
--- M1: flaming dagger with a fast orange-gold strike
+-- M1: flaming dagger with a fast orange-gold strike & anime slash burst
 function Fire.M1(ctx)
 	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
 	if not hand then
@@ -1810,6 +2203,10 @@ function Fire.M1(ctx)
 	end, function()
 		flame.Enabled = false
 		blade.Transparency = 1
+		Core.animeSpikeBurst(start + dir * 5, {
+			color = ORANGE, coreColor = CORE, count = 5, radius = 4,
+			minHeight = 4, maxHeight = 8, duration = 0.35, aimDir = dir,
+		})
 		Core.burst(start + dir * 5, 12, { color = GOLD_SEQ, texture = SPARK, speed = 12, light = 0.9 })
 		Core.cleanupLater({ blade }, 0.6)
 	end)
@@ -1846,14 +2243,23 @@ function Fire.Move1(ctx)
 		core.CFrame = CFrame.new(pos)
 		shellA.CFrame = CFrame.new(pos) * CFrame.Angles(spin * 6, spin * 4, 0)
 		shellB.CFrame = CFrame.new(pos) * CFrame.Angles(0, spin * -5, spin * 7)
-	end, function()
 		embers.Enabled = false
 		sparks.Enabled = false
 		core.Transparency = 1
 		shellA.Transparency = 1
 		shellB.Transparency = 1
+		Core.animeSpikeBurst(target, {
+			color = ORANGE,
+			coreColor = CORE,
+			outlineColor = Color3.fromRGB(18, 16, 22),
+			count = 10,
+			radius = 9,
+			minHeight = 8,
+			maxHeight = 17,
+			duration = 0.65,
+		})
 		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
-			color = GOLD, from = 2, to = 22, duration = 0.5,
+			color = GOLD, from = 2, to = 24, duration = 0.5,
 		})
 		Core.burst(target, 40, { texture = FIRE_TEX, color = FIRE, speed = 22, light = 0.9 })
 		Core.cleanupLater({ core, shellA, shellB }, 1)
@@ -2015,100 +2421,24 @@ function Fire.Move3(ctx)
 	end)
 end
 
--- Move4: fire domain. See the header for the contract.
+-- Move4: colossal fire domain (Infernal Judgement).
 function Fire.Move4(ctx)
 	local D = Fire.DOMAIN
 	local R = ctx.radius or D.radius
 	local life = ctx.duration or D.duration
-	local center = ctx.origin - Vector3.new(0, 3, 0) -- ground under the caster
+	local center = ctx.origin - Vector3.new(0, 3, 0)
 
-	local visible = {} -- faded out at the end
-	local emitters = {} -- disabled when fading starts
-	local junk = {} -- anchors and attachments, destroyed at the end
-
-	-- Ground: expanding ring, then a floor disc that stays for the duration
-	Core.shockwave(Core.groundCF(center + Vector3.new(0, 0.2, 0)), { color = ORANGE, from = 2, to = R * 2, duration = 0.8 })
-	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(center + Vector3.new(0, 0.1, 0)), {
-		color = DEEP, material = Enum.Material.Neon, transparency = 0.55,
+	Core.animeDomain(center, {
+		radius = R,
+		height = D.height or 45,
+		duration = life,
+		fadeOut = D.fadeOut or 1.2,
+		color = DEEP,
+		accentColor = ORANGE,
+		coreColor = CORE,
+		pillarCount = 36,
+		pillarHeight = 35,
 	})
-	table.insert(visible, floor)
-
-	-- Boundary: ring of flame pillars, joined at the top by glowing beams
-	local N = 28
-	local tops = {}
-	for i, p in ipairs(Core.circle(center, R, N, 2)) do
-		local pillar = Core.part(Enum.PartType.Block, Vector3.new(0.5, 4, 0.5), CFrame.new(p), {
-			color = ORANGE, material = Enum.Material.Neon, transparency = 0.4,
-		})
-		table.insert(visible, pillar)
-		tops[i] = Core.attach(pillar, Vector3.new(0, 2, 0))
-		table.insert(emitters, Core.emitter(Core.attach(pillar, Vector3.new(0, -1.5, 0)), {
-			texture = FIRE_TEX, color = FIRE, rate = 25, light = 0.9,
-			speed = NumberRange.new(5, 8), direction = Enum.NormalId.Top,
-			spread = Vector2.new(10, 10), lifetime = NumberRange.new(0.8, 1.2), size = NumberSequence.new(1.2, 0.2),
-		}))
-	end
-	for i = 1, N do
-		local b = Core.beam(tops[i], tops[i % N + 1], { color = GOLD_SEQ, width0 = 0.8, light = 1, curve = 1 })
-		table.insert(visible, b)
-	end
-
-	-- Rising flames inside the domain
-	local rng = Random.new()
-	for _ = 1, 10 do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local r = rng:NextNumber(0, R * 0.8)
-		local anchor = Core.anchor(center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
-		table.insert(junk, anchor)
-		table.insert(emitters, Core.emitter(Core.attach(anchor), {
-			texture = FIRE_TEX, color = FIRE, rate = 30, light = 0.9,
-			speed = NumberRange.new(4, 7), direction = Enum.NormalId.Top,
-			spread = Vector2.new(15, 15), lifetime = NumberRange.new(0.7, 1.1), size = NumberSequence.new(1.5, 0.2),
-		}))
-	end
-
-	-- Fire particles and embers drifting up from the centre
-	local emberAnchor = Core.anchor(center + Vector3.new(0, 1, 0))
-	table.insert(junk, emberAnchor)
-	table.insert(emitters, Core.emitter(Core.attach(emberAnchor), {
-		texture = SPARK, color = EMBER, rate = 40, light = 1,
-		speed = NumberRange.new(3, 6), direction = Enum.NormalId.Top,
-		spread = Vector2.new(60, 60), lifetime = NumberRange.new(1, 2),
-	}))
-
-	-- Rising column under the caster for the first second (the "rise" effect)
-	local columnAnchor = Core.anchor(center)
-	table.insert(junk, columnAnchor)
-	local column = Core.emitter(Core.attach(columnAnchor), {
-		texture = FIRE_TEX, color = FIRE, rate = 60, light = 1,
-		speed = NumberRange.new(8, 12), direction = Enum.NormalId.Top,
-		spread = Vector2.new(8, 8), lifetime = NumberRange.new(0.6, 0.9), size = NumberSequence.new(1.5, 0.3),
-	})
-	table.insert(emitters, column)
-
-	-- Central energy core
-	local core = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(center + Vector3.new(0, 4, 0)), {
-		color = CORE, material = Enum.Material.Neon, transparency = 0.2,
-	})
-	table.insert(visible, core)
-
-	local fadeStart = life - D.fadeOut
-	Core.runFor(life, function(_, t)
-		core.Size = Vector3.one * (4 + math.sin(t * 6) * 0.6)
-		if t >= 1 then
-			column.Enabled = false
-		end
-		if t >= fadeStart then
-			local k = (t - fadeStart) / D.fadeOut
-			Core.setTransparency(visible, 0.2 + 0.8 * k)
-			for _, e in ipairs(emitters) do
-				e.Enabled = false
-			end
-		end
-	end, function()
-		Core.destroyAll(visible)
-		Core.destroyAll(junk)
-	end)
 end
 
 return Fire
@@ -2345,15 +2675,19 @@ function Light.Move1(ctx)
 	local dur = ray(from, ctx.target, { color = LAV, width = 1.6, length = 8, speed = 90, transparency = 0.5, rate = 80 })
 	ray(from, ctx.target, { color = BRIGHT, width = 0.6, length = 8, speed = 90, transparency = 0.05 })
 	task.delay(dur, function()
+		Core.animeSpikeBurst(ctx.target, {
+			color = LAV, coreColor = BRIGHT, outlineColor = VIOLET,
+			count = 8, radius = 6, minHeight = 7, maxHeight = 14, duration = 0.5,
+		})
 		Core.burst(ctx.target, 30, { color = LIGHT, texture = SPARK, speed = 22, light = 1 })
-		Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 10, duration = 0.4 })
+		Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 12, duration = 0.4 })
 	end)
 end
 
 -- Move2: five mirrors around the target; a ray bounces between them, then slams the target
 function Light.Move2(ctx)
 	local center = ctx.target + Vector3.new(0, 2, 0)
-	local N, R = 5, 9
+	local N, R = 5, 24
 	local mirrors, mirrorPos = {}, {}
 
 	for i = 1, N do
@@ -2361,7 +2695,7 @@ function Light.Move2(ctx)
 		local pos = center + Vector3.new(math.cos(a) * R, 0, math.sin(a) * R)
 		mirrorPos[i] = pos
 		local toCenter = (center - pos).Unit
-		table.insert(mirrors, Core.part(Enum.PartType.Block, Vector3.new(4, 5, 0.3), Core.lookCF(pos, toCenter), {
+		table.insert(mirrors, Core.part(Enum.PartType.Block, Vector3.new(6, 8, 0.4), Core.lookCF(pos, toCenter), {
 			color = BRIGHT, material = Enum.Material.Glass, transparency = 0.25, reflectance = 0.8,
 		}))
 	end
@@ -2382,7 +2716,7 @@ function Light.Move2(ctx)
 			t = 0.2 + (i - 1) * 0.2,
 			run = function()
 				local d = p1 - p0
-				local seg = Core.part(Enum.PartType.Cylinder, Vector3.new(d.Magnitude, 0.5, 0.5), Core.axisCF(p0 + d / 2, d.Unit), {
+				local seg = Core.part(Enum.PartType.Cylinder, Vector3.new(d.Magnitude, 0.6, 0.6), Core.axisCF(p0 + d / 2, d.Unit), {
 					color = BRIGHT, material = Enum.Material.Neon, transparency = 0.05,
 				})
 				table.insert(segs, seg)
@@ -2395,9 +2729,13 @@ function Light.Move2(ctx)
 	table.insert(events, {
 		t = slamT,
 		run = function()
+			Core.animeSpikeBurst(ctx.target, {
+				color = LAV, coreColor = BRIGHT, outlineColor = VIOLET,
+				count = 10, radius = 9, minHeight = 9, maxHeight = 18, duration = 0.65,
+			})
 			Core.burst(center, 60, { color = BRIGHT, texture = SPARK, speed = 30, light = 1 })
-			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 16, duration = 0.5 })
-			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 1.8, 0)), { color = VIOLET, from = 1, to = 10, duration = 0.35 })
+			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 22, duration = 0.5 })
+			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 1.8, 0)), { color = VIOLET, from = 1, to = 14, duration = 0.35 })
 		end,
 	})
 
@@ -2484,19 +2822,35 @@ function Light.Move4(ctx)
 		Core.runFor(flight, function(_, t)
 			orb.CFrame = CFrame.new(origin:Lerp(target, Core.smooth(t / flight)))
 		end, function()
-			-- 3. impact: burst, staggered rings, radiating spokes
+			-- 3. impact: colossal divine light domain, anime spike burst, staggered rings, radiating spokes
 			orb.Transparency = 1
+			local R = ctx.radius or 75
+			Core.animeDomain(target - Vector3.new(0, 2, 0), {
+				radius = R,
+				height = 45,
+				duration = 3.5,
+				fadeOut = 0.8,
+				color = VIOLET,
+				accentColor = LAV,
+				coreColor = WHITE,
+				pillarCount = 24,
+				pillarHeight = 40,
+			})
+			Core.animeSpikeBurst(target, {
+				color = LAV, coreColor = WHITE, outlineColor = Color3.fromRGB(30, 10, 45),
+				count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.85,
+			})
 			Core.burst(target, 80, { color = LIGHT, texture = SPARK, speed = 40, light = 1, life = 0.5 })
 			for i = 1, 3 do
 				task.delay((i - 1) * 0.08, function()
 					Core.shockwave(Core.groundCF(target - Vector3.new(0, 2, 0)), {
-						color = i == 1 and WHITE or LAV, from = 1, to = 6 + i * 6, duration = 0.5,
+						color = i == 1 and WHITE or LAV, from = 2, to = R, duration = 0.6,
 					})
 				end)
 			end
 			for i = 1, 8 do
 				local a = (i - 1) / 8 * math.pi * 2
-				spoke(target, Vector3.new(math.cos(a), 0, math.sin(a)), 10, BRIGHT)
+				spoke(target, Vector3.new(math.cos(a), 0, math.sin(a)), 18, BRIGHT)
 			end
 			Core.cleanupLater({ orb }, 0.6)
 		end)
@@ -2720,6 +3074,10 @@ function Time.Move2(ctx)
 		end
 	end, function()
 		sparks.Enabled = false
+		Core.animeSpikeBurst(feet, {
+			color = CYAN, coreColor = BRIGHT, outlineColor = DEEP,
+			count = 10, radius = 8, minHeight = 8, maxHeight = 16, duration = 0.6,
+		})
 		Core.shockwave(Core.groundCF(feet), { color = BRIGHT, from = 8, to = 1, duration = 0.4 })
 		Core.burst(center, 40, { color = BRIGHT, texture = SPARK, speed = 26, light = 1 })
 		Core.setTransparency(parts, 1)
@@ -2776,55 +3134,64 @@ function Time.Move3(ctx)
 	}
 end
 
--- Move4: virtual kill sequence
+-- Move4: colossal virtual kill chrono domain (75 studs radius)
 function Time.Move4(ctx)
 	local tr = Core.root(ctx.targetCharacter)
 	local center = tr and tr.Position or ctx.target
 	local ground = center - Vector3.new(0, 2.8, 0)
+	local R = ctx.radius or 75
+	local life = ctx.duration or 3.5
 
-	-- 1. four temporal rings close in on the target
+	-- 1. Four massive converging temporal shockwaves (from 75 studs in to center)
 	for i = 1, 4 do
-		task.delay((i - 1) * 0.12, function()
-			Core.shockwave(Core.groundCF(ground + Vector3.new(0, (i - 1) * 0.6, 0)), {
-				color = i % 2 == 0 and BRIGHT or CYAN, from = 14, to = 2, duration = 1.0,
+		task.delay((i - 1) * 0.15, function()
+			Core.shockwave(Core.groundCF(ground + Vector3.new(0, (i - 1) * 0.8, 0)), {
+				color = i % 2 == 0 and BRIGHT or CYAN, from = R, to = 2, duration = 1.2,
 			})
 		end)
 	end
 
-	Core.timeline(2.4, {
+	-- 2. Colossal Chrono Spacetime Domain
+	Core.animeDomain(ground, {
+		radius = R,
+		height = 45,
+		duration = life,
+		fadeOut = 0.8,
+		color = DEEP,
+		accentColor = CYAN,
+		coreColor = BRIGHT,
+		pillarCount = 24,
+		pillarHeight = 35,
+	})
+
+	Core.timeline(life, {
 		{
-			t = 1.0, -- 2. scene distortion around the target
+			t = 0.8, -- 3. Temporal distortion bubble
 			run = function()
-				local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(center), {
-					color = CYAN, material = Enum.Material.Glass, transparency = 0.6,
+				local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 8, CFrame.new(center), {
+					color = CYAN, material = Enum.Material.Glass, transparency = 0.5,
 				})
-				Core.runFor(0.5, function(_, t)
-					local k = t / 0.5
-					bubble.Size = Vector3.one * (4 + 2 * math.sin(k * math.pi))
-					bubble.Transparency = 0.6 + 0.3 * k
+				Core.runFor(1.0, function(_, t)
+					local k = t / 1.0
+					bubble.Size = Vector3.one * (8 + 12 * math.sin(k * math.pi))
+					bubble.Transparency = 0.5 + 0.5 * k
 				end, function()
 					bubble:Destroy()
 				end)
 			end,
 		},
 		{
-			t = 1.5, -- 3. concentrated blue release
+			t = 1.6, -- 4. Concentrated timeline fracture climax: beam to sky, anime spike burst
 			run = function()
-				local core = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(center), {
-					color = BRIGHT, material = Enum.Material.Neon, transparency = 0,
+				Core.tempBeam(center, center + Vector3.new(0, 80, 0), 0.9, {
+					color = TIME, width0 = 6, width1 = 1, light = 1,
 				})
-				Core.runFor(0.25, function(_, t)
-					local k = t / 0.25
-					core.Size = Vector3.one * (1 + 6 * Core.smooth(k))
-					core.Transparency = k * 0.8
-				end, function()
-					core:Destroy()
-				end)
-				Core.tempBeam(center, center + Vector3.new(0, 40, 0), 0.5, {
-					color = TIME, width0 = 3, width1 = 0.5, light = 1,
+				Core.animeSpikeBurst(ground, {
+					color = CYAN, coreColor = BRIGHT, outlineColor = DEEP,
+					count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.9,
 				})
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = BRIGHT, from = 1, to = 14, duration = 0.4 })
-				Core.burst(center, 50, { color = TIME, texture = SPARK, speed = 30, light = 1 })
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = BRIGHT, from = 2, to = R, duration = 0.6 })
+				Core.burst(center, 70, { color = TIME, texture = SPARK, speed = 35, light = 1 })
 			end,
 		},
 	})
@@ -3000,18 +3367,22 @@ function Wind.Move1(ctx)
 		end
 	end, function()
 		dust.Enabled = false
+		Core.animeSpikeBurst(target, {
+			color = MINT, coreColor = WHITE, outlineColor = Color3.fromRGB(15, 30, 25),
+			count = 8, radius = 7, minHeight = 7, maxHeight = 14, duration = 0.55,
+		})
 		Core.burst(target, 20, { texture = SMOKE, color = Core.seq(DUST), speed = 10, light = 0 })
 		Core.setTransparency(parts, 1)
 		Core.cleanupLater(parts, 0.4)
 	end)
 end
 
--- Move2: tall cyclone at the target. Pulls particles inward every 0.8s.
+-- Move2: tall cyclone at the target (50 studs radius). Pulls particles inward every 0.8s.
 function Wind.Move2(ctx)
 	local ground = Vector3.new(ctx.target.X, ctx.target.Y - 3, ctx.target.Z)
 	local life = ctx.duration or 5
-	local R = ctx.radius or 14
-	local H, LAYERS, PER = 18, 12, 5
+	local R = ctx.radius or 50
+	local H, LAYERS, PER = 35, 14, 6
 
 	local boundary = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(ground + Vector3.new(0, 0.1, 0)), {
 		color = MINT, material = Enum.Material.Neon, transparency = 0.7,
@@ -3164,13 +3535,29 @@ function Wind.Move4(ctx)
 			end,
 		},
 		{
-			t = 3.9, -- 7. dash toward the target, then impact
+			t = 3.9, -- 7. dash toward the target, then colossal tempest domain impact
 			run = function()
 				Core.destroyAll(boltSegs)
 				local dur = Wind.dashBolt(boltFrom, target, 150)
+				local R = ctx.radius or 70
 				task.delay(dur, function()
-					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = 26, duration = 0.6 })
-					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = PCYAN, from = 1, to = 12, duration = 0.4 })
+					Core.animeDomain(ground, {
+						radius = R,
+						height = 45,
+						duration = 3.5,
+						fadeOut = 0.8,
+						color = MINT,
+						accentColor = PCYAN,
+						coreColor = WHITE,
+						pillarCount = 24,
+						pillarHeight = 35,
+					})
+					Core.animeSpikeBurst(target, {
+						color = MINT, coreColor = WHITE, outlineColor = Color3.fromRGB(15, 30, 25),
+						count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.85,
+					})
+					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = R, duration = 0.6 })
+					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = PCYAN, from = 1, to = 20, duration = 0.4 })
 					Core.burst(target, 70, { texture = SMOKE, color = Core.seq(DUST), speed = 30, life = 0.6, light = 0.5 })
 					Core.burst(target, 40, { color = WIND, texture = SPARK, speed = 36, light = 1 })
 					Core.fragments(target, 18, { color = ROCK_C, material = ROCK, speed = 34 })
@@ -8466,7 +8853,7 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = strikePos,
             Element = "Earth",
-            Radius = 26,
+            Radius = 70,
             Duration = 0.5,
             Shake = 0.75,
             SFXId = ability.SFXId,
@@ -8735,7 +9122,7 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
     })
 
     local duration = ability.Duration or 7.0
-    local domainRadius = 35
+    local domainRadius = 80
     local domainCenter = rootPart.Position
 
     VFXBroadcastService.Broadcast("ElementalMove", {
@@ -8756,7 +9143,7 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
         Shake = 0.7,
     })
 
-    -- Trap and apply ticks to nearby targets inside the 35-stud arena
+    -- Trap and apply ticks to nearby targets inside the 80-stud arena
     task.spawn(function()
         local elapsed = 0
         while elapsed < duration and character.Parent do
@@ -9164,11 +9551,11 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local domainCenter = rootPart.Position
-    local domainRadius = 30
+    local domainRadius = 75
     local duration = ability.Duration or 10
 
     -- Rise above ground
-    rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 8, 0)
+    rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 12, 0)
     rootPart.Anchored = true
 
     -- Broadcast to ElementalVFX Dispatcher
@@ -9193,7 +9580,7 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     })
     VFXBroadcastService.Broadcast("Crater", {
         Position = domainCenter,
-        Radius = 18,
+        Radius = 35,
         Element = "Fire",
         SFXId = ability.SFXId,
     })
@@ -9201,8 +9588,8 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
         Position = domainCenter,
         Element = "Fire",
         Radius = domainRadius,
-        Duration = 0.5,
-        Shake = 0.55,
+        Duration = 0.6,
+        Shake = 0.7,
         SFXId = ability.SFXId,
     })
 
@@ -9210,7 +9597,7 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     local domainPart = Instance.new("Part")
     domainPart.Name = "FireDomain_Boundary"
     domainPart.Shape = Enum.PartType.Cylinder
-    domainPart.Size = Vector3.new(25, domainRadius * 2, domainRadius * 2)
+    domainPart.Size = Vector3.new(45, domainRadius * 2, domainRadius * 2)
     domainPart.CFrame = CFrame.new(domainCenter) * CFrame.Angles(0, 0, math.rad(90))
     domainPart.Transparency = 0.7
     domainPart.Color = Color3.fromRGB(255, 80, 0)
@@ -9692,7 +10079,7 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = strikePos,
             Element = "Time",
-            Radius = 26,
+            Radius = 75,
             Duration = 0.5,
             Shake = 0.7,
             SFXId = ability.SFXId,

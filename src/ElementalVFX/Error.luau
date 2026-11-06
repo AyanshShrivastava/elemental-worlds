@@ -95,6 +95,10 @@ function Error.Move1(ctx)
 		glitchDash(ctx.origin, dir, dist, 0.35)
 		task.delay(0.35, function()
 			local e = ctx.origin + dir * dist
+			Core.animeSpikeBurst(e, {
+				color = PURPLE, coreColor = BLUE, outlineColor = BLACK,
+				count = 9, radius = 7, minHeight = 7, maxHeight = 15, duration = 0.55,
+			})
 			Core.fragments(e, 16, { color = BLUE, material = Enum.Material.Neon, speed = 28, life = 0.7, minSize = 0.3, maxSize = 0.9 })
 			Core.fragments(e, 10, { color = PURPLE, material = Enum.Material.Neon, speed = 22, life = 0.7 })
 			Core.shockwave(Core.axisCF(e, dir), { color = BLUE, from = 1, to = 10, duration = 0.4 })
@@ -147,12 +151,15 @@ function Error.Move2(ctx)
 		local flight = math.clamp((target - mid).Magnitude / 50, 0.2, 1.2)
 		Core.runFor(flight, function(_, t)
 			orb.CFrame = CFrame.new(mid:Lerp(target, t / flight))
-		end, function()
-			-- 4. impact: fragments, AoE ring, dark shell expanding out
+			-- 4. impact: anime glitch spike burst, fragments, AoE ring, dark shell expanding out
 			orb.Transparency = 1
+			Core.animeSpikeBurst(target, {
+				color = PURPLE, coreColor = BLUE, outlineColor = BLACK,
+				count = 11, radius = 9, minHeight = 9, maxHeight = 18, duration = 0.65,
+			})
 			Core.fragments(target, 22, { color = PURPLE, material = Enum.Material.Neon, speed = 30, life = 0.8, minSize = 0.3, maxSize = 1.1 })
 			Core.fragments(target, 14, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.7 })
-			local R = ctx.radius or 10
+			local R = ctx.radius or 14
 			Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = BLUE, from = 2, to = R * 2, duration = 0.5 })
 			local shell = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(target), {
 				color = BLACK, material = Enum.Material.Glass, transparency = 0.5,
@@ -223,24 +230,24 @@ function Error.Move3(ctx)
 	}
 end
 
--- Move4: spatial distortion. Returns a handle with :End().
+-- Move4: colossal spatial distortion glitched domain (80 studs radius). Returns a handle with :End().
 function Error.Move4(ctx)
 	local life = ctx.duration or 7
 	local origin = ctx.origin
 	local dir = ctx.direction
-	local arenaCF = ctx.arenaCFrame or CFrame.new(origin + Vector3.new(0, 400, 0))
-	local arenaPos = arenaCF.Position
+	local R = ctx.radius or 80
+	local center = ctx.target or (origin - Vector3.new(0, 3, 0))
 
 	-- 1. distortion bubble expands around the caster, fragments fly out
-	local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 2, CFrame.new(origin), {
-		color = PURPLE, material = Enum.Material.Glass, transparency = 0.5,
+	local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(origin), {
+		color = PURPLE, material = Enum.Material.Glass, transparency = 0.4,
 	})
-	Core.fragments(origin, 20, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.9 })
-	Core.runFor(1.4, function(_, t)
-		if t < 0.8 then
-			bubble.Size = Vector3.one * (2 + 26 * Core.smooth(t / 0.8))
+	Core.fragments(origin, 30, { color = BLUE, material = Enum.Material.Neon, speed = 36, life = 1.0 })
+	Core.runFor(1.2, function(_, t)
+		if t < 0.6 then
+			bubble.Size = Vector3.one * (4 + (R * 1.5) * Core.smooth(t / 0.6))
 		else
-			bubble.Transparency = 0.5 + 0.5 * ((t - 0.8) / 0.6)
+			bubble.Transparency = 0.4 + 0.6 * ((t - 0.6) / 0.6)
 		end
 		bubble.CFrame = CFrame.new(origin)
 	end, function()
@@ -248,35 +255,45 @@ function Error.Move4(ctx)
 	end)
 
 	-- 2. glitch portal in front of the caster, flickering
-	local portal = buildFrame(origin + dir * 5, dir, 6, 9)
-	local portalFlicker = Core.flicker(portal, life, 0.2)
+	local portal = buildFrame(origin + dir * 6, dir, 8, 12)
+	local portalFlicker = Core.flicker(portal, life, 0.25)
 
-	-- 3. glitched arena (visual only)
-	local arena = {}
-	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.3, 44, 44), Core.groundCF(arenaPos), {
-		color = PURPLE, material = Enum.Material.Neon, transparency = 0.4,
+	-- 3. Colossal Grounded Anime Domain (80 studs radius)
+	Core.animeDomain(center, {
+		radius = R,
+		height = 50,
+		duration = life,
+		fadeOut = 1.0,
+		color = PURPLE,
+		accentColor = BLUE,
+		coreColor = Color3.fromRGB(0, 255, 255),
+		pillarCount = 32,
+		pillarHeight = 40,
 	})
-	table.insert(arena, floor)
+
+	-- 4. Cybernetic grid floor lines across the entire 160-stud arena
+	local gridParts = {}
+	local step = 16
 	for i = -4, 4 do
-		local off = i * 5
-		table.insert(arena, Core.part(Enum.PartType.Block, Vector3.new(44, 0.1, 0.2),
-			CFrame.new(arenaPos + Vector3.new(0, 0.2, off)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
-		table.insert(arena, Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.1, 44),
-			CFrame.new(arenaPos + Vector3.new(off, 0.2, 0)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+		local off = i * step
+		table.insert(gridParts, Core.part(Enum.PartType.Block, Vector3.new(R * 2, 0.15, 0.4),
+			CFrame.new(center + Vector3.new(0, 0.2, off)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+		table.insert(gridParts, Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.15, R * 2),
+			CFrame.new(center + Vector3.new(off, 0.2, 0)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
 	end
+	local gridFlicker = Core.flicker(gridParts, life, 0.3)
 
 	local finish = Core.runFor(life, function(_, t)
-		if t > life - 0.6 then
-			local k = (t - (life - 0.6)) / 0.6
-			Core.setTransparency(arena, 0.4 + 0.6 * k)
+		if t > life - 0.8 then
+			local k = (t - (life - 0.8)) / 0.8
+			Core.setTransparency(gridParts, 0.3 + 0.7 * k)
 			Core.setTransparency(portal, 0.1 + 0.9 * k)
 		end
 	end, function()
 		portalFlicker()
-		Core.setTransparency(arena, 1)
-		Core.setTransparency(portal, 1)
-		Core.cleanupLater(arena, 0.1)
-		Core.cleanupLater(portal, 0.1)
+		gridFlicker()
+		Core.destroyAll(portal)
+		Core.destroyAll(gridParts)
 	end)
 
 	return {

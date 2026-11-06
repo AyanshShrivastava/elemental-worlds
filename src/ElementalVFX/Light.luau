@@ -84,15 +84,19 @@ function Light.Move1(ctx)
 	local dur = ray(from, ctx.target, { color = LAV, width = 1.6, length = 8, speed = 90, transparency = 0.5, rate = 80 })
 	ray(from, ctx.target, { color = BRIGHT, width = 0.6, length = 8, speed = 90, transparency = 0.05 })
 	task.delay(dur, function()
+		Core.animeSpikeBurst(ctx.target, {
+			color = LAV, coreColor = BRIGHT, outlineColor = VIOLET,
+			count = 8, radius = 6, minHeight = 7, maxHeight = 14, duration = 0.5,
+		})
 		Core.burst(ctx.target, 30, { color = LIGHT, texture = SPARK, speed = 22, light = 1 })
-		Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 10, duration = 0.4 })
+		Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 12, duration = 0.4 })
 	end)
 end
 
 -- Move2: five mirrors around the target; a ray bounces between them, then slams the target
 function Light.Move2(ctx)
 	local center = ctx.target + Vector3.new(0, 2, 0)
-	local N, R = 5, 9
+	local N, R = 5, 24
 	local mirrors, mirrorPos = {}, {}
 
 	for i = 1, N do
@@ -100,7 +104,7 @@ function Light.Move2(ctx)
 		local pos = center + Vector3.new(math.cos(a) * R, 0, math.sin(a) * R)
 		mirrorPos[i] = pos
 		local toCenter = (center - pos).Unit
-		table.insert(mirrors, Core.part(Enum.PartType.Block, Vector3.new(4, 5, 0.3), Core.lookCF(pos, toCenter), {
+		table.insert(mirrors, Core.part(Enum.PartType.Block, Vector3.new(6, 8, 0.4), Core.lookCF(pos, toCenter), {
 			color = BRIGHT, material = Enum.Material.Glass, transparency = 0.25, reflectance = 0.8,
 		}))
 	end
@@ -121,7 +125,7 @@ function Light.Move2(ctx)
 			t = 0.2 + (i - 1) * 0.2,
 			run = function()
 				local d = p1 - p0
-				local seg = Core.part(Enum.PartType.Cylinder, Vector3.new(d.Magnitude, 0.5, 0.5), Core.axisCF(p0 + d / 2, d.Unit), {
+				local seg = Core.part(Enum.PartType.Cylinder, Vector3.new(d.Magnitude, 0.6, 0.6), Core.axisCF(p0 + d / 2, d.Unit), {
 					color = BRIGHT, material = Enum.Material.Neon, transparency = 0.05,
 				})
 				table.insert(segs, seg)
@@ -134,9 +138,13 @@ function Light.Move2(ctx)
 	table.insert(events, {
 		t = slamT,
 		run = function()
+			Core.animeSpikeBurst(ctx.target, {
+				color = LAV, coreColor = BRIGHT, outlineColor = VIOLET,
+				count = 10, radius = 9, minHeight = 9, maxHeight = 18, duration = 0.65,
+			})
 			Core.burst(center, 60, { color = BRIGHT, texture = SPARK, speed = 30, light = 1 })
-			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 16, duration = 0.5 })
-			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 1.8, 0)), { color = VIOLET, from = 1, to = 10, duration = 0.35 })
+			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 22, duration = 0.5 })
+			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 1.8, 0)), { color = VIOLET, from = 1, to = 14, duration = 0.35 })
 		end,
 	})
 
@@ -223,19 +231,35 @@ function Light.Move4(ctx)
 		Core.runFor(flight, function(_, t)
 			orb.CFrame = CFrame.new(origin:Lerp(target, Core.smooth(t / flight)))
 		end, function()
-			-- 3. impact: burst, staggered rings, radiating spokes
+			-- 3. impact: colossal divine light domain, anime spike burst, staggered rings, radiating spokes
 			orb.Transparency = 1
+			local R = ctx.radius or 75
+			Core.animeDomain(target - Vector3.new(0, 2, 0), {
+				radius = R,
+				height = 45,
+				duration = 3.5,
+				fadeOut = 0.8,
+				color = VIOLET,
+				accentColor = LAV,
+				coreColor = WHITE,
+				pillarCount = 24,
+				pillarHeight = 40,
+			})
+			Core.animeSpikeBurst(target, {
+				color = LAV, coreColor = WHITE, outlineColor = Color3.fromRGB(30, 10, 45),
+				count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.85,
+			})
 			Core.burst(target, 80, { color = LIGHT, texture = SPARK, speed = 40, light = 1, life = 0.5 })
 			for i = 1, 3 do
 				task.delay((i - 1) * 0.08, function()
 					Core.shockwave(Core.groundCF(target - Vector3.new(0, 2, 0)), {
-						color = i == 1 and WHITE or LAV, from = 1, to = 6 + i * 6, duration = 0.5,
+						color = i == 1 and WHITE or LAV, from = 2, to = R, duration = 0.6,
 					})
 				end)
 			end
 			for i = 1, 8 do
 				local a = (i - 1) / 8 * math.pi * 2
-				spoke(target, Vector3.new(math.cos(a), 0, math.sin(a)), 10, BRIGHT)
+				spoke(target, Vector3.new(math.cos(a), 0, math.sin(a)), 18, BRIGHT)
 			end
 			Core.cleanupLater({ orb }, 0.6)
 		end)

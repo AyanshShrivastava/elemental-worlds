@@ -208,6 +208,10 @@ function Time.Move2(ctx)
 		end
 	end, function()
 		sparks.Enabled = false
+		Core.animeSpikeBurst(feet, {
+			color = CYAN, coreColor = BRIGHT, outlineColor = DEEP,
+			count = 10, radius = 8, minHeight = 8, maxHeight = 16, duration = 0.6,
+		})
 		Core.shockwave(Core.groundCF(feet), { color = BRIGHT, from = 8, to = 1, duration = 0.4 })
 		Core.burst(center, 40, { color = BRIGHT, texture = SPARK, speed = 26, light = 1 })
 		Core.setTransparency(parts, 1)
@@ -264,55 +268,64 @@ function Time.Move3(ctx)
 	}
 end
 
--- Move4: virtual kill sequence
+-- Move4: colossal virtual kill chrono domain (75 studs radius)
 function Time.Move4(ctx)
 	local tr = Core.root(ctx.targetCharacter)
 	local center = tr and tr.Position or ctx.target
 	local ground = center - Vector3.new(0, 2.8, 0)
+	local R = ctx.radius or 75
+	local life = ctx.duration or 3.5
 
-	-- 1. four temporal rings close in on the target
+	-- 1. Four massive converging temporal shockwaves (from 75 studs in to center)
 	for i = 1, 4 do
-		task.delay((i - 1) * 0.12, function()
-			Core.shockwave(Core.groundCF(ground + Vector3.new(0, (i - 1) * 0.6, 0)), {
-				color = i % 2 == 0 and BRIGHT or CYAN, from = 14, to = 2, duration = 1.0,
+		task.delay((i - 1) * 0.15, function()
+			Core.shockwave(Core.groundCF(ground + Vector3.new(0, (i - 1) * 0.8, 0)), {
+				color = i % 2 == 0 and BRIGHT or CYAN, from = R, to = 2, duration = 1.2,
 			})
 		end)
 	end
 
-	Core.timeline(2.4, {
+	-- 2. Colossal Chrono Spacetime Domain
+	Core.animeDomain(ground, {
+		radius = R,
+		height = 45,
+		duration = life,
+		fadeOut = 0.8,
+		color = DEEP,
+		accentColor = CYAN,
+		coreColor = BRIGHT,
+		pillarCount = 24,
+		pillarHeight = 35,
+	})
+
+	Core.timeline(life, {
 		{
-			t = 1.0, -- 2. scene distortion around the target
+			t = 0.8, -- 3. Temporal distortion bubble
 			run = function()
-				local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(center), {
-					color = CYAN, material = Enum.Material.Glass, transparency = 0.6,
+				local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 8, CFrame.new(center), {
+					color = CYAN, material = Enum.Material.Glass, transparency = 0.5,
 				})
-				Core.runFor(0.5, function(_, t)
-					local k = t / 0.5
-					bubble.Size = Vector3.one * (4 + 2 * math.sin(k * math.pi))
-					bubble.Transparency = 0.6 + 0.3 * k
+				Core.runFor(1.0, function(_, t)
+					local k = t / 1.0
+					bubble.Size = Vector3.one * (8 + 12 * math.sin(k * math.pi))
+					bubble.Transparency = 0.5 + 0.5 * k
 				end, function()
 					bubble:Destroy()
 				end)
 			end,
 		},
 		{
-			t = 1.5, -- 3. concentrated blue release
+			t = 1.6, -- 4. Concentrated timeline fracture climax: beam to sky, anime spike burst
 			run = function()
-				local core = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(center), {
-					color = BRIGHT, material = Enum.Material.Neon, transparency = 0,
+				Core.tempBeam(center, center + Vector3.new(0, 80, 0), 0.9, {
+					color = TIME, width0 = 6, width1 = 1, light = 1,
 				})
-				Core.runFor(0.25, function(_, t)
-					local k = t / 0.25
-					core.Size = Vector3.one * (1 + 6 * Core.smooth(k))
-					core.Transparency = k * 0.8
-				end, function()
-					core:Destroy()
-				end)
-				Core.tempBeam(center, center + Vector3.new(0, 40, 0), 0.5, {
-					color = TIME, width0 = 3, width1 = 0.5, light = 1,
+				Core.animeSpikeBurst(ground, {
+					color = CYAN, coreColor = BRIGHT, outlineColor = DEEP,
+					count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.9,
 				})
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = BRIGHT, from = 1, to = 14, duration = 0.4 })
-				Core.burst(center, 50, { color = TIME, texture = SPARK, speed = 30, light = 1 })
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = BRIGHT, from = 2, to = R, duration = 0.6 })
+				Core.burst(center, 70, { color = TIME, texture = SPARK, speed = 35, light = 1 })
 			end,
 		},
 	})

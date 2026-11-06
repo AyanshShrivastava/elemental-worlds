@@ -240,8 +240,12 @@ function Earth.Move2(ctx)
 		end
 	end, function()
 		dust.Enabled = false
-		Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = DUST, from = 2, to = 18, duration = 0.6 })
-		Core.burst(target, 30, { texture = SMOKE, color = DUST, speed = 12, light = 0, size = NumberSequence.new(2, 4), life = 0.8 })
+		Core.animeSpikeBurst(target, {
+			color = STONE, coreColor = DUST, outlineColor = DARK,
+			count = 10, radius = 9, minHeight = 9, maxHeight = 17, duration = 0.65,
+		})
+		Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = DUST, from = 2, to = 20, duration = 0.6 })
+		Core.burst(target, 30, { texture = SMOKE, color = DUST, speed = 16, light = 0, size = NumberSequence.new(2, 4), life = 0.8 })
 		Core.fragments(target, 14, { color = BROWN, material = ROCK, speed = 25, minSize = 0.4, maxSize = 1.2 })
 		Core.setTransparency(all, 1)
 		Core.cleanupLater(all, 1)
@@ -288,6 +292,10 @@ function Earth.Move3(ctx)
 			plate.CFrame = F * CFrame.new(math.cos(a) * radius, math.sin(a) * radius, 0) * CFrame.Angles(0, 0, a)
 		end
 	end, function()
+		Core.animeSpikeBurst(to, {
+			color = STONE, coreColor = DUST, outlineColor = DARK,
+			count = 8, radius = 6, minHeight = 6, maxHeight = 12, duration = 0.5,
+		})
 		Core.burst(to, 30, { texture = SMOKE, color = Core.seq(DUST), speed = 14, life = 0.6, size = NumberSequence.new(1, 3) })
 		Core.fragments(to, 12, { color = STONE, material = ROCK, speed = 22 })
 		Core.shockwave(Core.groundCF(to - Vector3.new(0, 2.5, 0)), { color = DUST, from = 1, to = 10, duration = 0.4 })
@@ -295,14 +303,15 @@ function Earth.Move3(ctx)
 	end)
 end
 
--- Move4: five timed beats. Validation and target reservation belong to the server.
+-- Move4: colossal terra domain (70 studs radius)
 function Earth.Move4(ctx)
 	local target = ctx.target
 	local behind = ctx.targetCharacter and Core.behind(ctx.targetCharacter, 3) or (target - ctx.direction * 3)
 	local ground = target - Vector3.new(0, 3, 0)
 	local junk = {}
+	local R = ctx.radius or 70
 
-	Core.timeline(3.0, {
+	Core.timeline(3.5, {
 		{
 			t = 0.0, -- 1. launch: rock burst under the target, dust pushing up
 			run = function()
@@ -347,19 +356,32 @@ function Earth.Move4(ctx)
 			end,
 		},
 		{
-			t = 1.85, -- 5. finishing strike
+			t = 1.85, -- 5. colossal terra domain eruption finishing strike
 			run = function()
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = DUST, from = 2, to = 24, duration = 0.6 })
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = STONE, from = 1, to = 14, duration = 0.4 })
+				Core.animeDomain(ground, {
+					radius = R,
+					height = 40,
+					duration = 3.5,
+					fadeOut = 0.8,
+					color = DARK,
+					accentColor = STONE,
+					coreColor = DUST,
+					pillarCount = 20,
+					pillarHeight = 35,
+				})
+				Core.animeSpikeBurst(ground, {
+					color = STONE,
+					coreColor = DUST,
+					outlineColor = DARK,
+					count = 16,
+					radius = 14,
+					minHeight = 14,
+					maxHeight = 26,
+					duration = 0.9,
+				})
+				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = DUST, from = 2, to = R, duration = 0.6 })
 				Core.burst(target, 60, { texture = SMOKE, color = Core.seq(DUST), speed = 28, life = 0.9, size = NumberSequence.new(1.5, 5) })
-				Core.fragments(target, 24, { color = STONE, material = ROCK, speed = 34, life = 1.0 })
-				for i = 1, 6 do
-					local crack = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.1, 6),
-						CFrame.new(ground + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.rad(i * 60), 0) * CFrame.new(0, 0, -3), {
-							color = DARK, material = ROCK, transparency = 0.2,
-						})
-					table.insert(junk, crack)
-				end
+				Core.fragments(target, 28, { color = STONE, material = ROCK, speed = 36, life = 1.1 })
 			end,
 		},
 	}, function()

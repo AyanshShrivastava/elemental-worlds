@@ -23,10 +23,10 @@ local SPARK = Core.Textures.Sparkle
 
 local Fire = {}
 
--- Domain settings for Move4. Match these to the server's check.
-Fire.DOMAIN = { radius = 16, duration = 10, fadeOut = 1 }
+-- Domain settings for Move4: Colossal 75-stud anime domain arena
+Fire.DOMAIN = { radius = 75, height = 45, duration = 10, fadeOut = 1.2 }
 
--- M1: flaming dagger with a fast orange-gold strike
+-- M1: flaming dagger with a fast orange-gold strike & anime slash burst
 function Fire.M1(ctx)
 	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
 	if not hand then
@@ -51,6 +51,10 @@ function Fire.M1(ctx)
 	end, function()
 		flame.Enabled = false
 		blade.Transparency = 1
+		Core.animeSpikeBurst(start + dir * 5, {
+			color = ORANGE, coreColor = CORE, count = 5, radius = 4,
+			minHeight = 4, maxHeight = 8, duration = 0.35, aimDir = dir,
+		})
 		Core.burst(start + dir * 5, 12, { color = GOLD_SEQ, texture = SPARK, speed = 12, light = 0.9 })
 		Core.cleanupLater({ blade }, 0.6)
 	end)
@@ -87,14 +91,23 @@ function Fire.Move1(ctx)
 		core.CFrame = CFrame.new(pos)
 		shellA.CFrame = CFrame.new(pos) * CFrame.Angles(spin * 6, spin * 4, 0)
 		shellB.CFrame = CFrame.new(pos) * CFrame.Angles(0, spin * -5, spin * 7)
-	end, function()
 		embers.Enabled = false
 		sparks.Enabled = false
 		core.Transparency = 1
 		shellA.Transparency = 1
 		shellB.Transparency = 1
+		Core.animeSpikeBurst(target, {
+			color = ORANGE,
+			coreColor = CORE,
+			outlineColor = Color3.fromRGB(18, 16, 22),
+			count = 10,
+			radius = 9,
+			minHeight = 8,
+			maxHeight = 17,
+			duration = 0.65,
+		})
 		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
-			color = GOLD, from = 2, to = 22, duration = 0.5,
+			color = GOLD, from = 2, to = 24, duration = 0.5,
 		})
 		Core.burst(target, 40, { texture = FIRE_TEX, color = FIRE, speed = 22, light = 0.9 })
 		Core.cleanupLater({ core, shellA, shellB }, 1)
@@ -256,100 +269,24 @@ function Fire.Move3(ctx)
 	end)
 end
 
--- Move4: fire domain. See the header for the contract.
+-- Move4: colossal fire domain (Infernal Judgement).
 function Fire.Move4(ctx)
 	local D = Fire.DOMAIN
 	local R = ctx.radius or D.radius
 	local life = ctx.duration or D.duration
-	local center = ctx.origin - Vector3.new(0, 3, 0) -- ground under the caster
+	local center = ctx.origin - Vector3.new(0, 3, 0)
 
-	local visible = {} -- faded out at the end
-	local emitters = {} -- disabled when fading starts
-	local junk = {} -- anchors and attachments, destroyed at the end
-
-	-- Ground: expanding ring, then a floor disc that stays for the duration
-	Core.shockwave(Core.groundCF(center + Vector3.new(0, 0.2, 0)), { color = ORANGE, from = 2, to = R * 2, duration = 0.8 })
-	local floor = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(center + Vector3.new(0, 0.1, 0)), {
-		color = DEEP, material = Enum.Material.Neon, transparency = 0.55,
+	Core.animeDomain(center, {
+		radius = R,
+		height = D.height or 45,
+		duration = life,
+		fadeOut = D.fadeOut or 1.2,
+		color = DEEP,
+		accentColor = ORANGE,
+		coreColor = CORE,
+		pillarCount = 36,
+		pillarHeight = 35,
 	})
-	table.insert(visible, floor)
-
-	-- Boundary: ring of flame pillars, joined at the top by glowing beams
-	local N = 28
-	local tops = {}
-	for i, p in ipairs(Core.circle(center, R, N, 2)) do
-		local pillar = Core.part(Enum.PartType.Block, Vector3.new(0.5, 4, 0.5), CFrame.new(p), {
-			color = ORANGE, material = Enum.Material.Neon, transparency = 0.4,
-		})
-		table.insert(visible, pillar)
-		tops[i] = Core.attach(pillar, Vector3.new(0, 2, 0))
-		table.insert(emitters, Core.emitter(Core.attach(pillar, Vector3.new(0, -1.5, 0)), {
-			texture = FIRE_TEX, color = FIRE, rate = 25, light = 0.9,
-			speed = NumberRange.new(5, 8), direction = Enum.NormalId.Top,
-			spread = Vector2.new(10, 10), lifetime = NumberRange.new(0.8, 1.2), size = NumberSequence.new(1.2, 0.2),
-		}))
-	end
-	for i = 1, N do
-		local b = Core.beam(tops[i], tops[i % N + 1], { color = GOLD_SEQ, width0 = 0.8, light = 1, curve = 1 })
-		table.insert(visible, b)
-	end
-
-	-- Rising flames inside the domain
-	local rng = Random.new()
-	for _ = 1, 10 do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local r = rng:NextNumber(0, R * 0.8)
-		local anchor = Core.anchor(center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
-		table.insert(junk, anchor)
-		table.insert(emitters, Core.emitter(Core.attach(anchor), {
-			texture = FIRE_TEX, color = FIRE, rate = 30, light = 0.9,
-			speed = NumberRange.new(4, 7), direction = Enum.NormalId.Top,
-			spread = Vector2.new(15, 15), lifetime = NumberRange.new(0.7, 1.1), size = NumberSequence.new(1.5, 0.2),
-		}))
-	end
-
-	-- Fire particles and embers drifting up from the centre
-	local emberAnchor = Core.anchor(center + Vector3.new(0, 1, 0))
-	table.insert(junk, emberAnchor)
-	table.insert(emitters, Core.emitter(Core.attach(emberAnchor), {
-		texture = SPARK, color = EMBER, rate = 40, light = 1,
-		speed = NumberRange.new(3, 6), direction = Enum.NormalId.Top,
-		spread = Vector2.new(60, 60), lifetime = NumberRange.new(1, 2),
-	}))
-
-	-- Rising column under the caster for the first second (the "rise" effect)
-	local columnAnchor = Core.anchor(center)
-	table.insert(junk, columnAnchor)
-	local column = Core.emitter(Core.attach(columnAnchor), {
-		texture = FIRE_TEX, color = FIRE, rate = 60, light = 1,
-		speed = NumberRange.new(8, 12), direction = Enum.NormalId.Top,
-		spread = Vector2.new(8, 8), lifetime = NumberRange.new(0.6, 0.9), size = NumberSequence.new(1.5, 0.3),
-	})
-	table.insert(emitters, column)
-
-	-- Central energy core
-	local core = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(center + Vector3.new(0, 4, 0)), {
-		color = CORE, material = Enum.Material.Neon, transparency = 0.2,
-	})
-	table.insert(visible, core)
-
-	local fadeStart = life - D.fadeOut
-	Core.runFor(life, function(_, t)
-		core.Size = Vector3.one * (4 + math.sin(t * 6) * 0.6)
-		if t >= 1 then
-			column.Enabled = false
-		end
-		if t >= fadeStart then
-			local k = (t - fadeStart) / D.fadeOut
-			Core.setTransparency(visible, 0.2 + 0.8 * k)
-			for _, e in ipairs(emitters) do
-				e.Enabled = false
-			end
-		end
-	end, function()
-		Core.destroyAll(visible)
-		Core.destroyAll(junk)
-	end)
 end
 
 return Fire

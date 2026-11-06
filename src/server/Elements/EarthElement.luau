@@ -189,7 +189,7 @@ function EarthElement.CastMove4(player: Player, character: Model, rootPart: Base
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = strikePos,
             Element = "Earth",
-            Radius = 26,
+            Radius = 70,
             Duration = 0.5,
             Shake = 0.75,
             SFXId = ability.SFXId,

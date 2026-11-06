@@ -109,10 +109,20 @@ function Aqua.Move1(ctx)
 			if not struck then
 				struck = true
 				gather.Enabled = false
+				Core.animeSpikeBurst(ctx.target, {
+					color = BLUE,
+					coreColor = CYAN,
+					outlineColor = Color3.fromRGB(12, 16, 28),
+					count = 8,
+					radius = 7,
+					minHeight = 7,
+					maxHeight = 14,
+					duration = 0.55,
+				})
 				Core.burst(ctx.target, 60, { color = WATER, texture = SPARK, speed = 25, light = 1 })
 			end
 			local k = math.clamp((t - 0.75) / 0.4, 0, 1)
-			local d = 2 + 12 * k
+			local d = 2 + 16 * k
 			ring.Size = Vector3.new(0.2, d, d)
 			ring.CFrame = Core.axisCF(ctx.target, dir)
 			ring.Transparency = 0.35 + 0.65 * k
@@ -168,7 +178,17 @@ function Aqua.Move2(ctx)
 			d.CFrame = CFrame.new(c + Vector3.new(math.cos(a) * 3.2, math.sin(a * 2) * 0.9, math.sin(a) * 3.2))
 		end
 	end, function()
-		Core.burst(target, 50, { color = WATER, texture = SPARK, speed = 22, light = 1 })
+		Core.animeSpikeBurst(target, {
+			color = BLUE,
+			coreColor = CYAN,
+			outlineColor = Color3.fromRGB(10, 14, 25),
+			count = 10,
+			radius = 9,
+			minHeight = 8,
+			maxHeight = 17,
+			duration = 0.65,
+		})
+		Core.burst(target, 50, { color = WATER, texture = SPARK, speed = 25, light = 1 })
 		Core.destroyAll(all)
 	end)
 end
@@ -317,6 +337,18 @@ function Aqua.Move4(ctx)
 				-- layered impact: splash, a second splash slightly later, and a ring
 				if not hit and k >= 1 then
 					hit = true
+					if last then
+						Core.animeSpikeBurst(to, {
+							color = BLUE,
+							coreColor = CYAN,
+							outlineColor = Color3.fromRGB(10, 15, 30),
+							count = 12,
+							radius = 10,
+							minHeight = 10,
+							maxHeight = 20,
+							duration = 0.75,
+						})
+					end
 					Core.burst(to, last and 60 or 18, {
 						color = WATER, texture = SPARK, speed = last and 35 or 20, light = 1,
 					})
@@ -324,7 +356,7 @@ function Aqua.Move4(ctx)
 						Core.burst(to, last and 40 or 10, { color = WATER, texture = SPARK, speed = 25 })
 					end)
 					Core.shockwave(Core.axisCF(to, dir), {
-						color = CYAN, from = 1, to = last and 14 or 5, duration = 0.3,
+						color = CYAN, from = 1, to = last and 20 or 5, duration = 0.35,
 					})
 				end
 			end, function()

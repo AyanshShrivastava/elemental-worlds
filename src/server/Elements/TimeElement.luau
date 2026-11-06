@@ -203,7 +203,7 @@ function TimeElement.CastMove4(player: Player, character: Model, rootPart: BaseP
         VFXBroadcastService.Broadcast("Shockwave", {
             Position = strikePos,
             Element = "Time",
-            Radius = 26,
+            Radius = 75,
             Duration = 0.5,
             Shake = 0.7,
             SFXId = ability.SFXId,

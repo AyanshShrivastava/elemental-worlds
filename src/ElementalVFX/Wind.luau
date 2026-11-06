@@ -161,18 +161,22 @@ function Wind.Move1(ctx)
 		end
 	end, function()
 		dust.Enabled = false
+		Core.animeSpikeBurst(target, {
+			color = MINT, coreColor = WHITE, outlineColor = Color3.fromRGB(15, 30, 25),
+			count = 8, radius = 7, minHeight = 7, maxHeight = 14, duration = 0.55,
+		})
 		Core.burst(target, 20, { texture = SMOKE, color = Core.seq(DUST), speed = 10, light = 0 })
 		Core.setTransparency(parts, 1)
 		Core.cleanupLater(parts, 0.4)
 	end)
 end
 
--- Move2: tall cyclone at the target. Pulls particles inward every 0.8s.
+-- Move2: tall cyclone at the target (50 studs radius). Pulls particles inward every 0.8s.
 function Wind.Move2(ctx)
 	local ground = Vector3.new(ctx.target.X, ctx.target.Y - 3, ctx.target.Z)
 	local life = ctx.duration or 5
-	local R = ctx.radius or 14
-	local H, LAYERS, PER = 18, 12, 5
+	local R = ctx.radius or 50
+	local H, LAYERS, PER = 35, 14, 6
 
 	local boundary = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(ground + Vector3.new(0, 0.1, 0)), {
 		color = MINT, material = Enum.Material.Neon, transparency = 0.7,
@@ -325,13 +329,29 @@ function Wind.Move4(ctx)
 			end,
 		},
 		{
-			t = 3.9, -- 7. dash toward the target, then impact
+			t = 3.9, -- 7. dash toward the target, then colossal tempest domain impact
 			run = function()
 				Core.destroyAll(boltSegs)
 				local dur = Wind.dashBolt(boltFrom, target, 150)
+				local R = ctx.radius or 70
 				task.delay(dur, function()
-					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = 26, duration = 0.6 })
-					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = PCYAN, from = 1, to = 12, duration = 0.4 })
+					Core.animeDomain(ground, {
+						radius = R,
+						height = 45,
+						duration = 3.5,
+						fadeOut = 0.8,
+						color = MINT,
+						accentColor = PCYAN,
+						coreColor = WHITE,
+						pillarCount = 24,
+						pillarHeight = 35,
+					})
+					Core.animeSpikeBurst(target, {
+						color = MINT, coreColor = WHITE, outlineColor = Color3.fromRGB(15, 30, 25),
+						count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.85,
+					})
+					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = R, duration = 0.6 })
+					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = PCYAN, from = 1, to = 20, duration = 0.4 })
 					Core.burst(target, 70, { texture = SMOKE, color = Core.seq(DUST), speed = 30, life = 0.6, light = 0.5 })
 					Core.burst(target, 40, { color = WIND, texture = SPARK, speed = 36, light = 1 })
 					Core.fragments(target, 18, { color = ROCK_C, material = ROCK, speed = 34 })

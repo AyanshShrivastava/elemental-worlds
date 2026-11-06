@@ -56,27 +56,27 @@ Any field left out gets a sensible default (see `Core.context`).
 | 7 | Fire | Move 1 Scorching Fireball | `Play("Fire","Move1")` | |
 | 8 | Fire | Move 2 Infernal Beast | `Play("Fire","Move2")` | **Returns handle**: `:Attack(pos)`, `:Despawn()` |
 | 9 | Fire | Move 3 Flames of Fury | `Play("Fire","Move3")` | |
-| 10 | Fire | Move 4 Infernal Judgement | `Play("Fire","Move4")` | Domain: `Fire.DOMAIN` (radius 16, 10s, 1s fade) |
+| 10 | Fire | Move 4 Infernal Judgement | `Play("Fire","Move4")` | Colossal Domain: `Fire.DOMAIN` (radius 75, 45h, 10s, 1.2s fade) |
 | 11 | Earth | M1 Earth Sword | `Play("Earth","M1")` | |
 | 12 | Earth | Move 1 Earthy Wall | `Play("Earth","Move1")` | **Returns handle**: `:SetHealth(0..1)`, `:Shatter()`, `:End()`. Settings in `Earth.WALL` |
 | 13 | Earth | Move 2 Boulder of Destruction | `Play("Earth","Move2")` | |
 | 14 | Earth | Move 3 Accelerated Earth Punch | `Play("Earth","Move3")` | |
-| 15 | Earth | Move 4 The Master of Terra | `Play("Earth","Move4")` | 3-second timed sequence |
+| 15 | Earth | Move 4 The Master of Terra | `Play("Earth","Move4")` | Colossal Terra Domain: radius 70, finishing spike eruption |
 | 16 | Light | M1 Dim Light Ray | `Play("Light","M1")` | |
 | 17 | Light | Move 1 Amplified Light | `Play("Light","Move1")` | |
-| 18 | Light | Move 2 Mirrors of Judgement | `Play("Light","Move2")` | Five mirrors, bounce ray, slam |
+| 18 | Light | Move 2 Mirrors of Judgement | `Play("Light","Move2")` | Five mirrors (radius 24), bounce ray, slam |
 | 19 | Light | Move 3 Blinding Attack | `Play("Light","Move3")` | 2s glow on the target's head, no screen flash |
-| 20 | Light | Move 4 Divine Light Amplification | `Play("Light","Move4")` | 1.2s charge, then release |
+| 20 | Light | Move 4 Divine Light Amplification | `Play("Light","Move4")` | Colossal Divine Sanctuary Domain: radius 75 |
 | 21 | Wind | M1 Compressed Wind | `Play("Wind","M1")` | Lightning bolt projectile |
 | 22 | Wind | Move 1 Airy Vortex | `Play("Wind","Move1")` | Rotating cone |
-| 23 | Wind | Move 2 Cyclone of Fury | `Play("Wind","Move2")` | `radius` (default 14), `duration` (default 5) |
+| 23 | Wind | Move 2 Cyclone of Fury | `Play("Wind","Move2")` | Colossal Cyclone: `radius` 50, `duration` 5 |
 | 24 | Wind | Move 3 Maximum Speed | `Play("Wind","Move3")` | Rings and speed trail |
-| 25 | Wind | Move 4 Wind: Death Speed | `Play("Wind","Move4")` | 4.4-second sequence, no map changes |
+| 25 | Wind | Move 4 Wind: Death Speed | `Play("Wind","Move4")` | Colossal Tempest Domain: radius 70 |
 | 26 | Error | M1 Glitched Dash | `Play("Error","M1")` | `dashDistance` (default 18) |
 | 27 | Error | Move 1 Chaotic Destruction | `Play("Error","Move1")` | |
 | 28 | Error | Move 2 404 Not Found | `Play("Error","Move2")` | `radius` for the AoE shell |
 | 29 | Error | Move 3 Got Glitched | `Play("Error","Move3")` | **Returns handle**: `:End()`. Client-only hide |
-| 30 | Error | Move 4 Spatial Distortion | `Play("Error","Move4")` | **Returns handle**: `:End()`. `arenaCFrame` option |
+| 30 | Error | Move 4 Spatial Distortion | `Play("Error","Move4")` | **Returns handle**: `:End()`. Colossal 80-stud Grounded Domain |
 | 31 | Error | Move 5 Unparalleled | `Play("Error","Move5")` | `targets` list of models |
 | 32 | Time | M1 Time Punch | `Play("Time","M1")` | |
 | 33 | Time | Move 1 Got Throwed | `Play("Time","Move1")` | Hold visual is 0.5s |

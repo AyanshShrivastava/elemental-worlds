@@ -287,11 +287,11 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     if not ability then return end
 
     local domainCenter = rootPart.Position
-    local domainRadius = 30
+    local domainRadius = 75
     local duration = ability.Duration or 10
 
     -- Rise above ground
-    rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 8, 0)
+    rootPart.CFrame = rootPart.CFrame * CFrame.new(0, 12, 0)
     rootPart.Anchored = true
 
     -- Broadcast to ElementalVFX Dispatcher
@@ -316,7 +316,7 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     })
     VFXBroadcastService.Broadcast("Crater", {
         Position = domainCenter,
-        Radius = 18,
+        Radius = 35,
         Element = "Fire",
         SFXId = ability.SFXId,
     })
@@ -324,8 +324,8 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
         Position = domainCenter,
         Element = "Fire",
         Radius = domainRadius,
-        Duration = 0.5,
-        Shake = 0.55,
+        Duration = 0.6,
+        Shake = 0.7,
         SFXId = ability.SFXId,
     })
 
@@ -333,7 +333,7 @@ function FireElement.CastMove4(player: Player, character: Model, rootPart: BaseP
     local domainPart = Instance.new("Part")
     domainPart.Name = "FireDomain_Boundary"
     domainPart.Shape = Enum.PartType.Cylinder
-    domainPart.Size = Vector3.new(25, domainRadius * 2, domainRadius * 2)
+    domainPart.Size = Vector3.new(45, domainRadius * 2, domainRadius * 2)
     domainPart.CFrame = CFrame.new(domainCenter) * CFrame.Angles(0, 0, math.rad(90))
     domainPart.Transparency = 0.7
     domainPart.Color = Color3.fromRGB(255, 80, 0)

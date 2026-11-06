@@ -217,7 +217,7 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
     })
 
     local duration = ability.Duration or 7.0
-    local domainRadius = 35
+    local domainRadius = 80
     local domainCenter = rootPart.Position
 
     VFXBroadcastService.Broadcast("ElementalMove", {
@@ -238,7 +238,7 @@ function ErrorElement.CastMove4(player: Player, character: Model, rootPart: Base
         Shake = 0.7,
     })
 
-    -- Trap and apply ticks to nearby targets inside the 35-stud arena
+    -- Trap and apply ticks to nearby targets inside the 80-stud arena
     task.spawn(function()
         local elapsed = 0
         while elapsed < duration and character.Parent do
