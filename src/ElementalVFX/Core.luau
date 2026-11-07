@@ -8,8 +8,69 @@
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local Core = {}
+
+Core.Sounds = {
+	Punch = "rbxassetid://1720389178",
+	HeavyHit = "rbxassetid://3041191430",
+	SwordSlash = "rbxassetid://6760643020",
+	Explosion = "rbxassetid://3802269741",
+	FireBurst = "rbxassetid://5898090542",
+	WaterSplash = "rbxassetid://5850414902",
+	WaterGeyser = "rbxassetid://6543434968",
+	RockSlam = "rbxassetid://3802269741",
+	RockSlash = "rbxassetid://7863855238",
+	LaserBeam = "rbxassetid://1839806527",
+	LightFlash = "rbxassetid://3356359494",
+	LightRay = "rbxassetid://1840218341",
+	WindSlash = "rbxassetid://624706518",
+	TornadoRoar = "rbxassetid://3484593077",
+	GlitchHeavy = "rbxassetid://2767090000",
+	GlitchBuzz = "rbxassetid://5599818817",
+	TimeFreeze = "rbxassetid://4744477218",
+	TimeShield = "rbxassetid://6148384813",
+}
+
+function Core.sound(pos: Vector3?, soundId: string, volume: number?, pitch: number?)
+	if not soundId or soundId == "" then return end
+	local s = Instance.new("Sound")
+	s.SoundId = soundId
+	s.Volume = volume or 0.75
+	s.PlaybackSpeed = (pitch or 1.0) * (0.95 + math.random() * 0.1)
+
+	if pos then
+		local soundPart = Instance.new("Part")
+		soundPart.Name = "SFX_Spatial"
+		soundPart.Size = Vector3.new(0.1, 0.1, 0.1)
+		soundPart.CFrame = CFrame.new(pos)
+		soundPart.Transparency = 1
+		soundPart.CanCollide = false
+		soundPart.CanTouch = false
+		soundPart.CanQuery = false
+		soundPart.Anchored = true
+		soundPart.Parent = Core.Folder
+
+		s.RollOffMode = Enum.RollOffMode.InverseTapered
+		s.RollOffMinDistance = 15
+		s.RollOffMaxDistance = 160
+		s.Parent = soundPart
+		s:Play()
+
+		s.Ended:Once(function()
+			soundPart:Destroy()
+		end)
+		Debris:AddItem(soundPart, 5)
+	else
+		s.Parent = SoundService
+		s:Play()
+		s.Ended:Once(function()
+			s:Destroy()
+		end)
+		Debris:AddItem(s, 5)
+	end
+end
 
 ---------------------------------------------------------------------------
 -- Master Texture & Mesh Catalogs (Extracted from Workspace reference packs)
@@ -596,6 +657,7 @@ function Core.dismantleCleave(cf, colorSeq, size, o)
 	shadow:Emit(o.shadowCount or 3)
 	pop:Emit(4)
 
+	Core.sound(cf.Position, o.soundId or Core.Sounds.SwordSlash, o.volume or 0.75, o.pitch or 1.15)
 	Core.cleanupLater({ anchor }, 0.5)
 end
 
@@ -677,6 +739,7 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 	flash:Emit(2)
 	rocks:Emit(o.rockCount or 22)
 	smoke:Emit(14)
+	Core.sound(pos, o.soundId or Core.Sounds.Explosion, o.volume or 0.85, o.pitch or 0.95)
 
 	-- 3D Sculpted Smash Mesh Impact (`10smash` or `bonk`)
 	if o.useMesh ~= false then
@@ -704,6 +767,7 @@ function Core.negativeSingularity(pos, radius, o)
 	radius = radius or 8
 	local anchor = Core.anchor(pos)
 	local att = Core.attach(anchor)
+	Core.sound(pos, o.soundId or Core.Sounds.GlitchHeavy, o.volume or 0.9, o.pitch or 0.85)
 
 	-- -100 Extreme Light Absorption (Tears a literal hole in Roblox viewport lighting)
 	local void100 = Core.emitter(att, {
@@ -804,6 +868,7 @@ function Core.animatedLightning(p0, p1, colorSeq, o)
 
 	bolt:Emit(o.boltCount or 3)
 	discharge:Emit(o.dischargeCount or 8)
+	Core.sound(p0, o.soundId or Core.Sounds.LaserBeam, o.volume or 0.75, o.pitch or 1.2)
 
 	Core.cleanupLater({ anchor }, 0.6)
 end
@@ -824,6 +889,7 @@ function Core.meshLaserCannon(p0, p1, colorSeq, o)
 		material = Enum.Material.Neon,
 		transparency = 0.1,
 	})
+	Core.sound(p0, o.soundId or Core.Sounds.LaserBeam, o.volume or 0.95, o.pitch or 1.0)
 
 	-- 14 Helical Beams wrapped around the perimeter
 	local beams = {}
@@ -895,6 +961,7 @@ function Core.supernovaSphere(center, colorSeq, maxRadius, o)
 	local dur = o.duration or 1.5
 	local anchor = Core.anchor(center)
 	local att = Core.attach(anchor)
+	Core.sound(center, o.soundId or Core.Sounds.Explosion, o.volume or 1.0, o.pitch or 0.8)
 
 	-- 160-stud Flat Floor Shockwave Disc (VelocityPerpendicular)
 	local disc = Core.emitter(att, {
