@@ -17,6 +17,27 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+local camera = workspace.CurrentCamera
+
+local function triggerCameraShake(duration, intensity)
+    local startTime = tick()
+    local connection
+    
+    connection = RunService.RenderStepped:Connect(function()
+        local elapsed = tick() - startTime
+        if elapsed < duration then
+            -- Generate random shake offset that decays over time
+            local decay = 1 - (elapsed / duration)
+            local offsetX = math.random(-100, 100) * 0.001 * intensity * decay
+            local offsetY = math.random(-100, 100) * 0.001 * intensity * decay
+            
+            camera.CFrame = camera.CFrame * CFrame.new(offsetX, offsetY, 0)
+        else
+            connection:Disconnect()
+        end
+    end)
+end
 
 local SharedLoader = require(script.Parent.Parent.SharedLoader)
 local GameConfig = SharedLoader.GameConfig
@@ -32,6 +53,7 @@ local VFXController = require(script.Parent.VFXController)
 local localPlayer = Players.LocalPlayer
 
 local CombatController = {}
+CombatController.triggerCameraShake = triggerCameraShake
 
 local castAbilityEvent: RemoteEvent? = nil
 local abilityEvent: RemoteEvent? = nil
@@ -87,6 +109,7 @@ local function PerformAnimeDash()
     -- Instant tactile feedback: dash sound, sonic shockwave ring & FOV punch
     SoundController.PlaySound2D("Dash", 0.9)
     CameraShakeController.Shake(0.18)
+    triggerCameraShake(0.12, 1.0)
     VFXHelper.CreateShockwave(rootPart.Position, 7, 0.22, currentElement)
 
     -- Dynamic camera FOV punch
@@ -195,6 +218,7 @@ function CombatController.Cast(slot: string)
         end
         if comboStep == 4 then
             CameraShakeController.Shake(0.35)
+            triggerCameraShake(0.15, 1.5)
             VFXController.TriggerImpactFrame(0.06, 1.0)
         end
 
@@ -237,6 +261,7 @@ function CombatController.Cast(slot: string)
             SoundController.PlaySound2D("MagicCast", 0.75)
         end
         CameraShakeController.Shake(ability.ScreenShake or 0.25)
+        triggerCameraShake(0.15, (ability.ScreenShake or 0.25) * 5)
         if slot == "4" then
             VFXController.TriggerImpactFrame(0.08, 1.2)
             VFXHelper.CreateConvergingCharge(char:GetPivot().Position, currentElement, 0.45)

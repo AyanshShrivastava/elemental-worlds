@@ -20,6 +20,27 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local camera = workspace.CurrentCamera
+
+local function triggerCameraShake(duration, intensity)
+    local startTime = tick()
+    local connection
+    
+    connection = RunService.RenderStepped:Connect(function()
+        local elapsed = tick() - startTime
+        if elapsed < duration then
+            -- Generate random shake offset that decays over time
+            local decay = 1 - (elapsed / duration)
+            local offsetX = math.random(-100, 100) * 0.001 * intensity * decay
+            local offsetY = math.random(-100, 100) * 0.001 * intensity * decay
+            
+            camera.CFrame = camera.CFrame * CFrame.new(offsetX, offsetY, 0)
+        else
+            connection:Disconnect()
+        end
+    end)
+end
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -101,6 +122,9 @@ local function PlayMove(element: string, move: string)
 
     print(string.format("[VFX Test] Playing %s %s...", element, move))
     local handle = VFX.Play(element, move, ctx)
+
+    -- Trigger Camera Shake on impact/cast
+    triggerCameraShake(0.15, 1.5)
 
     -- Trigger HUD feedback
     if UIController then
