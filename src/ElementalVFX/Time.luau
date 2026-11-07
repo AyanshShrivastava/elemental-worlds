@@ -47,7 +47,7 @@ function Time.M1(ctx)
 	ripple:Emit(1)
 
 	Core.burst(start, 12, {
-		texture = Core.Textures.ClockDial,
+		texture = Core.PinnacleTextures.CelestialRing,
 		color = CHRONO,
 		speed = 14,
 		life = 0.45,

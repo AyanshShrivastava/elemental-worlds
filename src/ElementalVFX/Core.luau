@@ -27,7 +27,7 @@ Core.Sounds = {
 	LightRay = "rbxassetid://1840218341",
 	WindSlash = "rbxassetid://624706518",
 	TornadoRoar = "rbxassetid://3484593077",
-	GlitchHeavy = "rbxassetid://2767090000",
+	GlitchHeavy = "rbxassetid://5599818817",
 	GlitchBuzz = "rbxassetid://5599818817",
 	TimeFreeze = "rbxassetid://4744477218",
 	TimeShield = "rbxassetid://6148384813",
@@ -319,6 +319,7 @@ end
 -- Custom Sculpted 3D VFX Mesh Spawner
 function Core.meshPart(meshId, size, cf, o)
 	o = o or {}
+	meshId = (meshId and meshId ~= "") and meshId or Core.Meshes.FancySphere
 	local p = Instance.new("Part")
 	p.Size = size or Vector3.new(2, 2, 2)
 	p.CFrame = cf or CFrame.new()
