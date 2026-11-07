@@ -431,14 +431,14 @@ end
 local function GetContext()
     local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
     if not root then return nil end
-    local targetPos = root.Position + root.CFrame.LookVector * 28
+    local targetPos = root.Position + root.CFrame.LookVector * 90
     return {
         character = character,
         target = targetPos,
         origin = root.Position,
         direction = root.CFrame.LookVector,
         duration = 5,
-        radius = 16,
+        radius = 18,
     }
 end
 

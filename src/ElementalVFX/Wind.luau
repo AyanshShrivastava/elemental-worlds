@@ -1,7 +1,7 @@
 --!strict
 -- Wind.luau — Top-Tier Wind Element VFX
 -- 3D sculpted Tornado and SpinnyThings vortices, -2000 deg/s TornadoSlash,
--- VelocityPerpendicular wind rings, and aerodynamic supersonic trails.
+-- colossal 28-stud vacuum slashes, VelocityPerpendicular wind rings, and aerodynamic supersonic trails.
 
 local RunService = game:GetService("RunService")
 local Core = require(script.Parent.Core)
@@ -16,29 +16,35 @@ local AERO = Core.seq({ WHITE, TEAL })
 
 local Wind = {}
 
--- M1: Gale Cut (0.05s cleave + -2000 deg/s TornadoSlash in VelocityPerpendicular)
+-- M1: Colossal Gale Blade Slash (28-stud wide vacuum cut, sweeps 45 studs forward, NO air cracks)
 function Wind.M1(ctx)
 	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
 	if not hand then return end
 	local dir = ctx.direction
 	local start = hand.Position + dir * 2.5
-	local cleaveCF = Core.lookCF(start, dir) * CFrame.Angles(0, 0, math.rad(Random.new():NextNumber(-30, 30)))
+	local cleaveCF = Core.lookCF(start, dir) * CFrame.Angles(0, 0, math.rad(Random.new():NextNumber(-25, 25)))
 
-	-- 1. Micro-Cleave Instant Slash
-	Core.dismantleCleave(cleaveCF, WIND, 8)
+	-- Colossal 28-stud wide anime vacuum blade sweeping forward 45 studs
+	Core.colossalSlash(cleaveCF, 45, WIND, {
+		width = 28,
+		height = 4.0,
+		duration = 0.4,
+		meshColor = TEAL,
+		soundId = Core.Sounds.SwordSlash,
+	})
 
-	-- 2. TornadoSlash (-2000 deg/s, VelocityPerpendicular)
+	-- TornadoSlash (-2000 deg/s, VelocityPerpendicular)
 	local anchor = Core.anchor(start)
 	local att = Core.attach(anchor)
 	local slash = Core.emitter(att, {
 		texture = Core.PinnacleTextures.TornadoSlash,
 		color = WIND,
-		light = 0.8,
+		light = 0.85,
 		rate = 0,
 		lifetime = NumberRange.new(0.12, 0.22),
 		speed = NumberRange.new(0.1, 0.5),
 		rotSpeed = NumberRange.new(-2000, -2000),
-		size = NumberSequence.new(3, 7),
+		size = NumberSequence.new(3, 8),
 		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 		direction = Enum.NormalId.Top,
 		zOffset = 14,
@@ -53,7 +59,7 @@ function Wind.M1(ctx)
 		lifetime = NumberRange.new(0.15, 0.25),
 		speed = NumberRange.new(0.1, 0.5),
 		rotSpeed = NumberRange.new(-50, 50),
-		size = NumberSequence.new(2, 8),
+		size = NumberSequence.new(2, 9),
 		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 		zOffset = 8,
 	})
@@ -63,49 +69,52 @@ function Wind.M1(ctx)
 	Core.cleanupLater({ anchor }, 0.5)
 end
 
--- Move1: Airy Vortex (Triple 3D Curved Slash Meshes + Trailing Wind Rings)
+-- Move1: Airy Vortex (Triple 3D Curved Slash Meshes traveling 120 studs forward)
 function Wind.Move1(ctx)
 	local origin = ctx.origin + ctx.direction * 3
-	local target = ctx.target
-	local dir = (target - origin).Unit
+	local dir = ctx.direction.Unit
+	local range = 120
+	local target = ctx.target or (origin + dir * range)
 	local dist = (target - origin).Magnitude
-	local dur = math.max(dist / 65, 0.25)
+	local dur = math.max(dist / 65, 0.4)
 
 	-- Spawn 3 Curved 3D SlashEffect Meshes (`rbxassetid://4572036304`)
 	local slashes = {}
 	for i = 1, 3 do
 		local a = (i - 1) * (math.pi * 2 / 3)
-		local offset = Vector3.new(math.cos(a) * 1.5, math.sin(a) * 1.5, 0)
-		local slashPart, m = Core.meshPart(Core.Meshes.SlashEffect, Vector3.new(12, 0.6, 5), Core.lookCF(origin + offset, dir) * CFrame.Angles(0, math.rad(90), a), {
+		local offset = Vector3.new(math.cos(a) * 2.0, math.sin(a) * 2.0, 0)
+		local slashPart, m = Core.meshPart(Core.Meshes.SlashEffect, Vector3.new(14, 0.8, 6), Core.lookCF(origin + offset, dir) * CFrame.Angles(0, math.rad(90), a), {
 			color = TEAL,
 			material = Enum.Material.Neon,
-			transparency = 0.15,
+			transparency = 0.1,
 		})
 		table.insert(slashes, slashPart)
 	end
 
-	-- Trailing -1000 deg/s wind vortex
+	-- Trailing -1200 deg/s wind vortex
 	local anchor = Core.anchor(origin)
 	local att = Core.attach(anchor)
 	local vortexEmitter = Core.emitter(att, {
 		texture = Core.PinnacleTextures.TornadoSlash,
 		color = WIND,
-		rate = 40,
+		rate = 45,
 		lifetime = NumberRange.new(0.2, 0.35),
 		speed = NumberRange.new(2, 6),
-		rotSpeed = NumberRange.new(-1000, -1000),
-		size = NumberSequence.new(3, 7),
+		rotSpeed = NumberRange.new(-1200, -1200),
+		size = NumberSequence.new(4, 9),
 		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 		direction = Enum.NormalId.Top,
 	})
 
+	Core.sound(origin, Core.Sounds.SwordSlash, 0.8, 1.2)
+
 	Core.runFor(dur, function(_, t)
 		local k = math.clamp(t / dur, 0, 1)
-		local curPos = origin:Lerp(target, k)
+		local curPos = origin:Lerp(target, Core.smooth(k))
 		anchor.Position = curPos
 		for i, s in ipairs(slashes) do
-			local a = (i - 1) * (math.pi * 2 / 3) + t * 12
-			local offset = Vector3.new(math.cos(a) * 2.2, math.sin(a) * 2.2, 0)
+			local a = (i - 1) * (math.pi * 2 / 3) + t * 14
+			local offset = Vector3.new(math.cos(a) * 2.8, math.sin(a) * 2.8, 0)
 			s.CFrame = Core.lookCF(curPos + offset, dir) * CFrame.Angles(0, math.rad(90), a)
 		end
 	end, function()
@@ -113,47 +122,49 @@ function Wind.Move1(ctx)
 		Core.destroyAll(slashes)
 		anchor:Destroy()
 
-		-- Impact: Aerodynamic Shockwave + Ground Dust
+		-- Impact: Aerodynamic Shockwave + Impact Burst (Zero cracks in air!)
 		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
 			color = TEAL,
-			from = 2,
-			to = 26,
-			duration = 0.5,
+			from = 3,
+			to = 32,
+			duration = 0.55,
+			meshId = Core.Meshes.ShockwaveColossal,
 		})
-		Core.burst(target, 25, {
-			texture = Core.Textures.AnimeSmoke,
-			color = ColorSequence.new(DUST),
-			speed = 20,
-			life = 0.6,
+		Core.impactExplosion(target, WIND, 20, {
+			duration = 1.8,
+			rockCount = 18,
+			shakeDur = 0.35,
+			shakeIntens = 2.2,
 		})
 	end)
 end
 
--- Move2: The Cyclone of Fury (3D Sculpted Tornado Mesh + SpinnyThings Vortex)
+-- Move2: The Cyclone of Fury (Towering 50-Stud Atmospheric Cyclone)
 function Wind.Move2(ctx)
-	local target = ctx.target
-	local radius = ctx.radius or 14
+	local target = ctx.target or ctx.origin
+	local radius = ctx.radius or 18
 	local duration = ctx.duration or 5
 
 	local cycloneModel = Instance.new("Model")
 	cycloneModel.Name = "CycloneOfFuryVFX"
 	cycloneModel.Parent = Core.Folder
 
-	-- 1. 3D Sculpted Tornado Mesh (`rbxassetid://5705014362`)
-	local tornadoPart, tMesh = Core.meshPart(Core.Meshes.Tornado, Vector3.new(radius * 1.5, 32, radius * 1.5), CFrame.new(target + Vector3.new(0, 16, 0)), {
+	-- 1. 3D Sculpted Tornado Mesh (`rbxassetid://5705014362` or `rbxassetid://5732025462`)
+	local tornadoMeshId = Core.Meshes.TornadoMesh or Core.Meshes.Tornado
+	local tornadoPart, tMesh = Core.meshPart(tornadoMeshId, Vector3.new(radius * 1.8, 45, radius * 1.8), CFrame.new(target + Vector3.new(0, 22, 0)), {
 		color = TEAL,
 		material = Enum.Material.Neon,
-		transparency = 0.35,
-		spin = Vector3.new(0, -12, 0),
+		transparency = 0.25,
+		spin = Vector3.new(0, -16, 0),
 		parent = cycloneModel,
 	})
 
 	-- 2. 3D Sculpted SpinnyThings Mesh (`rbxassetid://6133078795`) at base
-	local baseVortex, bMesh = Core.meshPart(Core.Meshes.SpinnyThings, Vector3.new(radius * 1.8, 2, radius * 1.8), Core.groundCF(target + Vector3.new(0, 0.5, 0)), {
+	local baseVortex, bMesh = Core.meshPart(Core.Meshes.SpinnyThings, Vector3.new(radius * 2.2, 2.5, radius * 2.2), Core.groundCF(target + Vector3.new(0, 0.5, 0)), {
 		color = MINT,
 		material = Enum.Material.Neon,
-		transparency = 0.2,
-		spin = Vector3.new(0, 0, -20),
+		transparency = 0.15,
+		spin = Vector3.new(0, 0, -25),
 		parent = cycloneModel,
 	})
 
@@ -162,12 +173,12 @@ function Wind.Move2(ctx)
 	local dustColumn = Core.emitter(att, {
 		texture = Core.Textures.AnimeSmoke,
 		color = ColorSequence.new(DUST),
-		rate = 35,
+		rate = 45,
 		lifetime = NumberRange.new(1.0, 1.8),
-		speed = NumberRange.new(20, 35),
-		spread = Vector2.new(15, 15),
+		speed = NumberRange.new(25, 42),
+		spread = Vector2.new(18, 18),
 		direction = Enum.NormalId.Top,
-		size = NumberSequence.new(radius * 0.4, radius * 1.5),
+		size = NumberSequence.new(radius * 0.5, radius * 1.8),
 		flipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8,
 		flipbookMode = Enum.ParticleFlipbookMode.Loop,
 		flipbookFramerate = NumberRange.new(24, 24),
@@ -178,21 +189,23 @@ function Wind.Move2(ctx)
 	local ringEmitter = Core.emitter(att, {
 		texture = Core.PinnacleTextures.TornadoSlash,
 		color = WIND,
-		rate = 25,
+		rate = 35,
 		lifetime = NumberRange.new(0.3, 0.5),
 		speed = NumberRange.new(1, 4),
-		rotSpeed = NumberRange.new(-1200, -1200),
-		size = NumberSequence.new(radius * 0.8, radius * 1.6),
+		rotSpeed = NumberRange.new(-1400, -1400),
+		size = NumberSequence.new(radius * 0.9, radius * 1.8),
 		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 		direction = Enum.NormalId.Top,
 		zOffset = 10,
 	})
 
+	Core.cameraShake(0.5, 2.6)
+
 	Core.runFor(duration, function(_, t)
 		if t >= duration - 1.0 then
 			local k = (t - (duration - 1.0)) / 1.0
-			tornadoPart.Transparency = 0.35 + 0.65 * k
-			baseVortex.Transparency = 0.2 + 0.8 * k
+			tornadoPart.Transparency = 0.25 + 0.75 * k
+			baseVortex.Transparency = 0.15 + 0.85 * k
 			dustColumn.Enabled = false
 			ringEmitter.Enabled = false
 		end
@@ -209,22 +222,22 @@ function Wind.Move3(ctx)
 	local duration = ctx.duration or 5
 
 	-- 3D Sculpted Vento2 Mesh (`rbxassetid://6063631009`) enveloping player
-	local drillPart, mesh = Core.meshPart(Core.Meshes.Vento2, Vector3.new(6, 6, 8), r.CFrame, {
+	local drillPart, mesh = Core.meshPart(Core.Meshes.Vento2, Vector3.new(7, 7, 10), r.CFrame, {
 		color = TEAL,
 		material = Enum.Material.Neon,
-		transparency = 0.4,
-		spin = Vector3.new(0, 0, -24),
+		transparency = 0.35,
+		spin = Vector3.new(0, 0, -28),
 	})
 
 	local att = Core.attach(drillPart)
 	local speedRing = Core.emitter(att, {
 		texture = Core.PinnacleTextures.WindRingPerp,
 		color = AERO,
-		rate = 25,
+		rate = 30,
 		lifetime = NumberRange.new(0.2, 0.35),
 		speed = NumberRange.new(2, 6),
 		rotSpeed = NumberRange.new(-60, 60),
-		size = NumberSequence.new(3, 7),
+		size = NumberSequence.new(4, 9),
 		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 		zOffset = 5,
 	})
@@ -241,7 +254,7 @@ function Wind.Move3(ctx)
 	Core.runFor(duration, function(_, t)
 		if t >= duration - 0.8 then
 			local k = (t - (duration - 0.8)) / 0.8
-			drillPart.Transparency = 0.4 + 0.6 * k
+			drillPart.Transparency = 0.35 + 0.65 * k
 			speedRing.Enabled = false
 		end
 	end, function()
@@ -250,49 +263,66 @@ function Wind.Move3(ctx)
 	end)
 end
 
--- Move4: Wind: Death Speed (Supersonic Lightning Dash + Shockwave release)
+-- Move4: Wind: Death Speed (Supersonic Slaughter Combo + 10 Colossal Crescent Slashes)
 function Wind.Move4(ctx)
 	local char = ctx.character
 	local r = Core.root(char)
 	if not r then return end
-	local target = ctx.target
+	local target = ctx.target or (r.Position + ctx.direction * 35)
 	local origin = r.Position
 
 	-- 1. Pre-dash suction vortex
-	Core.converge(origin, 10, 25, 0.4, TEAL)
+	Core.converge(origin, 12, 30, 0.35, TEAL)
 	Core.shockwave(Core.groundCF(origin + Vector3.new(0, 0.2, 0)), {
 		color = TEAL,
-		from = 1,
-		to = 16,
+		from = 2,
+		to = 20,
 		duration = 0.4,
 	})
 
-	task.delay(0.35, function()
+	task.delay(0.3, function()
 		-- 2. Supersonic Teleport Streak
 		Core.afterimage(char, { color = TEAL, life = 0.4 })
 		Core.tempBeam(origin, target, 0.25, {
 			texture = Core.PinnacleTextures.HelicalBeam,
 			color = WIND,
-			width0 = 4,
+			width0 = 5,
 			width1 = 1,
 			light = 1,
 		})
 
-		-- 3. Arrival: 3D LightWind Mesh Impact (`rbxassetid://4681227436`)
-		local windPart, m = Core.meshPart(Core.Meshes.LightWind, Vector3.one * 12, Core.lookCF(target, ctx.direction), {
-			color = MINT,
-			material = Enum.Material.Neon,
-			transparency = 0.15,
-		})
-		Core.runFor(0.4, function(_, t)
-			windPart.Transparency = 0.15 + 0.85 * (t / 0.4)
-		end, function()
-			windPart:Destroy()
-		end)
+		-- 3. Criss-crossing 28-stud crescent vacuum slashes across the target area
+		for i = 1, 8 do
+			task.delay((i - 1) * 0.06, function()
+				local angle = (i * 45) + Random.new():NextNumber(-15, 15)
+				local offset = Vector3.new(math.cos(math.rad(angle)) * 6, Random.new():NextNumber(-2, 4), math.sin(math.rad(angle)) * 6)
+				local slashCF = Core.lookCF(target + offset, (target - (target + offset)).Unit) * CFrame.Angles(0, 0, math.rad(angle))
+				Core.colossalSlash(slashCF, 35, WIND, {
+					width = 24,
+					height = 3.5,
+					duration = 0.3,
+					meshColor = TEAL,
+				})
+			end)
+		end
 
-		-- 4. Micro-Cleaves & Sonic Blast
-		Core.dismantleCleave(Core.lookCF(target, ctx.direction), WIND, 14)
-		Core.groundSlamCrater(target, WIND, 18, { duration = 2.0, rockCount = 22 })
+		-- 4. Final Sonic Shockwave Blast & Impact (Zero air cracks!)
+		task.delay(8 * 0.06 + 0.1, function()
+			Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+				color = TEAL,
+				from = 4,
+				to = 38,
+				duration = 0.7,
+				meshId = Core.Meshes.ShockwaveColossal,
+			})
+			Core.impactExplosion(target, WIND, 26, {
+				duration = 2.2,
+				rockCount = 26,
+				shakeDur = 0.65,
+				shakeIntens = 3.6,
+			})
+			Core.sound(target, Core.Sounds.Explosion, 1.0, 0.9)
+		end)
 	end)
 end
 

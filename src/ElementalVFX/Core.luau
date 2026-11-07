@@ -13,32 +13,40 @@ local SoundService = game:GetService("SoundService")
 local Core = {}
 
 Core.Sounds = {
-	Punch = "rbxassetid://1720389178",
-	HeavyHit = "rbxassetid://3041191430",
-	SwordSlash = "rbxassetid://6760643020",
-	Explosion = "rbxassetid://3802269741",
-	FireBurst = "rbxassetid://5898090542",
-	WaterSplash = "rbxassetid://5850414902",
-	WaterGeyser = "rbxassetid://6543434968",
-	RockSlam = "rbxassetid://3802269741",
-	RockSlash = "rbxassetid://7863855238",
+	Punch = "rbxasset://sounds/action_jump_land.mp3",
+	HeavyHit = "rbxasset://sounds/action_jump_land.mp3",
+	SwordSlash = "rbxassetid://6893501405",
+	Explosion = "rbxassetid://6893501405",
+	FireBurst = "rbxassetid://6893501405",
+	WaterSplash = "rbxasset://sounds/impact_water.mp3",
+	WaterGeyser = "rbxasset://sounds/impact_water.mp3",
+	WaterImpact = "rbxasset://sounds/impact_water.mp3",
+	RockSlam = "rbxassetid://6893501405",
+	RockSlash = "rbxassetid://6893501405",
+	EarthImpact = "rbxassetid://6893501405",
+	EarthRumble = "rbxassetid://6893501405",
 	LaserBeam = "rbxassetid://1839806527",
-	LightFlash = "rbxassetid://3356359494",
-	LightRay = "rbxassetid://1840218341",
-	WindSlash = "rbxassetid://624706518",
-	TornadoRoar = "rbxassetid://3484593077",
-	GlitchHeavy = "rbxassetid://5599818817",
-	GlitchBuzz = "rbxassetid://5599818817",
-	TimeFreeze = "rbxassetid://4744477218",
-	TimeShield = "rbxassetid://6148384813",
+	LightFlash = "rbxassetid://1839806527",
+	LightRay = "rbxassetid://1839806527",
+	WindSlash = "rbxassetid://6893501405",
+	TornadoRoar = "rbxassetid://6893501405",
+	GlitchHeavy = "rbxassetid://1839806527",
+	GlitchBuzz = "rbxassetid://1839806527",
+	TimeFreeze = "rbxassetid://1839806527",
+	TimeShield = "rbxassetid://1839806527",
 }
+Core.SoundFX = Core.Sounds
 
 function Core.sound(pos: Vector3?, soundId: string, volume: number?, pitch: number?)
 	if not soundId or soundId == "" then return end
-	local s = Instance.new("Sound")
-	s.SoundId = soundId
-	s.Volume = volume or 0.75
-	s.PlaybackSpeed = (pitch or 1.0) * (0.95 + math.random() * 0.1)
+	local success, s = pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = soundId
+		snd.Volume = volume or 0.75
+		snd.PlaybackSpeed = (pitch or 1.0) * (0.95 + math.random() * 0.1)
+		return snd
+	end)
+	if not success or not s then return end
 
 	if pos then
 		local soundPart = Instance.new("Part")
@@ -53,10 +61,10 @@ function Core.sound(pos: Vector3?, soundId: string, volume: number?, pitch: numb
 		soundPart.Parent = Core.Folder
 
 		s.RollOffMode = Enum.RollOffMode.InverseTapered
-		s.RollOffMinDistance = 15
-		s.RollOffMaxDistance = 160
+		s.RollOffMinDistance = 20
+		s.RollOffMaxDistance = 250
 		s.Parent = soundPart
-		s:Play()
+		pcall(function() s:Play() end)
 
 		s.Ended:Once(function()
 			soundPart:Destroy()
@@ -64,12 +72,33 @@ function Core.sound(pos: Vector3?, soundId: string, volume: number?, pitch: numb
 		Debris:AddItem(soundPart, 5)
 	else
 		s.Parent = SoundService
-		s:Play()
+		pcall(function() s:Play() end)
 		s.Ended:Once(function()
 			s:Destroy()
 		end)
 		Debris:AddItem(s, 5)
 	end
+end
+
+-- Client-side camera shake function (user specification)
+function Core.cameraShake(duration: number?, intensity: number?)
+	local dur = duration or 0.25
+	local intens = intensity or 1.5
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+	local startTime = tick()
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		local elapsed = tick() - startTime
+		if elapsed < dur then
+			local decay = 1 - (elapsed / dur)
+			local offsetX = math.random(-100, 100) * 0.001 * intens * decay
+			local offsetY = math.random(-100, 100) * 0.001 * intens * decay
+			camera.CFrame = camera.CFrame * CFrame.new(offsetX, offsetY, 0)
+		else
+			connection:Disconnect()
+		end
+	end)
 end
 
 ---------------------------------------------------------------------------
@@ -78,37 +107,51 @@ end
 
 Core.Textures = {
 	Sparkle = "rbxassetid://15401642957", -- Anime star glint
-	Fire = "rbxassetid://12136774260", -- Grid8x8 64-frame animated fire
+	Fire = "http://www.roblox.com/asset/?id=11534281007", -- Verified high-tier anime fire flipbook
 	Smoke = "rbxassetid://12141720576", -- Grid8x8 animated smoke
 	AnimeSlash = "rbxassetid://15638729672", -- 0.05s instant anime cleave
-	AnimeSlashArc = "rbxassetid://13876022839",
+	AnimeSlashArc = "rbxassetid://15253860988", -- Verified anime slash swipe arc
 	AnimeSmoke = "rbxassetid://9171262291", -- Grid8x8 thick ground dust column
-	WaterDroplet = "rbxassetid://8030760338",
-	SpeedLines = "rbxassetid://15292043166",
+	WaterDroplet = "rbxassetid://8789695002",
+	SpeedLines = "http://www.roblox.com/asset/?id=14480500149",
 	RockDebris = "rbxassetid://6760190948", -- High-fidelity tumbling rock shrapnel
-	ClockDial = "rbxassetid://1084991219",
+	ClockDial = "rbxassetid://8099244106",
 	TorusMesh = "rbxassetid://3270017",
 	RockMesh = "rbxassetid://1290033",
 }
 
 -- Specialized Benchmark Assets
 Core.PinnacleTextures = {
-	FluidFire8x8 = "rbxassetid://12136774260", -- 64-frame fluid anime flame
+	FluidFire8x8 = "http://www.roblox.com/asset/?id=11534281007", -- Verified top-tier anime fire
 	FluidSmoke8x8 = "rbxassetid://12141720576",
 	Embers = "rbxassetid://6612338229",
 	CleaveInstant = "rbxassetid://15638729672", -- 0.05s cleave cut
 	CleaveShadow = "rbxassetid://15640022727",
 	PopStar = "rbxassetid://15401642957",
-	NegativeCrater = "rbxassetid://11396737930", -- LightEmission = -1.2, VelocityPerpendicular
+	NegativeCrater = "rbxassetid://11396737930", -- LightEmission = -1.2, VelocityPerpendicular (GROUND ONLY)
 	TumblingRock = "rbxassetid://6760190948",
 	GroundFlash = "rbxassetid://15161996973",
 	AxoieVoid100 = "rbxassetid://13327161584", -- LightEmission = -100 space absorption
 	AxoieVoid30 = "rbxassetid://7216855914", -- LightEmission = -30 core
-	LightningBolt8x8 = "rbxassetid://12390063093", -- 64-frame hand-drawn lightning
-	LightningDischarge8x8 = "rbxassetid://12390113643",
+	LightningBolt8x8 = "http://www.roblox.com/asset/?id=12390063093", -- 64-frame hand-drawn lightning
+	LightningDischarge8x8 = "http://www.roblox.com/asset/?id=12390113643",
 	HelicalBeam = "rbxassetid://14816445799",
 	LaserBeamWide = "rbxassetid://14050898403",
 	WaterBeam15 = "rbxassetid://10820007429",
+	BeamFlow = "rbxassetid://10820007429",
+	BeamLines = "rbxassetid://10822615828",
+	SmokeVortex = "rbxassetid://13271107028",
+	SlashSwipeArc = "rbxassetid://15253860988",
+	SlashBladeBeam = "rbxassetid://80823115982547",
+	SlashSpeedlines = "http://www.roblox.com/asset/?id=14480500149",
+	SlashStrike = "rbxassetid://10536350143",
+	WindSlash = "http://www.roblox.com/asset/?id=8101328122",
+	FlameFlipbook = "http://www.roblox.com/asset/?id=11534281007",
+	BrightWave = "rbxassetid://8620925368",
+	SparksBurst = "rbxassetid://6660412891",
+	ImpactStar = "rbxassetid://17062426399",
+	ShardsDebris = "rbxassetid://10439119562",
+	GlitchCubes = "rbxassetid://9470888178",
 	SupernovaFlash = "rbxassetid://6673021984",
 	SupernovaBeams = "rbxassetid://13622546112",
 	ShockwaveDisc160 = "rbxassetid://15048784530",
@@ -127,14 +170,31 @@ Core.PinnacleTextures = {
 	DiamondSpark = "rbxassetid://15583586686",
 }
 
--- Custom Sculpted 3D VFX Meshes (Extracted from Workspace.VFX)
+-- Custom Sculpted 3D VFX Meshes (Extracted from reference packs)
 Core.Meshes = {
 	GroundSpikes = "rbxassetid://967645205",
 	Bonk = "rbxassetid://4316118084",
 	Smash10 = "rbxassetid://489415286",
 	Smash8 = "rbxassetid://489415447",
 	Smash6 = "rbxassetid://489415572",
-	SlashEffect = "rbxassetid://4572036304", -- Curved 3D slash (21x0.9x7.7)
+	SlashEffect = "rbxassetid://4572036304", -- Curved 3D slash
+	Slash3D = "rbxassetid://4572036304",
+	BeamLance = "rbxassetid://2865084807",
+	FlameEmperor = "rbxassetid://4898843578", -- 24-stud giant core
+	FlamePillarCore = "rbxassetid://4901269283",
+	FlamePillarSwirl = "rbxassetid://4901268304",
+	FlamePillarBurst = "rbxassetid://4901274806",
+	FlameDisc = "rbxassetid://2836527412",
+	ShockwaveDisc = "rbxassetid://2836617227",
+	ShockwaveColossal = "rbxassetid://5694662480", -- 33-stud colossal shockwave
+	ShockwaveLarge = "rbxassetid://5694662348", -- 25-stud shockwave
+	ShockwaveRing = "rbxassetid://5697180244",
+	ShockCone = "rbxassetid://5922651425",
+	ThunderMesh = "rbxassetid://6553232712",
+	TornadoMesh = "rbxassetid://5732025462",
+	FireballMesh = "rbxassetid://5732027426",
+	DragonHead = "rbxassetid://6737576299",
+	DragonBody = "rbxassetid://6737581617",
 	SlashSkill1 = "rbxassetid://452960473",
 	FancySphere = "rbxassetid://5703278366",
 	FancySphereLight = "rbxassetid://5703288879",
@@ -662,14 +722,25 @@ function Core.dismantleCleave(cf, colorSeq, size, o)
 	Core.cleanupLater({ anchor }, 0.5)
 end
 
--- 3. Heavy Seismic Ground Slam Crater Engine
-function Core.groundSlamCrater(pos, colorSeq, radius, o)
+-- 3A. Strict Ground-Only Raycasting Crater (Will NEVER spawn in air!)
+function Core.groundCrater(pos, colorSeq, radius, o)
 	o = o or {}
 	radius = radius or 12
-	local anchor = Core.anchor(pos + Vector3.new(0, 0.05, 0))
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { Core.Folder }
+	local rayResult = workspace:Raycast(pos + Vector3.new(0, 3, 0), Vector3.new(0, -14, 0), rayParams)
+
+	-- STRICT CHECK: Only spawn if an actual ground surface is found below, and is roughly horizontal
+	if not rayResult or not rayResult.Instance or rayResult.Normal.Y < 0.65 then
+		return nil
+	end
+
+	local groundPos = rayResult.Position + Vector3.new(0, 0.05, 0)
+	local anchor = Core.anchor(groundPos)
 	local att = Core.attach(anchor)
 
-	-- Layer 0: Flat Ground Scorch Decal / Crater (VelocityPerpendicular, Light = -1.2, ZOffset = 0.001)
+	-- Ground Scorch Decal (VelocityPerpendicular, on the floor)
 	local crater = Core.emitter(att, {
 		texture = Core.PinnacleTextures.NegativeCrater,
 		color = ColorSequence.new(Color3.fromRGB(20, 18, 16)),
@@ -683,7 +754,7 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 		zOffset = 0.001,
 	})
 
-	-- Layer 1: Ground Flash
+	-- Ground Flash
 	local flash = Core.emitter(att, {
 		texture = Core.PinnacleTextures.GroundFlash,
 		color = colorSeq,
@@ -697,7 +768,7 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 		zOffset = 16,
 	})
 
-	-- Layer 2: Tumbling Shrapnel Rocks (700 deg/s with heavy gravity)
+	-- Tumbling Shrapnel Rocks (only because it hit ground!)
 	local rocks = Core.emitter(att, {
 		texture = Core.PinnacleTextures.TumblingRock,
 		color = ColorSequence.new(Color3.fromRGB(110, 100, 90)),
@@ -707,7 +778,7 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 		speed = NumberRange.new(25, 45),
 		spread = Vector2.new(45, 45),
 		direction = Enum.NormalId.Top,
-		acceleration = Vector3.new(0, -171.5, 0), -- Realistic Roblox gravity pull
+		acceleration = Vector3.new(0, -171.5, 0),
 		drag = 2.75,
 		rotSpeed = NumberRange.new(-700, 700),
 		size = NumberSequence.new({
@@ -718,7 +789,7 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 		zOffset = 9,
 	})
 
-	-- Layer 3: Grid8x8 Smoke Geyser Column
+	-- Ground Smoke Geyser Column
 	local smoke = Core.emitter(att, {
 		texture = Core.Textures.AnimeSmoke,
 		color = ColorSequence.new(Color3.fromRGB(140, 130, 120)),
@@ -738,13 +809,11 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 
 	crater:Emit(1)
 	flash:Emit(2)
-	rocks:Emit(o.rockCount or 22)
-	smoke:Emit(14)
-	Core.sound(pos, o.soundId or Core.Sounds.Explosion, o.volume or 0.85, o.pitch or 0.95)
+	rocks:Emit(o.rockCount or 18)
+	smoke:Emit(12)
 
-	-- 3D Sculpted Smash Mesh Impact (`10smash` or `bonk`)
 	if o.useMesh ~= false then
-		local smashPart, smashMesh = Core.meshPart(Core.Meshes.Smash10, Vector3.new(radius, 2, radius), CFrame.new(pos + Vector3.new(0, 0.2, 0)), {
+		local smashPart, smashMesh = Core.meshPart(Core.Meshes.Smash10, Vector3.new(radius, 2, radius), CFrame.new(groundPos), {
 			color = Color3.fromRGB(160, 150, 140),
 			material = Enum.Material.Rock,
 			transparency = 0.1,
@@ -760,6 +829,389 @@ function Core.groundSlamCrater(pos, colorSeq, radius, o)
 	end
 
 	Core.cleanupLater({ anchor }, 4)
+	return anchor
+end
+
+-- 3B. Pure Mid-Air Detonation & Impact Burst (ZERO ground decals, ZERO floating rocks!)
+function Core.airBurst(pos, colorSeq, radius, o)
+	o = o or {}
+	radius = radius or 12
+	local anchor = Core.anchor(pos)
+	local att = Core.attach(anchor)
+
+	-- Radial Bright Shockwave (BrightWave texture)
+	local wave = Core.emitter(att, {
+		texture = Core.PinnacleTextures.BrightWave,
+		color = colorSeq,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.2, 0.45),
+		speed = NumberRange.new(0.1, 0.5),
+		size = NumberSequence.new(radius * 0.5, radius * 2.4),
+		zOffset = 18,
+	})
+
+	-- Starburst Lens Flare
+	local flare = Core.emitter(att, {
+		texture = Core.PinnacleTextures.ImpactStar,
+		color = colorSeq,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.15, 0.3),
+		speed = NumberRange.new(0.5, 2),
+		size = NumberSequence.new(radius * 2.2, 0),
+		rotSpeed = NumberRange.new(-180, 180),
+		zOffset = 22,
+	})
+
+	-- Spherical Residue & Sparks Burst
+	local sparks = Core.emitter(att, {
+		texture = Core.PinnacleTextures.SparksBurst,
+		color = colorSeq,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.4, 0.8),
+		speed = NumberRange.new(radius * 2.5, radius * 5),
+		spread = Vector2.new(180, 180),
+		drag = 3.5,
+		size = NumberSequence.new(radius * 0.25, 0.05),
+		zOffset = 14,
+	})
+
+	-- Anime Debris Shards (radial outward explosion, not ground rocks!)
+	local shards = Core.emitter(att, {
+		texture = Core.PinnacleTextures.ShardsDebris,
+		color = colorSeq,
+		light = 0.7,
+		rate = 0,
+		lifetime = NumberRange.new(0.4, 0.7),
+		speed = NumberRange.new(radius * 3, radius * 6),
+		spread = Vector2.new(180, 180),
+		drag = 4.0,
+		rotSpeed = NumberRange.new(-500, 500),
+		size = NumberSequence.new(radius * 0.3, 0.1),
+		zOffset = 12,
+	})
+
+	wave:Emit(2)
+	flare:Emit(2)
+	sparks:Emit(o.sparkCount or 24)
+	shards:Emit(o.shardCount or 16)
+
+	-- 3D Expanding Shockwave Mesh (Multi-axis sphere or ring)
+	local shockMesh = o.meshId or Core.Meshes.ShockwaveColossal
+	local shockPart, m = Core.meshPart(shockMesh, Vector3.new(radius * 0.4, radius * 0.4, radius * 0.4), CFrame.new(pos) * CFrame.Angles(math.random() * math.pi, math.random() * math.pi, math.random() * math.pi), {
+		color = o.meshColor or Color3.fromRGB(255, 255, 255),
+		material = Enum.Material.Neon,
+		transparency = 0.1,
+	})
+	local dur = o.duration or 0.45
+	Core.runFor(dur, function(_, t)
+		local k = t / dur
+		local sz = (radius * 0.4) + (radius * 2.2) * Core.smooth(k)
+		shockPart.Size = Vector3.new(sz, sz * 0.3, sz)
+		shockPart.Transparency = 0.1 + 0.9 * k
+	end, function()
+		shockPart:Destroy()
+	end)
+
+	Core.sound(pos, o.soundId or Core.Sounds.Explosion, o.volume or 0.85, o.pitch or 1.0)
+	Core.cleanupLater({ anchor }, 1)
+end
+
+-- 3C. Universal Impact Explosion: Bursts in air, and ONLY adds ground crater if ground is near!
+function Core.impactExplosion(pos, colorSeq, radius, o)
+	o = o or {}
+	Core.airBurst(pos, colorSeq, radius, o)
+	Core.groundCrater(pos, colorSeq, radius, o)
+	Core.cameraShake(o.shakeDur or 0.22, o.shakeIntens or (radius * 0.12))
+end
+
+-- Safe alias for backward compatibility: Never creates floating cracks in air!
+Core.groundSlamCrater = Core.impactExplosion
+
+-- 3D. Grand Colossal Anime Slash Engine (24-35 studs wide, sweeps forward 35-50 studs!)
+function Core.colossalSlash(startCF, forwardDist, colorSeq, o)
+	o = o or {}
+	forwardDist = forwardDist or 45
+	local width = o.width or 28
+	local height = o.height or 5
+	local length = o.length or 7
+	local dur = o.duration or 0.45
+	local dir = startCF.LookVector
+
+	-- Sculpted 3D Anime Slash MeshPart (`rbxassetid://4572036304`)
+	local slashPart, slashMesh = Core.meshPart(Core.Meshes.Slash3D, Vector3.new(width, height, length), startCF, {
+		color = o.meshColor or Color3.fromRGB(255, 120, 20),
+		material = Enum.Material.Neon,
+		transparency = 0.05,
+	})
+
+	-- Dual Curved Beams attached to the slash blade edge
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(-width * 0.5, 0, 0)
+	a0.Parent = slashPart
+
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(width * 0.5, 0, 0)
+	a1.Parent = slashPart
+
+	local beam1 = Core.beam(a0, a1, {
+		texture = Core.PinnacleTextures.SlashSwipeArc,
+		color = colorSeq,
+		width0 = height * 2.2,
+		width1 = 0,
+		curve0 = -12,
+		curve1 = 12,
+		light = 1,
+		zOffset = 16,
+	})
+
+	local beam2 = Core.beam(a0, a1, {
+		texture = Core.PinnacleTextures.SlashBladeBeam,
+		color = ColorSequence.new(Color3.fromRGB(255, 255, 255)),
+		width0 = height * 1.5,
+		width1 = 0,
+		curve0 = -10,
+		curve1 = 10,
+		light = 1,
+		zOffset = 18,
+	})
+
+	-- Trailing Speedlines & Sparks on the crescent blade
+	local centerAtt = Core.attach(slashPart)
+	local speedlines = Core.emitter(centerAtt, {
+		texture = Core.PinnacleTextures.SlashSpeedlines,
+		color = colorSeq,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.2, 0.4),
+		speed = NumberRange.new(15, 30),
+		spread = Vector2.new(15, 15),
+		direction = Enum.NormalId.Back,
+		size = NumberSequence.new(width * 0.6, 0.1),
+		zOffset = 14,
+	})
+	speedlines:Emit(8)
+
+	local sparks = Core.emitter(centerAtt, {
+		texture = Core.PinnacleTextures.SparksBurst,
+		color = colorSeq,
+		light = 1,
+		rate = 25,
+		lifetime = NumberRange.new(0.3, 0.6),
+		speed = NumberRange.new(5, 15),
+		spread = Vector2.new(30, 30),
+		size = NumberSequence.new(0.6, 0.1),
+		zOffset = 12,
+	})
+
+	Core.sound(startCF.Position, o.soundId or Core.Sounds.SwordSlash, o.volume or 0.85, o.pitch or 1.0)
+	Core.cameraShake(0.15, 1.4)
+
+	-- Animate forward sweep
+	local startPos = startCF.Position
+	local targetPos = startPos + dir * forwardDist
+
+	Core.runFor(dur, function(_, t)
+		local k = t / dur
+		local currentPos = startPos:Lerp(targetPos, Core.smooth(k))
+		slashPart.CFrame = (startCF - startPos) + currentPos
+		if k >= 0.6 then
+			local fade = (k - 0.6) / 0.4
+			slashPart.Transparency = 0.05 + 0.95 * fade
+			beam1.Transparency = NumberSequence.new(math.clamp(0.05 + 0.95 * fade, 0, 1))
+			beam2.Transparency = NumberSequence.new(math.clamp(0.05 + 0.95 * fade, 0, 1))
+		end
+	end, function()
+		sparks.Enabled = false
+		beam1:Destroy()
+		beam2:Destroy()
+		slashPart:Destroy()
+	end)
+end
+
+-- 3E. Colossal Piercing Energy Beam (130-160 studs range!)
+function Core.colossalBeam(p0, dir, range, colorSeq, o)
+	o = o or {}
+	range = range or 140
+	local width = o.width or 6.5
+	local dur = o.duration or 1.2
+	local p1 = p0 + dir.Unit * range
+	local delta = p1 - p0
+	local dist = delta.Magnitude
+	local cf = Core.lookCF(p0 + dir * (dist * 0.5), dir)
+
+	-- 1. Central Core Beam Cylinder
+	local corePart, coreMesh = Core.meshPart(Core.Meshes.BeamCylinder, Vector3.new(width, width, dist), cf, {
+		color = o.coreColor or Color3.fromRGB(255, 255, 255),
+		material = Enum.Material.Neon,
+		transparency = 0.05,
+	})
+
+	-- 2. Outer Beam Glow Sleeve
+	local sleevePart, sleeveMesh = Core.meshPart(Core.Meshes.BeamCylinder, Vector3.new(width * 1.6, width * 1.6, dist), cf, {
+		color = o.glowColor or Color3.fromRGB(255, 120, 20),
+		material = Enum.Material.Neon,
+		transparency = 0.45,
+	})
+
+	-- 3. Concentric Muzzle Flash at origin
+	local muzzlePart = Core.anchor(p0)
+	local muzzleAtt = Core.attach(muzzlePart)
+	local muzzleEmitter = Core.emitter(muzzleAtt, {
+		texture = Core.PinnacleTextures.SupernovaFlash,
+		color = colorSeq,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.2, 0.4),
+		speed = NumberRange.new(1, 3),
+		size = NumberSequence.new(width * 3.5, 0),
+		zOffset = 22,
+	})
+	muzzleEmitter:Emit(4)
+
+	-- 4. Terminal Impact Detonation at Endpoint
+	Core.airBurst(p1, colorSeq, width * 3.5, {
+		soundId = Core.Sounds.Explosion,
+		sparkCount = 30,
+		shardCount = 20,
+	})
+	Core.cameraShake(0.35, 2.5)
+
+	-- 5. Helical Energy Ribbons wrapped around the beam
+	local beams = {}
+	local anchors = {}
+	local numHelical = o.numHelical or 8
+	local radius = width * 0.9
+
+	for i = 1, numHelical do
+		local a = (i - 1) * (math.pi * 2 / numHelical)
+		local offset0 = Vector3.new(math.cos(a) * radius, math.sin(a) * radius, 0)
+		local offset1 = Vector3.new(math.cos(a + math.pi * 1.5) * radius, math.sin(a + math.pi * 1.5) * radius, 0)
+
+		local a0 = Core.anchor(p0 + offset0)
+		local a1 = Core.anchor(p1 + offset1)
+		table.insert(anchors, a0)
+		table.insert(anchors, a1)
+
+		local b = Core.beam(Core.attach(a0), Core.attach(a1), {
+			texture = Core.PinnacleTextures.BeamFlow,
+			color = colorSeq,
+			width0 = width * 0.45,
+			width1 = width * 0.85,
+			curve0 = 8.0,
+			curve1 = 8.0,
+			light = 1,
+			textureSpeed = 6,
+			textureLength = 4,
+			zOffset = 16,
+		})
+		table.insert(beams, b)
+	end
+
+	Core.sound(p0, o.soundId or Core.Sounds.LaserBeam, o.volume or 1.0, o.pitch or 1.0)
+
+	Core.runFor(dur, function(_, t)
+		local k = t / dur
+		if k >= 0.7 then
+			local fade = (k - 0.7) / 0.3
+			corePart.Transparency = 0.05 + 0.95 * fade
+			sleevePart.Transparency = 0.45 + 0.55 * fade
+			for _, b in ipairs(beams) do
+				b.Transparency = NumberSequence.new(math.clamp(0.1 + 0.9 * fade, 0, 1))
+			end
+		end
+	end, function()
+		corePart:Destroy()
+		sleevePart:Destroy()
+		Core.destroyAll(beams)
+		Core.destroyAll(anchors)
+		muzzlePart:Destroy()
+	end)
+end
+
+-- 3F. Colossal Long-Range Projectile Engine (120-150 studs travel distance + massive detonation!)
+function Core.colossalProjectile(startPos, dir, range, speed, colorSeq, o)
+	o = o or {}
+	range = range or 130
+	speed = speed or 100
+	local sz = o.size or 8
+	local targetPos = startPos + dir.Unit * range
+	local totalDist = (targetPos - startPos).Magnitude
+	local flyTime = totalDist / speed
+
+	-- Moving projectile orb
+	local bullet = Core.part(Enum.PartType.Ball, Vector3.one * sz, CFrame.new(startPos), {
+		color = o.coreColor or Color3.fromRGB(255, 255, 255),
+		material = Enum.Material.Neon,
+		transparency = 0.05,
+	})
+
+	if o.meshId then
+		local m = Instance.new("SpecialMesh")
+		m.MeshType = Enum.MeshType.FileMesh
+		m.MeshId = o.meshId
+		m.Scale = Vector3.one * sz * 0.1
+		m.Parent = bullet
+	end
+
+	-- Trailing Emitters
+	local att = Core.attach(bullet)
+	local trailEmitters = {}
+
+	if o.flipbookTexture then
+		local fb = Core.emitter(att, {
+			texture = o.flipbookTexture,
+			color = colorSeq,
+			light = 1,
+			rate = 60,
+			lifetime = NumberRange.new(0.3, 0.6),
+			speed = NumberRange.new(2, 6),
+			spread = Vector2.new(180, 180),
+			size = NumberSequence.new(sz * 1.4, 0.1),
+			flipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8,
+			flipbookMode = Enum.ParticleFlipbookMode.Loop,
+			flipbookFramerate = NumberRange.new(30, 30),
+			zOffset = 12,
+		})
+		table.insert(trailEmitters, fb)
+	end
+
+	local embers = Core.emitter(att, {
+		texture = Core.PinnacleTextures.Embers,
+		color = colorSeq,
+		light = 1,
+		rate = 40,
+		lifetime = NumberRange.new(0.4, 0.8),
+		speed = NumberRange.new(8, 18),
+		spread = Vector2.new(180, 180),
+		size = NumberSequence.new(sz * 0.25, 0.05),
+		zOffset = 10,
+	})
+	table.insert(trailEmitters, embers)
+
+	Core.sound(startPos, o.launchSound or Core.Sounds.FireBurst, o.volume or 0.85, o.pitch or 1.1)
+
+	Core.runFor(flyTime, function(_, t)
+		local k = t / flyTime
+		bullet.CFrame = CFrame.new(startPos:Lerp(targetPos, k))
+	end, function()
+		for _, e in ipairs(trailEmitters) do e.Enabled = false end
+		bullet:Destroy()
+
+		-- Colossal terminal detonation on arrival!
+		Core.impactExplosion(targetPos, colorSeq, o.detonationRadius or 24, {
+			soundId = o.hitSound or Core.Sounds.Explosion,
+			sparkCount = 36,
+			shardCount = 24,
+			shakeDur = 0.35,
+			shakeIntens = 2.8,
+		})
+		if o.onHit then
+			pcall(o.onHit, targetPos)
+		end
+	end)
 end
 
 -- 4. Negative Light Singularity Void Engine (LightEmission = -100 absorption)
