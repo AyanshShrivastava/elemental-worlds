@@ -1,334 +1,261 @@
--- Time.lua — Time element (secret)
---   M1    Time Punch: cyan-blue aura around the fist, ripple at impact
---   Move1 Got Throwed: temporal ring holds the target, afterimages mark the teleport,
---         then a hard punch. The 0.5s hold is enforced by the server.
---   Move2 Time Injection: clock ring freezes, abstract symbol streams, echoes, then a high-damage
---         impact. Symbols are abstract glyphs, not graphic imagery.
---   Move3 Untouchable: translucent temporal shield with concentric rings that follows the caster.
---         Returns a handle: handle:Hit() flashes the shield when an attack is blocked,
---         handle:End() ends it early. Duration is ctx.duration (default 4), a balance setting.
---         Blocking and cooldown are server-side.
---   Move4 Virtual Kill: rings close on the target, the scene distorts, then a blue release.
---         No graphic imagery. The 150s cooldown and KO rules are server-side.
+--!strict
+-- Time.luau — Top-Tier Time Element VFX (Secret Element)
+-- 3D sculpted FancySphere Chronos Shield, celestial clock runes,
+-- glass fracture time shatter, and chronological reverse physics.
 
+local RunService = game:GetService("RunService")
 local Core = require(script.Parent.Core)
 
-local DEEP = Color3.fromRGB(20, 60, 200)
-local CYAN = Color3.fromRGB(0, 255, 255)
-local BRIGHT = Color3.fromRGB(210, 245, 255)
-local TIME = Core.seq({ DEEP, CYAN, BRIGHT })
-local SPARK = Core.Textures.Sparkle
-
-local SYMBOLS = { "Ω", "∑", "≈", "◆", "▲", "∆", "0", "1" }
+local DEEP_CHRONO = Color3.fromRGB(20, 50, 180)
+local CYAN = Color3.fromRGB(0, 240, 255)
+local GOLD_TIME = Color3.fromRGB(255, 215, 110)
+local BRIGHT = Color3.fromRGB(225, 245, 255)
+local WHITE = Color3.fromRGB(255, 255, 255)
+local TIME = Core.seq({ WHITE, BRIGHT, CYAN, DEEP_CHRONO })
+local CHRONO = Core.seq({ GOLD_TIME, CYAN, BRIGHT })
 
 local Time = {}
-local rng = Random.new()
 
--- Abstract symbol drifting outward from a centre and fading
-local function symbol(center)
-	local a = rng:NextNumber(0, math.pi * 2)
-	local dir = Vector3.new(math.cos(a), rng:NextNumber(0.1, 0.6), math.sin(a))
-	local anchor = Core.anchor(center + dir * 2)
-
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(40, 40)
-	gui.AlwaysOnTop = true
-	gui.Adornee = anchor
-	gui.Parent = anchor
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.TextScaled = true
-	label.Font = Enum.Font.Code
-	label.TextColor3 = BRIGHT
-	label.Text = SYMBOLS[rng:NextInteger(1, #SYMBOLS)]
-	label.Parent = gui
-
-	Core.runFor(0.6, function(_, t)
-		local k = t / 0.6
-		anchor.CFrame = CFrame.new(center + dir * (2 + 6 * k))
-		label.TextTransparency = k
-	end, function()
-		anchor:Destroy()
-	end)
-end
-
--- M1: time punch
+-- M1: Chromatic Temporal Strike (Time ghost afterimage + ripple cut)
 function Time.M1(ctx)
 	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
-	local from = hand and hand.Position or ctx.origin
-	local to = ctx.target
-	local dir = (to - from).Unit
+	if not hand then return end
+	local dir = ctx.direction
+	local start = hand.Position + dir * 2.0
+	local cleaveCF = Core.lookCF(start, dir) * CFrame.Angles(0, 0, math.rad(Random.new():NextNumber(-30, 30)))
 
-	local fist = Core.part(Enum.PartType.Ball, Vector3.one * 1.4, CFrame.new(from), {
-		color = CYAN, material = Enum.Material.ForceField, transparency = 0.1,
-	})
-	local aura1 = Core.part(Enum.PartType.Ball, Vector3.one * 3, CFrame.new(from), {
-		color = CYAN, material = Enum.Material.Glass, transparency = 0.75,
-	})
-	local aura2 = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(from), {
-		color = DEEP, material = Enum.Material.Glass, transparency = 0.85,
-	})
-	local parts = { fist, aura1, aura2 }
-	local glow = Core.emitter(Core.attach(fist), {
-		texture = SPARK, color = TIME, rate = 60, light = 1,
-		lifetime = NumberRange.new(0.2, 0.4), speed = NumberRange.new(1, 3), size = NumberSequence.new(0.4, 0.05),
-	})
+	-- 1. Micro-Cleave Instant Slash
+	Core.dismantleCleave(cleaveCF, TIME, 8)
 
-	local dur = math.clamp((to - from).Magnitude / 110, 0.15, 0.6)
-	Core.runFor(dur, function(_, t)
-		local pos = from:Lerp(to, t / dur)
-		fist.CFrame = CFrame.new(pos)
-		aura1.CFrame = CFrame.new(pos)
-		aura2.CFrame = CFrame.new(pos)
-	end, function()
-		glow.Enabled = false
-		Core.shockwave(Core.axisCF(to, dir), { color = BRIGHT, from = 1, to = 10, duration = 0.4 })
-		Core.shockwave(Core.axisCF(to, dir), { color = CYAN, from = 1, to = 6, duration = 0.3 })
-		Core.burst(to, 20, { color = TIME, texture = SPARK, speed = 18, light = 1 })
-		Core.setTransparency(parts, 1)
-		Core.cleanupLater(parts, 0.5)
-	end)
+	-- 2. Time-Ghost Afterimage of the striking hand
+	Core.ghost(cleaveCF, Vector3.new(0.8, 0.8, 3.2), CYAN, 0.35)
+
+	-- 3. Concentric Temporal Ripple Disc (VelocityPerpendicular)
+	local anchor = Core.anchor(start)
+	local att = Core.attach(anchor)
+	local ripple = Core.emitter(att, {
+		texture = Core.PinnacleTextures.CelestialRing,
+		color = CHRONO,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.2, 0.35),
+		speed = NumberRange.new(0.1, 0.5),
+		size = NumberSequence.new(2, 8),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		zOffset = 12,
+	})
+	ripple:Emit(1)
+
+	Core.burst(start, 12, {
+		texture = Core.Textures.ClockDial,
+		color = CHRONO,
+		speed = 14,
+		life = 0.45,
+		light = 1,
+	})
+	Core.cleanupLater({ anchor }, 0.5)
 end
 
--- Move1: temporal ring, afterimages during the teleport, then a hard punch
+-- Move1: Got Throwed (Celestial Ring Freeze + Teleport + Heavy Cleave)
 function Time.Move1(ctx)
-	local root = ctx.root
-	if not root then
-		return
-	end
+	local char = ctx.character
+	local r = Core.root(char)
 	local target = ctx.target
-	local behind = ctx.targetCharacter and Core.behind(ctx.targetCharacter, 3) or (target - ctx.direction * 3)
+	if not r then return end
 
-	Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.8, 0)), { color = CYAN, from = 7, to = 2, duration = 0.5 })
-
-	Core.timeline(1.1, {
-		{
-			t = 0.5,
-			run = function()
-				Core.afterimage(ctx.character, { at = root.CFrame, color = CYAN, life = 0.3 })
-			end,
-		},
-		{
-			t = 0.6,
-			run = function()
-				Core.afterimage(ctx.character, { at = CFrame.new((ctx.origin + behind) / 2), color = CYAN, life = 0.3 })
-			end,
-		},
-		{
-			t = 0.7,
-			run = function()
-				Core.afterimage(ctx.character, { at = CFrame.new(behind), color = CYAN, life = 0.3 })
-			end,
-		},
-		{
-			t = 0.75,
-			run = function()
-				Core.tempBeam(ctx.origin, behind, 0.2, { color = TIME, width0 = 0.8, light = 1 })
-			end,
-		},
-		{
-			t = 0.85,
-			run = function()
-				local fist = Core.part(Enum.PartType.Ball, Vector3.one * 1.6, CFrame.new(behind), {
-					color = CYAN, material = Enum.Material.ForceField, transparency = 0.1,
-				})
-				Core.runFor(0.12, function(_, t)
-					fist.CFrame = CFrame.new(behind:Lerp(target, t / 0.12))
-				end, function()
-					fist:Destroy()
-					Core.shockwave(Core.axisCF(target, ctx.direction), { color = BRIGHT, from = 1, to = 12, duration = 0.4 })
-					Core.burst(target, 30, { color = TIME, texture = SPARK, speed = 24, light = 1 })
-				end)
-			end,
-		},
+	-- 1. Celestial Temporal Ring locking the target
+	local targetAnchor = Core.anchor(target + Vector3.new(0, 2, 0))
+	local ring = Core.emitter(Core.attach(targetAnchor), {
+		texture = Core.PinnacleTextures.CelestialRing,
+		color = TIME,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.6, 0.8),
+		size = NumberSequence.new(7),
+		orientation = Enum.ParticleOrientation.FacingCamera,
+		rotSpeed = NumberRange.new(45, 45),
+		zOffset = 14,
 	})
+	ring:Emit(1)
+
+	-- 2. Teleport Streak with Afterimages
+	Core.afterimage(char, { color = CYAN, life = 0.4 })
+	local teleportBeam = Core.tempBeam(r.Position, target - ctx.direction * 3, 0.25, {
+		texture = Core.PinnacleTextures.HelicalBeam,
+		color = TIME,
+		width0 = 3,
+		width1 = 0.5,
+		light = 1,
+	})
+
+	task.delay(0.22, function()
+		-- 3. Devastating Instant Cleave Strike at Target
+		Core.dismantleCleave(Core.lookCF(target, ctx.direction), TIME, 12)
+		Core.groundSlamCrater(target, TIME, 14, { duration = 1.8, rockCount = 18 })
+		Core.cleanupLater({ targetAnchor }, 0.8)
+	end)
 end
 
--- Move2: time injection
+-- Move2: Time Injection (Clock Ring Freeze + Inward Reverse Speedlines + Impact)
 function Time.Move2(ctx)
-	local tr = Core.root(ctx.targetCharacter)
-	local center = tr and tr.Position or ctx.target
-	local feet = center - Vector3.new(0, 2.8, 0)
+	local target = ctx.target
+	local origin = ctx.origin
 
-	local parts = {}
-	local ring = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 7, 7), Core.groundCF(feet), {
-		color = CYAN, material = Enum.Material.Neon, transparency = 0.5,
+	-- 1. 3D InwardShockwave Mesh (`rbxassetid://6220387416`) pulling spacetime inward
+	local inwardPart, mesh = Core.meshPart(Core.Meshes.InwardShockwave, Vector3.one * 14, CFrame.new(target), {
+		color = CYAN,
+		material = Enum.Material.Neon,
+		transparency = 0.25,
+		spin = Vector3.new(0, -10, 0),
 	})
-	table.insert(parts, ring)
-
-	-- clock ticks around the ring
-	for i = 1, 12 do
-		local a = (i - 1) / 12 * math.pi * 2
-		table.insert(parts, Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.6),
-			CFrame.new(feet + Vector3.new(math.cos(a) * 3.5, 0.05, math.sin(a) * 3.5)) * CFrame.Angles(0, math.pi / 2 - a, 0), {
-				color = BRIGHT, material = Enum.Material.Neon, transparency = 0.1,
-			}))
-	end
-
-	-- two clock hands that spin, then freeze
-	local hands = {}
-	for i = 1, 2 do
-		hands[i] = Core.part(Enum.PartType.Block, Vector3.new(0.2, 0.2, 2.4), CFrame.new(feet), {
-			color = BRIGHT, material = Enum.Material.Neon, transparency = 0.1,
-		})
-		table.insert(parts, hands[i])
-	end
-
-	local sparkAnchor = Core.anchor(center)
-	table.insert(parts, sparkAnchor)
-	local sparks = Core.emitter(Core.attach(sparkAnchor), {
-		texture = SPARK, color = TIME, rate = 60, light = 1,
-		lifetime = NumberRange.new(0.4, 0.8), speed = NumberRange.new(2, 6),
-		spread = Vector2.new(180, 180), size = NumberSequence.new(0.4, 0.05),
-	})
-
-	-- symbol streams and overlapping echoes
-	for i = 1, 14 do
-		task.delay(i * 0.04, function()
-			symbol(center)
-		end)
-	end
-	if tr then
-		for i = 1, 4 do
-			task.delay(0.05 * i, function()
-				if tr.Parent then
-					Core.ghost(tr.CFrame * CFrame.new(rng:NextNumber(-1.5, 1.5), 0, rng:NextNumber(-1.5, 1.5)),
-						Vector3.new(2, 5, 1), CYAN, 0.6)
-				end
-			end)
-		end
-	end
-
-	Core.runFor(1.2, function(_, t)
-		for i, h in ipairs(hands) do
-			local th = math.min(t, 0.4) * 12 * i -- spin, then freeze at 0.4s
-			h.CFrame = CFrame.new(feet) * CFrame.Angles(0, th, 0) * CFrame.new(0, 0, -1.2)
-		end
+	Core.runFor(0.5, function(_, t)
+		local scale = 1.0 - (t / 0.5) * 0.8
+		inwardPart.Size = Vector3.one * (14 * scale)
 	end, function()
-		sparks.Enabled = false
-		Core.animeSpikeBurst(feet, {
-			color = CYAN, coreColor = BRIGHT, outlineColor = DEEP,
-			count = 10, radius = 8, minHeight = 8, maxHeight = 16, duration = 0.6,
+		inwardPart:Destroy()
+
+		-- 2. Impact Shatter: Glass Fracture + 3D RoughShockwave Mesh
+		local shockPart, sMesh = Core.meshPart(Core.Meshes.RoughShockwave, Vector3.new(16, 4, 16), Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+			color = GOLD_TIME,
+			material = Enum.Material.Neon,
+			transparency = 0.1,
 		})
-		Core.shockwave(Core.groundCF(feet), { color = BRIGHT, from = 8, to = 1, duration = 0.4 })
-		Core.burst(center, 40, { color = BRIGHT, texture = SPARK, speed = 26, light = 1 })
-		Core.setTransparency(parts, 1)
-		Core.cleanupLater(parts, 0.3)
+		Core.runFor(0.4, function(_, t)
+			shockPart.Transparency = 0.1 + 0.9 * (t / 0.4)
+		end, function()
+			shockPart:Destroy()
+		end)
+
+		Core.burst(target, 25, {
+			texture = Core.PinnacleTextures.GlassShatter,
+			color = TIME,
+			speed = 22,
+			life = 0.6,
+			light = 1,
+		})
+		Core.groundSlamCrater(target, TIME, 16, { duration = 2.0, rockCount = 20 })
 	end)
 end
 
--- Move3: untouchable shield. Returns a handle with :Hit() and :End().
+-- Move3: Untouchable / Chronos Shield (3D FancySphereLight Barrier + Handle)
 function Time.Move3(ctx)
-	local root = ctx.root
-	if not root then
-		return nil
-	end
-	local life = ctx.duration or 4
+	local char = ctx.character
+	local r = Core.root(char)
+	local duration = ctx.duration or 4
+	if not r then return { Hit = function() end, End = function() end } end
 
-	local shield = Core.part(Enum.PartType.Ball, Vector3.one * 7, CFrame.new(root.Position), {
-		color = CYAN, material = Enum.Material.ForceField, transparency = 0.6,
+	local shieldModel = Instance.new("Model")
+	shieldModel.Name = "ChronosShieldVFX"
+	shieldModel.Parent = Core.Folder
+
+	-- 3D Sculpted FancySphereLight Barrier (`rbxassetid://5703288879`)
+	local shieldPart, sMesh = Core.meshPart(Core.Meshes.FancySphereLight, Vector3.one * 8.5, r.CFrame, {
+		color = CYAN,
+		material = Enum.Material.ForceField,
+		transparency = 0.35,
+		parent = shieldModel,
 	})
-	local rings = {}
-	for i = 1, 3 do
-		rings[i] = Core.part(Enum.PartType.Cylinder, Vector3.new(0.12, 8, 8), CFrame.new(root.Position), {
-			color = BRIGHT, material = Enum.Material.Neon, transparency = 0.5,
+
+	-- Orbiting Celestial Clock Ring
+	local ringAnchor = Core.anchor(r.Position)
+	ringAnchor.Parent = shieldModel
+	local att = Core.attach(ringAnchor)
+	local clockRing = Core.emitter(att, {
+		texture = Core.PinnacleTextures.CelestialRing,
+		color = CHRONO,
+		light = 1,
+		rate = 6,
+		lifetime = NumberRange.new(0.5, 0.8),
+		speed = NumberRange.new(0.1, 0.5),
+		size = NumberSequence.new(10),
+		rotSpeed = NumberRange.new(60, 60),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		direction = Enum.NormalId.Top,
+	})
+
+	local isAlive = true
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if not isAlive or not r.Parent then
+			conn:Disconnect()
+			return
+		end
+		shieldPart.CFrame = r.CFrame
+		ringAnchor.CFrame = r.CFrame * CFrame.new(0, -1, 0)
+	end)
+
+	local handle = {}
+
+	function handle:Hit()
+		if not isAlive then return end
+		-- Flash and ripple upon block
+		shieldPart.Color = Color3.fromRGB(255, 255, 255)
+		shieldPart.Transparency = 0.1
+		task.delay(0.1, function()
+			if isAlive and shieldPart.Parent then
+				shieldPart.Color = CYAN
+				shieldPart.Transparency = 0.35
+			end
+		end)
+		Core.shockwave(shieldPart.CFrame, {
+			color = GOLD_TIME,
+			from = 8,
+			to = 16,
+			duration = 0.3,
 		})
 	end
 
-	local flash = 0
-	local finish = Core.runFor(life, function(dt, t)
-		local p = root.Position
-		shield.CFrame = CFrame.new(p)
-		for i, r in ipairs(rings) do
-			r.CFrame = CFrame.new(p) * CFrame.Angles(math.rad(30 * i), t * (1 + i * 0.6), 0) * CFrame.Angles(0, 0, math.rad(90))
-		end
-		if flash > 0 then
-			flash = math.max(flash - dt * 4, 0)
-			shield.Transparency = 0.6 - 0.4 * flash
-		end
-	end, function()
-		shield.Transparency = 1
-		for _, r in ipairs(rings) do
-			r.Transparency = 1
-		end
-		Core.cleanupLater({ shield }, 0.2)
-		Core.cleanupLater(rings, 0.2)
-	end)
-
-	return {
-		Hit = function()
-			flash = 1
-			Core.shockwave(Core.groundCF(root.Position), { color = CYAN, from = 1, to = 8, duration = 0.4 })
-		end,
-		End = function()
-			finish()
-		end,
-	}
-end
-
--- Move4: colossal virtual kill chrono domain (75 studs radius)
-function Time.Move4(ctx)
-	local tr = Core.root(ctx.targetCharacter)
-	local center = tr and tr.Position or ctx.target
-	local ground = center - Vector3.new(0, 2.8, 0)
-	local R = ctx.radius or 75
-	local life = ctx.duration or 3.5
-
-	-- 1. Four massive converging temporal shockwaves (from 75 studs in to center)
-	for i = 1, 4 do
-		task.delay((i - 1) * 0.15, function()
-			Core.shockwave(Core.groundCF(ground + Vector3.new(0, (i - 1) * 0.8, 0)), {
-				color = i % 2 == 0 and BRIGHT or CYAN, from = R, to = 2, duration = 1.2,
-			})
-		end)
+	function handle:End()
+		if not isAlive then return end
+		isAlive = false
+		conn:Disconnect()
+		Core.burst(shieldPart.Position, 25, {
+			texture = Core.PinnacleTextures.GlassShatter,
+			color = TIME,
+			speed = 18,
+			life = 0.45,
+		})
+		shieldModel:Destroy()
 	end
 
-	-- 2. Colossal Chrono Spacetime Domain
-	Core.animeDomain(ground, {
-		radius = R,
-		height = 45,
-		duration = life,
-		fadeOut = 0.8,
-		color = DEEP,
-		accentColor = CYAN,
-		coreColor = BRIGHT,
-		pillarCount = 24,
-		pillarHeight = 35,
+	task.delay(duration, function()
+		if isAlive then handle:End() end
+	end)
+
+	return handle
+end
+
+-- Move4: Virtual Kill / Temporal Rupture (Timeline Fracture + Supernova Release)
+function Time.Move4(ctx)
+	local target = ctx.target or ctx.origin
+
+	-- 1. Glass Fracture Sound & Strobe at Target
+	Core.burst(target, 40, {
+		texture = Core.PinnacleTextures.GlassShatter,
+		color = TIME,
+		speed = 28,
+		life = 0.7,
+		light = 1,
 	})
 
-	Core.timeline(life, {
-		{
-			t = 0.8, -- 3. Temporal distortion bubble
-			run = function()
-				local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 8, CFrame.new(center), {
-					color = CYAN, material = Enum.Material.Glass, transparency = 0.5,
-				})
-				Core.runFor(1.0, function(_, t)
-					local k = t / 1.0
-					bubble.Size = Vector3.one * (8 + 12 * math.sin(k * math.pi))
-					bubble.Transparency = 0.5 + 0.5 * k
-				end, function()
-					bubble:Destroy()
-				end)
-			end,
-		},
-		{
-			t = 1.6, -- 4. Concentrated timeline fracture climax: beam to sky, anime spike burst
-			run = function()
-				Core.tempBeam(center, center + Vector3.new(0, 80, 0), 0.9, {
-					color = TIME, width0 = 6, width1 = 1, light = 1,
-				})
-				Core.animeSpikeBurst(ground, {
-					color = CYAN, coreColor = BRIGHT, outlineColor = DEEP,
-					count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.9,
-				})
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = BRIGHT, from = 2, to = R, duration = 0.6 })
-				Core.burst(center, 70, { color = TIME, texture = SPARK, speed = 35, light = 1 })
-			end,
-		},
+	-- 2. 3D RoughShockwave Electricity Mesh (`rbxassetid://903888897`)
+	local roughPart, rMesh = Core.meshPart(Core.Meshes.RoughShockwave, Vector3.new(24, 6, 24), Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+		color = GOLD_TIME,
+		material = Enum.Material.Neon,
+		transparency = 0.1,
 	})
+	Core.runFor(0.5, function(_, t)
+		roughPart.Transparency = 0.1 + 0.9 * (t / 0.5)
+	end, function()
+		roughPart:Destroy()
+	end)
+
+	-- 3. Supernova Timeline Realignment Release
+	Core.supernovaSphere(target, TIME, 45, {
+		duration = 1.4,
+		coreColor = WHITE,
+	})
+	Core.groundSlamCrater(target, TIME, 22, { duration = 2.5, rockCount = 30 })
 end
 
 return Time

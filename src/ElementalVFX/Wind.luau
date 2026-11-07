@@ -1,365 +1,298 @@
--- Wind.lua — Wind element
---   M1    Compressed Wind: lightning-bolt shaped projectile with compressed-air rings
---   Move1 Airy Vortex: rotating cone of compressed wind thrown forward
---   Move2 The Cyclone of Fury: tall rotating tornado at the target. ctx.radius sets the pull area
---         (default 14). ctx.duration sets how long it lasts (default 5).
---   Move3 Maximum Speed: wind rings around the caster for ctx.duration (default 5), with a trail
---         while moving fast. Speed boost itself is server-side.
---   Move4 Wind: Death Speed: timed sequence (lift, spiral, dive, impact, ride a rock,
---         form the bolt, dash). Debris and rings are temporary. The map is never changed.
+--!strict
+-- Wind.luau — Top-Tier Wind Element VFX
+-- 3D sculpted Tornado and SpinnyThings vortices, -2000 deg/s TornadoSlash,
+-- VelocityPerpendicular wind rings, and aerodynamic supersonic trails.
 
+local RunService = game:GetService("RunService")
 local Core = require(script.Parent.Core)
 
 local WHITE = Color3.fromRGB(255, 255, 255)
-local PCYAN = Color3.fromRGB(180, 240, 255)
-local MINT = Color3.fromRGB(170, 255, 220)
-local WIND = Core.seq({ WHITE, PCYAN, MINT })
-local DUST = Color3.fromRGB(215, 225, 220)
-local ROCK_C = Color3.fromRGB(120, 115, 110)
-local SPARK = Core.Textures.Sparkle
-local SMOKE = Core.Textures.Smoke
-local ROCK = Enum.Material.Rock
+local TEAL = Color3.fromRGB(150, 245, 230)
+local EMERALD = Color3.fromRGB(60, 225, 160)
+local MINT = Color3.fromRGB(180, 255, 220)
+local DUST = Color3.fromRGB(210, 220, 215)
+local WIND = Core.seq({ WHITE, MINT, TEAL, EMERALD })
+local AERO = Core.seq({ WHITE, TEAL })
 
 local Wind = {}
 
--- Lightning bolt: zigzag points along the travel axis (local Z)
-local BOLT_PTS = {
-	Vector3.new(0, 0, -1.8),
-	Vector3.new(0.9, 0, -0.9),
-	Vector3.new(-0.6, 0, 0),
-	Vector3.new(0.8, 0, 0.9),
-	Vector3.new(0, 0, 1.8),
-}
-
--- Places bolt segments so the bolt sits at cf
-function Wind.placeBolt(segs, cf)
-	for i, seg in ipairs(segs) do
-		local a = cf * BOLT_PTS[i]
-		local b = cf * BOLT_PTS[i + 1]
-		local d = b - a
-		seg.Size = Vector3.new(0.3, 0.3, d.Magnitude)
-		seg.CFrame = CFrame.lookAt(a + d / 2, b)
-	end
-end
-
--- Creates the bolt segments at cf and returns them
-local function buildBolt(cf)
-	local segs = {}
-	for i = 1, #BOLT_PTS - 1 do
-		table.insert(segs, Core.part(Enum.PartType.Block, Vector3.new(0.3, 0.3, 1), cf, {
-			color = WHITE, material = Enum.Material.Neon, transparency = 0.05,
-		}))
-	end
-	Wind.placeBolt(segs, cf)
-	return segs
-end
-
--- Travels a bolt from `from` to `to`, leaving compressed-air rings and a trail.
--- Returns the travel time.
-function Wind.dashBolt(from, to, speed)
-	local delta = to - from
-	local dist = delta.Magnitude
-	if dist < 0.5 then
-		return 0
-	end
-	local dir = delta.Unit
-	local dur = math.clamp(dist / (speed or 120), 0.15, 1.5)
-	local segs = buildBolt(Core.lookCF(from, dir))
-
-	local tip = Core.anchor(from)
-	Core.trail(tip, Core.attach(tip, Vector3.new(0.6, 0, 0)), Core.attach(tip, Vector3.new(-0.6, 0, 0)), {
-		color = WIND, lifetime = 0.35,
-	})
-
-	local lastRing = 0
-	Core.runFor(dur, function(_, t)
-		local pos = from + dir * (dist * (t / dur))
-		local cf = Core.lookCF(pos, dir)
-		Wind.placeBolt(segs, cf)
-		tip.CFrame = cf
-		if t - lastRing >= 0.06 then
-			lastRing = t
-			Core.shockwave(Core.axisCF(pos, dir), { color = PCYAN, from = 0.8, to = 3.2, duration = 0.25 })
-		end
-	end, function()
-		Core.setTransparency(segs, 1)
-		Core.cleanupLater(segs, 0.1)
-		Core.cleanupLater({ tip }, 0.4)
-	end)
-	return dur
-end
-
--- Blocks spiral from a to b over `dur` seconds (compressed-air spiral)
-function Wind.spiral(a, b, dur, radius, count, color)
-	local parts = {}
-	for i = 1, count do
-		parts[i] = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.4, 0.9), CFrame.new(a), {
-			color = color, material = Enum.Material.Neon, transparency = 0.2,
-		})
-	end
-	Core.runFor(dur, function(_, t)
-		local k = t / dur
-		local c = a:Lerp(b, k)
-		local r = radius * (1 - k * 0.5)
-		for i, p in ipairs(parts) do
-			local ang = k * math.pi * 8 + i * (math.pi * 2 / count)
-			local pos = c + Vector3.new(math.cos(ang) * r, 0, math.sin(ang) * r)
-			p.CFrame = CFrame.new(pos) * CFrame.Angles(0, -ang, 0)
-		end
-	end, function()
-		Core.setTransparency(parts, 1)
-		Core.cleanupLater(parts, 0.1)
-	end)
-end
-
--- M1: compressed-wind lightning bolt
+-- M1: Gale Cut (0.05s cleave + -2000 deg/s TornadoSlash in VelocityPerpendicular)
 function Wind.M1(ctx)
 	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
-	local from = (hand and hand.Position or ctx.origin) + ctx.direction * 2
-	local dur = Wind.dashBolt(from, ctx.target, 110)
-	task.delay(dur, function()
-		Core.burst(ctx.target, 10, { color = WIND, texture = SPARK, speed = 12, light = 1 })
-	end)
-end
-
--- Move1: rotating cone of compressed wind, thrown forward
-function Wind.Move1(ctx)
+	if not hand then return end
 	local dir = ctx.direction
-	local origin = ctx.origin + dir * 3
-	local target = ctx.target
-	local dur = math.max((target - origin).Magnitude / 50, 0.4)
+	local start = hand.Position + dir * 2.5
+	local cleaveCF = Core.lookCF(start, dir) * CFrame.Angles(0, 0, math.rad(Random.new():NextNumber(-30, 30)))
 
-	local tip = Core.anchor(origin)
-	local dust = Core.emitter(Core.attach(tip), {
-		texture = SMOKE, color = Core.seq(DUST), rate = 25, light = 0,
-		lifetime = NumberRange.new(0.6, 1.0), speed = NumberRange.new(1, 3), size = NumberSequence.new(1, 3),
+	-- 1. Micro-Cleave Instant Slash
+	Core.dismantleCleave(cleaveCF, WIND, 8)
+
+	-- 2. TornadoSlash (-2000 deg/s, VelocityPerpendicular)
+	local anchor = Core.anchor(start)
+	local att = Core.attach(anchor)
+	local slash = Core.emitter(att, {
+		texture = Core.PinnacleTextures.TornadoSlash,
+		color = WIND,
+		light = 0.8,
+		rate = 0,
+		lifetime = NumberRange.new(0.12, 0.22),
+		speed = NumberRange.new(0.1, 0.5),
+		rotSpeed = NumberRange.new(-2000, -2000),
+		size = NumberSequence.new(3, 7),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		direction = Enum.NormalId.Top,
+		zOffset = 14,
 	})
 
-	local LAYERS, PER = 6, 4
-	local parts, bits = { tip }, {}
-	for i = 1, LAYERS do
-		for k = 1, PER do
-			local p = Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.6, 0.6), CFrame.new(origin), {
-				color = PCYAN, material = Enum.Material.Neon, transparency = 0.2,
-			})
-			table.insert(bits, { part = p, layer = i, idx = k })
-			table.insert(parts, p)
-		end
-	end
+	-- Aerodynamic wind ring
+	local ring = Core.emitter(att, {
+		texture = Core.PinnacleTextures.WindRingPerp,
+		color = AERO,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.15, 0.25),
+		speed = NumberRange.new(0.1, 0.5),
+		rotSpeed = NumberRange.new(-50, 50),
+		size = NumberSequence.new(2, 8),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		zOffset = 8,
+	})
 
-	local spin = 0
-	Core.runFor(dur, function(dt, t)
-		spin += dt
-		local base = origin:Lerp(target, math.min(t / dur, 1))
-		tip.CFrame = CFrame.new(base)
-		for _, b in ipairs(bits) do
-			-- narrow at the front, wider behind
-			local r = 0.5 + b.layer * 0.5
-			local a = spin * (4 + b.layer * 0.6) + b.idx * (math.pi / 2)
-			local F = Core.axisCF(base - dir * (b.layer * 0.6), dir)
-			b.part.CFrame = F * CFrame.new(0, math.cos(a) * r, math.sin(a) * r)
-		end
-	end, function()
-		dust.Enabled = false
-		Core.animeSpikeBurst(target, {
-			color = MINT, coreColor = WHITE, outlineColor = Color3.fromRGB(15, 30, 25),
-			count = 8, radius = 7, minHeight = 7, maxHeight = 14, duration = 0.55,
+	slash:Emit(1)
+	ring:Emit(1)
+	Core.cleanupLater({ anchor }, 0.5)
+end
+
+-- Move1: Airy Vortex (Triple 3D Curved Slash Meshes + Trailing Wind Rings)
+function Wind.Move1(ctx)
+	local origin = ctx.origin + ctx.direction * 3
+	local target = ctx.target
+	local dir = (target - origin).Unit
+	local dist = (target - origin).Magnitude
+	local dur = math.max(dist / 65, 0.25)
+
+	-- Spawn 3 Curved 3D SlashEffect Meshes (`rbxassetid://4572036304`)
+	local slashes = {}
+	for i = 1, 3 do
+		local a = (i - 1) * (math.pi * 2 / 3)
+		local offset = Vector3.new(math.cos(a) * 1.5, math.sin(a) * 1.5, 0)
+		local slashPart, m = Core.meshPart(Core.Meshes.SlashEffect, Vector3.new(12, 0.6, 5), Core.lookCF(origin + offset, dir) * CFrame.Angles(0, math.rad(90), a), {
+			color = TEAL,
+			material = Enum.Material.Neon,
+			transparency = 0.15,
 		})
-		Core.burst(target, 20, { texture = SMOKE, color = Core.seq(DUST), speed = 10, light = 0 })
-		Core.setTransparency(parts, 1)
-		Core.cleanupLater(parts, 0.4)
+		table.insert(slashes, slashPart)
+	end
+
+	-- Trailing -1000 deg/s wind vortex
+	local anchor = Core.anchor(origin)
+	local att = Core.attach(anchor)
+	local vortexEmitter = Core.emitter(att, {
+		texture = Core.PinnacleTextures.TornadoSlash,
+		color = WIND,
+		rate = 40,
+		lifetime = NumberRange.new(0.2, 0.35),
+		speed = NumberRange.new(2, 6),
+		rotSpeed = NumberRange.new(-1000, -1000),
+		size = NumberSequence.new(3, 7),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		direction = Enum.NormalId.Top,
+	})
+
+	Core.runFor(dur, function(_, t)
+		local k = math.clamp(t / dur, 0, 1)
+		local curPos = origin:Lerp(target, k)
+		anchor.Position = curPos
+		for i, s in ipairs(slashes) do
+			local a = (i - 1) * (math.pi * 2 / 3) + t * 12
+			local offset = Vector3.new(math.cos(a) * 2.2, math.sin(a) * 2.2, 0)
+			s.CFrame = Core.lookCF(curPos + offset, dir) * CFrame.Angles(0, math.rad(90), a)
+		end
+	end, function()
+		vortexEmitter.Enabled = false
+		Core.destroyAll(slashes)
+		anchor:Destroy()
+
+		-- Impact: Aerodynamic Shockwave + Ground Dust
+		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+			color = TEAL,
+			from = 2,
+			to = 26,
+			duration = 0.5,
+		})
+		Core.burst(target, 25, {
+			texture = Core.Textures.AnimeSmoke,
+			color = ColorSequence.new(DUST),
+			speed = 20,
+			life = 0.6,
+		})
 	end)
 end
 
--- Move2: tall cyclone at the target (50 studs radius). Pulls particles inward every 0.8s.
+-- Move2: The Cyclone of Fury (3D Sculpted Tornado Mesh + SpinnyThings Vortex)
 function Wind.Move2(ctx)
-	local ground = Vector3.new(ctx.target.X, ctx.target.Y - 3, ctx.target.Z)
-	local life = ctx.duration or 5
-	local R = ctx.radius or 50
-	local H, LAYERS, PER = 35, 14, 6
-
-	local boundary = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, R * 2, R * 2), Core.groundCF(ground + Vector3.new(0, 0.1, 0)), {
-		color = MINT, material = Enum.Material.Neon, transparency = 0.7,
-	})
-	local anchor = Core.anchor(ground + Vector3.new(0, 1, 0))
-	local leaves = Core.emitter(Core.attach(anchor), {
-		texture = SPARK, color = Core.seq(MINT), rate = 25, light = 0.5,
-		lifetime = NumberRange.new(1.2, 1.8), speed = NumberRange.new(4, 8),
-		spread = Vector2.new(180, 180), direction = Enum.NormalId.Top,
-	})
-
-	local layers, parts = {}, { boundary, anchor }
-	for i = 1, LAYERS do
-		for k = 1, PER do
-			local p = Core.part(Enum.PartType.Block, Vector3.new(1.4, 0.3, 0.5), CFrame.new(ground), {
-				color = WHITE, material = Enum.Material.Glass, transparency = 0.25,
-			})
-			table.insert(layers, { part = p, layer = i, idx = k })
-			table.insert(parts, p)
-		end
-	end
-
-	local spin, lastPull = 0, 0
-	Core.runFor(life, function(dt, t)
-		spin += dt
-		if t - lastPull >= 0.8 then
-			lastPull = t
-			Core.converge(ground + Vector3.new(0, 3, 0), R, 14, 0.8, MINT)
-		end
-		for _, b in ipairs(layers) do
-			local y = (b.layer - 1) * (H / LAYERS)
-			local r = 2 + (b.layer - 1) * 0.6
-			local a = spin * (10 - b.layer * 0.4) + b.idx * (math.pi * 2 / PER)
-			local p = ground + Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
-			b.part.CFrame = CFrame.new(p) * CFrame.Angles(0, -(a + math.pi / 2), 0)
-		end
-	end, function()
-		leaves.Enabled = false
-		Core.setTransparency(parts, 1)
-		Core.cleanupLater(parts, 0.5)
-	end)
-end
-
--- Move3: wind rings around the caster, with a short trail while moving fast
-function Wind.Move3(ctx)
-	local root = ctx.root
-	if not root then
-		return
-	end
-	local life = ctx.duration or 5
-	local heights = { -2.4, 0, 1.8 }
-	local rings = {}
-	for j = 1, #heights do
-		for i = 1, 6 do
-			table.insert(rings, { part = Core.part(Enum.PartType.Block, Vector3.new(0.5, 0.4, 0.9), CFrame.new(root.Position), {
-				color = PCYAN, material = Enum.Material.Neon, transparency = 0.2,
-			}), layer = j, idx = i })
-		end
-	end
-
-	local spin, lastPuff = 0, 0
-	Core.runFor(life, function(dt, t)
-		spin += dt
-		local base = root.Position
-		for _, r in ipairs(rings) do
-			local a = spin * (8 + r.layer * 2) + r.idx * (math.pi / 3)
-			local pos = base + Vector3.new(math.cos(a) * 2.2, heights[r.layer], math.sin(a) * 2.2)
-			r.part.CFrame = CFrame.new(pos) * CFrame.Angles(0, -(a + math.pi / 2), 0)
-		end
-		-- short wind trail while moving fast
-		if root.Parent and root.AssemblyLinearVelocity.Magnitude > 10 and t - lastPuff >= 0.08 then
-			lastPuff = t
-			Core.ghost(CFrame.new(base - Vector3.new(0, 1, 0)), Vector3.one * 1.2, PCYAN, 0.35, Enum.PartType.Ball)
-		end
-	end, function()
-		local parts = {}
-		for _, r in ipairs(rings) do
-			table.insert(parts, r.part)
-		end
-		Core.setTransparency(parts, 1)
-		Core.cleanupLater(parts, 0.1)
-	end)
-end
-
--- Move4: death speed sequence. Times are seconds from the start.
-function Wind.Move4(ctx)
-	local root = ctx.root
 	local target = ctx.target
-	local ground = target - Vector3.new(0, 3, 0)
-	local top = ground + Vector3.new(0, 10, 0)
-	local junk = {}
-	local boltFrom = nil
-	local boltSegs = {}
+	local radius = ctx.radius or 14
+	local duration = ctx.duration or 5
 
-	Core.timeline(4.4, {
-		{
-			t = 0.0, -- 1. lift the target: spiral rising from the ground
-			run = function()
-				Wind.spiral(ground, top, 1.0, 3, 10, PCYAN)
-			end,
-		},
-		{
-			t = 1.1, -- 2. rise with them: second spiral above
-			run = function()
-				Wind.spiral(top, top + Vector3.new(0, 4, 0), 0.6, 4, 8, WHITE)
-			end,
-		},
-		{
-			t = 1.8, -- 3. dive: streaks and a downward spiral
-			run = function()
-				for i = 1, 6 do
-					local a = i * math.pi / 3
-					local off = Vector3.new(math.cos(a) * 3, 0, math.sin(a) * 3)
-					Core.tempBeam(ground + Vector3.new(0, 14, 0) + off, ground + off, 0.4, {
-						color = PCYAN, width0 = 0.4, width1 = 0.1, light = 1,
-					})
-				end
-				Wind.spiral(top, ground, 0.5, 4, 10, WHITE)
-			end,
-		},
-		{
-			t = 2.2, -- 4. impact: rings, dust, and rock debris (temporary, nothing is changed)
-			run = function()
-				Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = 22, duration = 0.6 })
-				Core.burst(ground, 40, { texture = SMOKE, color = Core.seq(DUST), speed = 18, life = 0.8, size = NumberSequence.new(1.5, 4) })
-				Core.fragments(ground, 16, { color = ROCK_C, material = ROCK, speed = 26, life = 1.0 })
-			end,
-		},
-		{
-			t = 2.5, -- 5. ride a rock that follows the caster for a moment
-			run = function()
-				local rock = Core.part(Enum.PartType.Block, Vector3.new(5, 1.5, 5), CFrame.new(ground), {
-					color = ROCK_C, material = ROCK, transparency = 0,
-				})
-				table.insert(junk, rock)
-				Core.runFor(1.0, function()
-					if root and root.Parent then
-						rock.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.5, 0))
-					end
-				end, function()
-					rock:Destroy()
-				end)
-			end,
-		},
-		{
-			t = 3.5, -- 6. form the lightning bolt in front of the caster
-			run = function()
-				boltFrom = (root and root.Position or ctx.origin) + ctx.direction * 4
-				boltSegs = buildBolt(Core.lookCF(boltFrom, ctx.direction))
-			end,
-		},
-		{
-			t = 3.9, -- 7. dash toward the target, then colossal tempest domain impact
-			run = function()
-				Core.destroyAll(boltSegs)
-				local dur = Wind.dashBolt(boltFrom, target, 150)
-				local R = ctx.radius or 70
-				task.delay(dur, function()
-					Core.animeDomain(ground, {
-						radius = R,
-						height = 45,
-						duration = 3.5,
-						fadeOut = 0.8,
-						color = MINT,
-						accentColor = PCYAN,
-						coreColor = WHITE,
-						pillarCount = 24,
-						pillarHeight = 35,
-					})
-					Core.animeSpikeBurst(target, {
-						color = MINT, coreColor = WHITE, outlineColor = Color3.fromRGB(15, 30, 25),
-						count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.85,
-					})
-					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.2, 0)), { color = WHITE, from = 2, to = R, duration = 0.6 })
-					Core.shockwave(Core.groundCF(ground + Vector3.new(0, 0.3, 0)), { color = PCYAN, from = 1, to = 20, duration = 0.4 })
-					Core.burst(target, 70, { texture = SMOKE, color = Core.seq(DUST), speed = 30, life = 0.6, light = 0.5 })
-					Core.burst(target, 40, { color = WIND, texture = SPARK, speed = 36, light = 1 })
-					Core.fragments(target, 18, { color = ROCK_C, material = ROCK, speed = 34 })
-				end)
-			end,
-		},
-	}, function()
-		Core.cleanupLater(junk, 0.2)
+	local cycloneModel = Instance.new("Model")
+	cycloneModel.Name = "CycloneOfFuryVFX"
+	cycloneModel.Parent = Core.Folder
+
+	-- 1. 3D Sculpted Tornado Mesh (`rbxassetid://5705014362`)
+	local tornadoPart, tMesh = Core.meshPart(Core.Meshes.Tornado, Vector3.new(radius * 1.5, 32, radius * 1.5), CFrame.new(target + Vector3.new(0, 16, 0)), {
+		color = TEAL,
+		material = Enum.Material.Neon,
+		transparency = 0.35,
+		spin = Vector3.new(0, -12, 0),
+		parent = cycloneModel,
+	})
+
+	-- 2. 3D Sculpted SpinnyThings Mesh (`rbxassetid://6133078795`) at base
+	local baseVortex, bMesh = Core.meshPart(Core.Meshes.SpinnyThings, Vector3.new(radius * 1.8, 2, radius * 1.8), Core.groundCF(target + Vector3.new(0, 0.5, 0)), {
+		color = MINT,
+		material = Enum.Material.Neon,
+		transparency = 0.2,
+		spin = Vector3.new(0, 0, -20),
+		parent = cycloneModel,
+	})
+
+	-- 3. Thick Dust Column (AnimeSmoke Grid8x8)
+	local att = Core.attach(baseVortex)
+	local dustColumn = Core.emitter(att, {
+		texture = Core.Textures.AnimeSmoke,
+		color = ColorSequence.new(DUST),
+		rate = 35,
+		lifetime = NumberRange.new(1.0, 1.8),
+		speed = NumberRange.new(20, 35),
+		spread = Vector2.new(15, 15),
+		direction = Enum.NormalId.Top,
+		size = NumberSequence.new(radius * 0.4, radius * 1.5),
+		flipbookLayout = Enum.ParticleFlipbookLayout.Grid8x8,
+		flipbookMode = Enum.ParticleFlipbookMode.Loop,
+		flipbookFramerate = NumberRange.new(24, 24),
+		zOffset = 6,
+	})
+
+	-- 4. Rotating Debris Rings in VelocityPerpendicular
+	local ringEmitter = Core.emitter(att, {
+		texture = Core.PinnacleTextures.TornadoSlash,
+		color = WIND,
+		rate = 25,
+		lifetime = NumberRange.new(0.3, 0.5),
+		speed = NumberRange.new(1, 4),
+		rotSpeed = NumberRange.new(-1200, -1200),
+		size = NumberSequence.new(radius * 0.8, radius * 1.6),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		direction = Enum.NormalId.Top,
+		zOffset = 10,
+	})
+
+	Core.runFor(duration, function(_, t)
+		if t >= duration - 1.0 then
+			local k = (t - (duration - 1.0)) / 1.0
+			tornadoPart.Transparency = 0.35 + 0.65 * k
+			baseVortex.Transparency = 0.2 + 0.8 * k
+			dustColumn.Enabled = false
+			ringEmitter.Enabled = false
+		end
+	end, function()
+		cycloneModel:Destroy()
+	end)
+end
+
+-- Move3: Maximum Speed / Typhoon Rush (3D Vento2 Body Drill + Sonic Boom Rings)
+function Wind.Move3(ctx)
+	local char = ctx.character
+	local r = Core.root(char)
+	if not r then return end
+	local duration = ctx.duration or 5
+
+	-- 3D Sculpted Vento2 Mesh (`rbxassetid://6063631009`) enveloping player
+	local drillPart, mesh = Core.meshPart(Core.Meshes.Vento2, Vector3.new(6, 6, 8), r.CFrame, {
+		color = TEAL,
+		material = Enum.Material.Neon,
+		transparency = 0.4,
+		spin = Vector3.new(0, 0, -24),
+	})
+
+	local att = Core.attach(drillPart)
+	local speedRing = Core.emitter(att, {
+		texture = Core.PinnacleTextures.WindRingPerp,
+		color = AERO,
+		rate = 25,
+		lifetime = NumberRange.new(0.2, 0.35),
+		speed = NumberRange.new(2, 6),
+		rotSpeed = NumberRange.new(-60, 60),
+		size = NumberSequence.new(3, 7),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		zOffset = 5,
+	})
+
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if not drillPart.Parent or not r.Parent then
+			conn:Disconnect()
+			return
+		end
+		drillPart.CFrame = r.CFrame
+	end)
+
+	Core.runFor(duration, function(_, t)
+		if t >= duration - 0.8 then
+			local k = (t - (duration - 0.8)) / 0.8
+			drillPart.Transparency = 0.4 + 0.6 * k
+			speedRing.Enabled = false
+		end
+	end, function()
+		conn:Disconnect()
+		drillPart:Destroy()
+	end)
+end
+
+-- Move4: Wind: Death Speed (Supersonic Lightning Dash + Shockwave release)
+function Wind.Move4(ctx)
+	local char = ctx.character
+	local r = Core.root(char)
+	if not r then return end
+	local target = ctx.target
+	local origin = r.Position
+
+	-- 1. Pre-dash suction vortex
+	Core.converge(origin, 10, 25, 0.4, TEAL)
+	Core.shockwave(Core.groundCF(origin + Vector3.new(0, 0.2, 0)), {
+		color = TEAL,
+		from = 1,
+		to = 16,
+		duration = 0.4,
+	})
+
+	task.delay(0.35, function()
+		-- 2. Supersonic Teleport Streak
+		Core.afterimage(char, { color = TEAL, life = 0.4 })
+		Core.tempBeam(origin, target, 0.25, {
+			texture = Core.PinnacleTextures.HelicalBeam,
+			color = WIND,
+			width0 = 4,
+			width1 = 1,
+			light = 1,
+		})
+
+		-- 3. Arrival: 3D LightWind Mesh Impact (`rbxassetid://4681227436`)
+		local windPart, m = Core.meshPart(Core.Meshes.LightWind, Vector3.one * 12, Core.lookCF(target, ctx.direction), {
+			color = MINT,
+			material = Enum.Material.Neon,
+			transparency = 0.15,
+		})
+		Core.runFor(0.4, function(_, t)
+			windPart.Transparency = 0.15 + 0.85 * (t / 0.4)
+		end, function()
+			windPart:Destroy()
+		end)
+
+		-- 4. Micro-Cleaves & Sonic Blast
+		Core.dismantleCleave(Core.lookCF(target, ctx.direction), WIND, 14)
+		Core.groundSlamCrater(target, WIND, 18, { duration = 2.0, rockCount = 22 })
 	end)
 end
 

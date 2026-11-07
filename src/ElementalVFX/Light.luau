@@ -1,268 +1,228 @@
--- Light.lua — Light element
---   M1    Dim Light Ray: narrow controlled ray
---   Move1 Amplified Light: brighter, wider ray with a glowing core
---   Move2 Mirrors of Judgement: five mirrors, a ray bouncing between them, then a luminous slam
---   Move3 Blinding Attack: small flash, short ray, and a soft glow on the target's head for 2 seconds
---         (no screen overlay, so it stays fair and non-disruptive)
---   Move4 Divine Light Amplification: 1.2s charge, then a large projectile with layered rays
+--!strict
+-- Light.luau — Top-Tier Light Element VFX
+-- Ultimate helical beam laser cannon, 3D prism mirrors with Grid8x8 lightning ricochets,
+-- instant blinding muzzle flashes, and supernova amplification.
 
 local Core = require(script.Parent.Core)
 
-local LAV = Color3.fromRGB(200, 162, 240) -- #C8A2F0
-local BRIGHT = Color3.fromRGB(233, 216, 255) -- #E9D8FF
-local VIOLET = Color3.fromRGB(139, 91, 214) -- #8B5BD6
+local LAV = Color3.fromRGB(200, 162, 240)
+local BRIGHT = Color3.fromRGB(240, 230, 255)
+local VIOLET = Color3.fromRGB(145, 95, 225)
+local GOLD_LIGHT = Color3.fromRGB(255, 235, 140)
 local WHITE = Color3.fromRGB(255, 255, 255)
-local LIGHT = Core.seq({ LAV, BRIGHT, VIOLET })
-local SPARK = Core.Textures.Sparkle
+local LIGHT = Core.seq({ WHITE, BRIGHT, LAV, VIOLET })
+local SOLAR = Core.seq({ WHITE, GOLD_LIGHT, BRIGHT })
 
 local Light = {}
 
--- A glowing ray that travels from `from` to `to`. Returns its travel time.
--- o: color, width, length, speed, transparency, rate
-local function ray(from, to, o)
-	o = o or {}
-	local delta = to - from
-	local dist = delta.Magnitude
-	if dist < 0.1 then
-		return 0
-	end
-	local dir = delta.Unit
-	local dur = math.clamp(dist / (o.speed or 120), 0.12, 1)
-	local w = o.width or 0.4
-	local body = Core.part(Enum.PartType.Cylinder, Vector3.new(o.length or 6, w, w), Core.axisCF(from, dir), {
-		color = o.color or LAV, material = Enum.Material.Neon, transparency = o.transparency or 0.1,
-	})
-	local glitter = Core.emitter(Core.attach(body), {
-		texture = SPARK, color = LIGHT, rate = o.rate or 40, light = 1,
-		lifetime = NumberRange.new(0.2, 0.4), speed = NumberRange.new(0.5, 2), size = NumberSequence.new(0.4, 0.05),
-	})
-	Core.runFor(dur, function(_, t)
-		local pos = from + dir * (dist * (t / dur))
-		body.CFrame = Core.axisCF(pos, dir)
-	end, function()
-		glitter.Enabled = false
-		body.Transparency = 1
-		Core.cleanupLater({ body }, 0.5)
-	end)
-	return dur
-end
-
--- Straight radiating spoke that grows out from a centre and fades
-local function spoke(center, dir, len, color)
-	local cyl = Core.part(Enum.PartType.Cylinder, Vector3.new(1, 0.4, 0.4), Core.axisCF(center, dir), {
-		color = color, material = Enum.Material.Neon, transparency = 0.1,
-	})
-	Core.runFor(0.5, function(_, t)
-		local k = Core.smooth(t / 0.5)
-		local L = math.max(len * k, 0.1)
-		local w = 0.4 * (1 - k * 0.7)
-		cyl.Size = Vector3.new(L, w, w)
-		cyl.CFrame = Core.axisCF(center + dir * (L / 2), dir)
-		cyl.Transparency = 0.1 + 0.9 * k
-	end, function()
-		cyl:Destroy()
-	end)
-end
-
-local function handOrOrigin(ctx)
-	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
-	return hand and hand.Position or ctx.origin
-end
-
--- M1: dim ray
+-- M1: Instant Strobe Needle Ray + Muzzle Flash
 function Light.M1(ctx)
-	local from = handOrOrigin(ctx)
-	local dur = ray(from, ctx.target, { color = LAV, width = 0.4, length = 6, speed = 120 })
-	task.delay(dur, function()
-		Core.burst(ctx.target, 8, { color = LIGHT, texture = SPARK, speed = 8, light = 1 })
-	end)
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	if not hand then return end
+	local start = hand.Position
+	local dir = ctx.direction
+	local target = ctx.target or (start + dir * 35)
+
+	-- Concentric Muzzle Flash (`rbxassetid://10382927269`)
+	local muzzleAnchor = Core.anchor(start)
+	local muzzleAtt = Core.attach(muzzleAnchor)
+	local flash = Core.emitter(muzzleAtt, {
+		texture = Core.PinnacleTextures.MuzzleFlash,
+		color = LIGHT,
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.1, 0.18),
+		speed = NumberRange.new(0.5, 2),
+		size = NumberSequence.new(5, 0),
+		zOffset = 18,
+	})
+	local lines = Core.emitter(muzzleAtt, {
+		texture = Core.PinnacleTextures.MuzzleLines,
+		color = ColorSequence.new(WHITE),
+		light = 1,
+		rate = 0,
+		lifetime = NumberRange.new(0.1, 0.15),
+		speed = NumberRange.new(5, 12),
+		spread = Vector2.new(180, 180),
+		size = NumberSequence.new(4, 0),
+		zOffset = 19,
+	})
+	flash:Emit(2)
+	lines:Emit(4)
+
+	-- Instant Strobe Beam
+	Core.tempBeam(start, target, 0.2, {
+		texture = Core.PinnacleTextures.HelicalBeam,
+		color = LIGHT,
+		width0 = 1.8,
+		width1 = 0.8,
+		light = 1,
+	})
+
+	-- Target Impact Glint
+	Core.burst(target, 12, {
+		texture = Core.PinnacleTextures.PopStar,
+		color = LIGHT,
+		speed = 18,
+		life = 0.3,
+		light = 1,
+	})
+
+	Core.cleanupLater({ muzzleAnchor }, 0.4)
 end
 
--- Move1: amplified ray. Outer glow and a bright core travel together.
+-- Move1: Solar Beam (Helical Multi-Beam Laser Cannon Engine)
 function Light.Move1(ctx)
-	local from = handOrOrigin(ctx)
-	local dur = ray(from, ctx.target, { color = LAV, width = 1.6, length = 8, speed = 90, transparency = 0.5, rate = 80 })
-	ray(from, ctx.target, { color = BRIGHT, width = 0.6, length = 8, speed = 90, transparency = 0.05 })
-	task.delay(dur, function()
-		Core.animeSpikeBurst(ctx.target, {
-			color = LAV, coreColor = BRIGHT, outlineColor = VIOLET,
-			count = 8, radius = 6, minHeight = 7, maxHeight = 14, duration = 0.5,
+	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" }) or Core.root(ctx.character)
+	local start = hand and hand.Position or ctx.origin
+	local target = ctx.target or (start + ctx.direction * 55)
+
+	-- Execute the Pinnacle Laser Cannon Engine (Cylinder mesh + 14 wrapped helical beams)
+	Core.meshLaserCannon(start, target, SOLAR, {
+		coreColor = WHITE,
+		width = 5.5,
+		duration = 0.75,
+		numHelical = 10,
+	})
+
+	-- Ground Scorch and Shockwave on Impact
+	task.delay(0.1, function()
+		Core.groundSlamCrater(target, SOLAR, 14, { duration = 1.8, rockCount = 14 })
+		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+			color = GOLD_LIGHT,
+			from = 2,
+			to = 24,
+			duration = 0.5,
 		})
-		Core.burst(ctx.target, 30, { color = LIGHT, texture = SPARK, speed = 22, light = 1 })
-		Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 12, duration = 0.4 })
 	end)
 end
 
--- Move2: five mirrors around the target; a ray bounces between them, then slams the target
+-- Move2: Mirrors of Judgement (3D Prism Star Meshes + Grid8x8 Lightning Ricochets)
 function Light.Move2(ctx)
-	local center = ctx.target + Vector3.new(0, 2, 0)
-	local N, R = 5, 24
-	local mirrors, mirrorPos = {}, {}
+	local target = ctx.target or (ctx.origin + ctx.direction * 25)
+	local numMirrors = 5
+	local R = 18
+	local pts = Core.circle(target, R, numMirrors, 4)
+	local mirrorParts = {}
 
-	for i = 1, N do
-		local a = (i - 1) / N * math.pi * 2
-		local pos = center + Vector3.new(math.cos(a) * R, 0, math.sin(a) * R)
-		mirrorPos[i] = pos
-		local toCenter = (center - pos).Unit
-		table.insert(mirrors, Core.part(Enum.PartType.Block, Vector3.new(6, 8, 0.4), Core.lookCF(pos, toCenter), {
-			color = BRIGHT, material = Enum.Material.Glass, transparency = 0.25, reflectance = 0.8,
-		}))
-	end
-
-	-- bounce order around the ring, then the target
-	local order = { 1, 3, 5, 2, 4 }
-	local pts = { ctx.origin + Vector3.new(0, 2, 0) }
-	for _, idx in ipairs(order) do
-		table.insert(pts, mirrorPos[idx])
-	end
-	table.insert(pts, center)
-
-	local segs = {}
-	local events = {}
-	for i = 1, #pts - 1 do
-		local p0, p1 = pts[i], pts[i + 1]
-		table.insert(events, {
-			t = 0.2 + (i - 1) * 0.2,
-			run = function()
-				local d = p1 - p0
-				local seg = Core.part(Enum.PartType.Cylinder, Vector3.new(d.Magnitude, 0.6, 0.6), Core.axisCF(p0 + d / 2, d.Unit), {
-					color = BRIGHT, material = Enum.Material.Neon, transparency = 0.05,
-				})
-				table.insert(segs, seg)
-				Core.burst(p1, 8, { color = LIGHT, texture = SPARK, speed = 8, light = 1 })
-			end,
+	-- Spawn 3D Sculpted Star3D Prism Mirrors (`rbxassetid://4886514859`)
+	for i, pt in ipairs(pts) do
+		local cf = Core.lookCF(pt, target - pt)
+		local mirror, m = Core.meshPart(Core.Meshes.Star3D, Vector3.one * 4.5, cf, {
+			color = BRIGHT,
+			material = Enum.Material.Neon,
+			transparency = 0.1,
+			spin = Vector3.new(3, 6, 3),
 		})
+		table.insert(mirrorParts, mirror)
 	end
 
-	local slamT = 0.2 + (#pts - 1) * 0.2
-	table.insert(events, {
-		t = slamT,
-		run = function()
-			Core.animeSpikeBurst(ctx.target, {
-				color = LAV, coreColor = BRIGHT, outlineColor = VIOLET,
-				count = 10, radius = 9, minHeight = 9, maxHeight = 18, duration = 0.65,
-			})
-			Core.burst(center, 60, { color = BRIGHT, texture = SPARK, speed = 30, light = 1 })
-			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 2, 0)), { color = LAV, from = 1, to = 22, duration = 0.5 })
-			Core.shockwave(Core.groundCF(ctx.target - Vector3.new(0, 1.8, 0)), { color = VIOLET, from = 1, to = 14, duration = 0.35 })
-		end,
-	})
+	-- Ricochet Grid8x8 Hand-Drawn Lightning Bolts between mirrors
+	for i = 1, numMirrors do
+		task.delay((i - 1) * 0.12, function()
+			local p0 = pts[i]
+			local p1 = pts[(i % numMirrors) + 1]
+			Core.animatedLightning(p0, p1, SOLAR, { width = 3.0, boltCount = 3 })
+			Core.burst(p0, 10, { texture = Core.PinnacleTextures.PopStar, color = SOLAR, speed = 15, life = 0.3 })
+		end)
+	end
 
-	Core.timeline(slamT + 0.8, events, function()
-		Core.setTransparency(segs, 1)
-		Core.cleanupLater(segs, 0.2)
-		Core.cleanupLater(mirrors, 0.2)
+	-- Luminous Slam Convergence at Target
+	task.delay(numMirrors * 0.12 + 0.1, function()
+		for _, pt in ipairs(pts) do
+			Core.animatedLightning(pt, target, SOLAR, { width = 4.0, boltCount = 2 })
+		end
+		Core.supernovaSphere(target, SOLAR, 28, { duration = 1.0 })
+		Core.groundSlamCrater(target, SOLAR, 16, { duration = 2.0, rockCount = 20 })
+		task.delay(0.6, function()
+			Core.destroyAll(mirrorParts)
+		end)
 	end)
 end
 
--- Move3: blinding attack
+-- Move3: Flash Step / Blinding Attack (3D Flash Mesh Snap + Speedline Implosion)
 function Light.Move3(ctx)
-	local from = handOrOrigin(ctx)
-	local head = ctx.targetCharacter and ctx.targetCharacter:FindFirstChild("Head")
-	local hitPos = head and head.Position or (ctx.target + Vector3.new(0, 2, 0))
-	local BLIND = 2
+	local char = ctx.character
+	local r = Core.root(char)
+	if not r then return end
+	local origin = r.Position
+	local target = ctx.target
 
-	local dur = ray(from, hitPos, { color = BRIGHT, width = 0.5, length = 7, speed = 150 })
-	task.delay(dur, function()
-		-- small controlled flash at the target
-		local flash = Core.part(Enum.PartType.Ball, Vector3.one * 0.5, CFrame.new(hitPos), {
-			color = WHITE, material = Enum.Material.Neon, transparency = 0.1,
-		})
-		Core.runFor(0.25, function(_, t)
-			local k = t / 0.25
-			flash.Size = Vector3.one * (0.5 + 3 * k)
-			flash.Transparency = 0.1 + 0.9 * k
-		end, function()
-			flash:Destroy()
-		end)
+	-- 1. Origin Blinding Flash Mesh (`rbxassetid://2620058357`)
+	local flashPart, fMesh = Core.meshPart(Core.Meshes.Flash, Vector3.one * 8, CFrame.new(origin), {
+		color = WHITE,
+		material = Enum.Material.Neon,
+		transparency = 0.05,
+	})
+	Core.runFor(0.25, function(_, t)
+		flashPart.Transparency = 0.05 + 0.95 * (t / 0.25)
+	end, function()
+		flashPart:Destroy()
+	end)
 
-		-- blind: soft glow that follows the head for 2 seconds
-		local glow = Core.part(Enum.PartType.Ball, Vector3.one * 2.6, CFrame.new(hitPos), {
-			color = BRIGHT, material = Enum.Material.Neon, transparency = 0.9,
+	-- Afterimage & Strobe streak
+	Core.afterimage(char, { color = WHITE, life = 0.35 })
+	Core.tempBeam(origin, target, 0.2, {
+		texture = Core.PinnacleTextures.HelicalBeam,
+		color = LIGHT,
+		width0 = 3.5,
+		width1 = 0.5,
+	})
+
+	-- 2. Reappearance Shockwave Disc at Target (`CircleShockwave` mesh)
+	task.delay(0.12, function()
+		Core.shockwave(Core.groundCF(target + Vector3.new(0, 0.2, 0)), {
+			color = WHITE,
+			from = 2,
+			to = 20,
+			duration = 0.45,
+			meshId = Core.Meshes.CircleShockwave,
 		})
-		local sparks = Core.emitter(Core.attach(glow), {
-			texture = SPARK, color = LIGHT, rate = 12, light = 0.8,
-			lifetime = NumberRange.new(0.4, 0.8), speed = NumberRange.new(0.5, 1.5), size = NumberSequence.new(0.3, 0.05),
+		Core.burst(target, 25, {
+			texture = Core.PinnacleTextures.PopStar,
+			color = SOLAR,
+			speed = 25,
+			life = 0.4,
+			light = 1,
 		})
-		Core.runFor(BLIND, function(_, t)
-			local p = (head and head.Parent) and head.Position or hitPos
-			glow.CFrame = CFrame.new(p)
-			local k = math.sin(math.min(t / BLIND, 1) * math.pi)
-			glow.Transparency = 0.95 - 0.8 * k
-		end, function()
-			sparks.Enabled = false
-			Core.cleanupLater({ glow }, 1)
-		end)
 	end)
 end
 
--- Move4: divine light amplification
+-- Move4: Divine Light Amplification (Full Supernova Starburst Domain Wave)
 function Light.Move4(ctx)
-	local root = ctx.root
-	if not root then
-		return
-	end
-	local origin = root.Position
-	local target = ctx.target
-	local CHARGE = 1.2
-	local flight = math.clamp((target - origin).Magnitude / 80, 0.35, 0.8)
+	local center = ctx.target or ctx.origin
+	local char = ctx.character
+	local r = Core.root(char)
+	local chargePos = r and (r.Position + Vector3.new(0, 3, 0)) or ctx.origin
 
-	-- 1. charge: light gathers around the caster and a glow grows
-	Core.converge(origin, 6, 40, CHARGE, BRIGHT)
-	local charge = Core.part(Enum.PartType.Ball, Vector3.one * 0.5, CFrame.new(origin), {
-		color = BRIGHT, material = Enum.Material.Neon, transparency = 0.2,
+	-- 1.2s Charge Convergence with Floating 3D Star
+	local chargeStar, sMesh = Core.meshPart(Core.Meshes.Star3D, Vector3.one * 3, CFrame.new(chargePos), {
+		color = WHITE,
+		material = Enum.Material.Neon,
+		transparency = 0.1,
+		spin = Vector3.new(4, 10, 4),
 	})
-	Core.runFor(CHARGE, function(_, t)
-		local k = Core.smooth(t / CHARGE)
-		charge.Size = Vector3.one * (0.5 + 4.5 * k)
-		charge.CFrame = CFrame.new(origin)
+	Core.converge(chargePos, 14, 30, 1.1, WHITE)
+
+	Core.runFor(1.2, function(_, t)
+		local scale = 1.0 + (t / 1.2) * 2.5
+		chargeStar.Size = Vector3.one * (3 * scale)
 	end, function()
-		charge:Destroy()
+		chargeStar:Destroy()
 
-		-- 2. release: big luminous projectile with layered rays along its path
-		local orb = Core.part(Enum.PartType.Ball, Vector3.one * 5, CFrame.new(origin), {
-			color = LAV, material = Enum.Material.Neon, transparency = 0.05,
+		-- Colossal Supernova Sphere: 254 radial beams + 358-stud flash + 160-stud shockwave disc
+		Core.supernovaSphere(center, SOLAR, 55, {
+			duration = 1.8,
+			coreColor = WHITE,
 		})
-		local dist = (target - origin).Magnitude
-		ray(origin, target, { color = LAV, width = 1.2, length = 8, speed = dist / flight, transparency = 0.5, rate = 60 })
-		ray(origin, target, { color = VIOLET, width = 2.4, length = 8, speed = dist / flight, transparency = 0.7, rate = 30 })
-		ray(origin, target, { color = WHITE, width = 0.4, length = 8, speed = dist / flight, transparency = 0.05, rate = 40 })
 
-		Core.runFor(flight, function(_, t)
-			orb.CFrame = CFrame.new(origin:Lerp(target, Core.smooth(t / flight)))
-		end, function()
-			-- 3. impact: colossal divine light domain, anime spike burst, staggered rings, radiating spokes
-			orb.Transparency = 1
-			local R = ctx.radius or 75
-			Core.animeDomain(target - Vector3.new(0, 2, 0), {
-				radius = R,
-				height = 45,
-				duration = 3.5,
-				fadeOut = 0.8,
-				color = VIOLET,
-				accentColor = LAV,
-				coreColor = WHITE,
-				pillarCount = 24,
-				pillarHeight = 40,
-			})
-			Core.animeSpikeBurst(target, {
-				color = LAV, coreColor = WHITE, outlineColor = Color3.fromRGB(30, 10, 45),
-				count = 14, radius = 12, minHeight = 12, maxHeight = 24, duration = 0.85,
-			})
-			Core.burst(target, 80, { color = LIGHT, texture = SPARK, speed = 40, light = 1, life = 0.5 })
-			for i = 1, 3 do
-				task.delay((i - 1) * 0.08, function()
-					Core.shockwave(Core.groundCF(target - Vector3.new(0, 2, 0)), {
-						color = i == 1 and WHITE or LAV, from = 2, to = R, duration = 0.6,
-					})
-				end)
-			end
-			for i = 1, 8 do
-				local a = (i - 1) / 8 * math.pi * 2
-				spoke(target, Vector3.new(math.cos(a), 0, math.sin(a)), 18, BRIGHT)
-			end
-			Core.cleanupLater({ orb }, 0.6)
-		end)
+		-- Multilateral laser barrages across the perimeter
+		local pts = Core.circle(center, 30, 8, 2)
+		for _, pt in ipairs(pts) do
+			Core.meshLaserCannon(center + Vector3.new(0, 15, 0), pt, SOLAR, { width = 2.5, duration = 0.5 })
+		end
+
+		Core.groundSlamCrater(center, SOLAR, 25, { duration = 3.0, rockCount = 35 })
 	end)
 end
 

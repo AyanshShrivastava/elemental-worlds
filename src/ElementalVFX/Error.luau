@@ -1,417 +1,359 @@
--- Error.lua — Error element (secret)
---   M1    Glitched Dash: dash with a glitch trail, afterimages and digital fragments
---   Move1 Chaotic Destruction: glitched frame on the right hand, then a dash and shatter
---   Move2 404 Not Found: eyes glow, a compressed dark-purple projectile, fragmented impact
---   Move3 Got Glitched: caster breaks into fragments and goes hidden for ctx.duration (default 5).
---         Returns a handle: handle:End() restores the character early.
---         Invisibility and immunity are server-enforced. This only hides it on this client.
---   Move4 Spatial Distortion: bubble, glitch portal and a glitched arena for ctx.duration
---         (default 7). Returns a handle: handle:End() closes it early. ctx.arenaCFrame sets
---         where the arena visual appears (default: high above the map). The server moves
---         players and returns them, even if this is interrupted.
---   Move5 Unparalleled: outlines, orbiting fragments and a distortion disc on each target
---         for ctx.duration (default 5). ctx.targets is a list of models (or ctx.targetCharacter).
---         The server prevents movement.
---
---   Error.Meter(character, pct): shows the Error Meter above the character's head (0..1).
---         Glitch effects increase as it rises. Meter value and gains are server-owned.
+--!strict
+-- Error.luau — Top-Tier Error Element VFX (Secret Element)
+-- Black Flash negative light emission (Light = -10), Axoie -100 singularity void,
+-- Hollow Purple furrow physics, and 3D sculpted Glitch meshes.
 
 local Core = require(script.Parent.Core)
 
-local BLACK = Color3.fromRGB(15, 15, 20)
-local PURPLE = Color3.fromRGB(60, 20, 90)
-local BLUE = Color3.fromRGB(40, 90, 255)
-local GLITCH = Core.seq({ PURPLE, BLUE })
-local SPARK = Core.Textures.Sparkle
+local BLACK = Color3.fromRGB(8, 6, 12)
+local DEEP_VIOLET = Color3.fromRGB(55, 10, 85)
+local NEON_MAGENTA = Color3.fromRGB(255, 20, 140)
+local CYAN_GLITCH = Color3.fromRGB(0, 255, 240)
+local GLITCH = Core.seq({ BLACK, DEEP_VIOLET, NEON_MAGENTA, CYAN_GLITCH })
+local VOID_SEQ = Core.seq({ Color3.fromRGB(0, 0, 0), DEEP_VIOLET, NEON_MAGENTA })
 
 local Error = {}
 
--- Dash with a glitch trail: ghosts with distorted outlines and digital fragments
-local function glitchDash(from, dir, dist, dur)
-	local rng = Random.new()
-	local lastGhost = 0
-	Core.runFor(dur, function(_, t)
-		local pos = from + dir * (dist * (t / dur))
-		if t - lastGhost >= 0.04 then
-			lastGhost = t
-			local g = Core.ghost(Core.lookCF(pos, dir), Vector3.new(2, 5, 1), PURPLE, 0.35)
-			local outline = Instance.new("SelectionBox")
-			outline.Adornee = g
-			outline.Color3 = BLUE
-			outline.LineThickness = 0.03
-			outline.Transparency = 0.2
-			outline.Parent = Core.Folder
-			task.delay(0.35, function()
-				outline:Destroy()
-			end)
-		end
-		if rng:NextNumber() < 0.35 then
-			Core.fragments(pos + Vector3.new(0, rng:NextNumber(-1, 2), 0), 2, {
-				color = BLUE, material = Enum.Material.Neon, minSize = 0.2, maxSize = 0.4,
-				speed = 6, life = 0.4, gravity = 5,
-			})
-		end
-	end, function()
-		Core.burst(from + dir * dist, 12, { color = GLITCH, texture = SPARK, speed = 12, light = 1, life = 0.3 })
-	end)
-end
-
--- Four-bar frame on a plane facing dir. Returns the parts.
-local function buildFrame(pos, dir, W, H)
-	local F = Core.lookCF(pos, dir)
-	local parts = {}
-	table.insert(parts, Core.part(Enum.PartType.Block, Vector3.new(W, H, 0.1), F, {
-		color = PURPLE, material = Enum.Material.Glass, transparency = 0.7,
-	}))
-	local bars = {
-		{ size = Vector3.new(W, 0.15, 0.15), off = Vector3.new(0, H / 2, 0) },
-		{ size = Vector3.new(W, 0.15, 0.15), off = Vector3.new(0, -H / 2, 0) },
-		{ size = Vector3.new(0.15, H, 0.15), off = Vector3.new(W / 2, 0, 0) },
-		{ size = Vector3.new(0.15, H, 0.15), off = Vector3.new(-W / 2, 0, 0) },
-	}
-	for _, b in ipairs(bars) do
-		table.insert(parts, Core.part(Enum.PartType.Block, b.size, F * CFrame.new(b.off), {
-			color = BLUE, material = Enum.Material.Neon, transparency = 0.1,
-		}))
-	end
-	return parts
-end
-
--- M1: glitched dash
+-- M1: Glitched Black Flash Dash (LightEmission = -10 negative energy cut + GlitchBall)
 function Error.M1(ctx)
-	glitchDash(ctx.origin, ctx.direction, ctx.dashDistance or 18, 0.3)
+	local char = ctx.character
+	local r = Core.root(char)
+	if not r then return end
+	local dir = ctx.direction
+	local start = r.Position
+	local target = start + dir * 18
+
+	-- Ghost afterimage with chromatic distortion
+	Core.afterimage(char, { color = NEON_MAGENTA, life = 0.35 })
+
+	-- 3D Sculpted GlitchBall Mesh (`rbxassetid://6553021063`)
+	local glitchPart, mesh = Core.meshPart(Core.Meshes.GlitchBall, Vector3.one * 4, Core.lookCF(target, dir), {
+		color = NEON_MAGENTA,
+		material = Enum.Material.Neon,
+		transparency = 0.2,
+		spin = Vector3.new(12, 18, 6),
+	})
+
+	-- Black Flash Negative Emitters (LightEmission = -10)
+	local anchor = Core.anchor(target)
+	local att = Core.attach(anchor)
+	local bf1 = Core.emitter(att, {
+		texture = Core.PinnacleTextures.BlackFlash1,
+		color = ColorSequence.new(BLACK),
+		light = -10,
+		rate = 0,
+		lifetime = NumberRange.new(0.2, 0.4),
+		speed = NumberRange.new(2, 6),
+		size = NumberSequence.new(6, 12),
+		orientation = Enum.ParticleOrientation.VelocityParallel,
+		zOffset = 18,
+	})
+	local bf2 = Core.emitter(att, {
+		texture = Core.PinnacleTextures.BlackFlash2,
+		color = ColorSequence.new(NEON_MAGENTA),
+		light = -10,
+		rate = 0,
+		lifetime = NumberRange.new(0.15, 0.3),
+		speed = NumberRange.new(1, 4),
+		size = NumberSequence.new(5, 10),
+		orientation = Enum.ParticleOrientation.VelocityParallel,
+		zOffset = 19,
+	})
+
+	bf1:Emit(4)
+	bf2:Emit(4)
+
+	-- Micro-cleave cut
+	Core.dismantleCleave(Core.lookCF(target, dir), GLITCH, 10)
+
+	Core.runFor(0.35, function(_, t)
+		glitchPart.Transparency = 0.2 + 0.8 * (t / 0.35)
+	end, function()
+		glitchPart:Destroy()
+		Core.cleanupLater({ anchor }, 0.5)
+	end)
 end
 
--- Move1: glitched frame appears around the right hand, then the dash and shatter
+-- Move1: Chaotic Destruction / Null Zone (Axoie -100 Light Singularity Void)
 function Error.Move1(ctx)
-	local hand = Core.getPart(ctx.character, { "RightHand", "Right Arm" })
+	local target = ctx.target
 	local dir = ctx.direction
-	local dist = ctx.dashDistance or 22
-	local frame = buildFrame(hand and hand.Position or ctx.origin, dir, 3, 4)
-	Core.flicker(frame, 0.35, 0.4)
 
-	Core.runFor(0.35, nil, function()
-		Core.destroyAll(frame)
-		glitchDash(ctx.origin, dir, dist, 0.35)
-		task.delay(0.35, function()
-			local e = ctx.origin + dir * dist
-			Core.animeSpikeBurst(e, {
-				color = PURPLE, coreColor = BLUE, outlineColor = BLACK,
-				count = 9, radius = 7, minHeight = 7, maxHeight = 15, duration = 0.55,
-			})
-			Core.fragments(e, 16, { color = BLUE, material = Enum.Material.Neon, speed = 28, life = 0.7, minSize = 0.3, maxSize = 0.9 })
-			Core.fragments(e, 10, { color = PURPLE, material = Enum.Material.Neon, speed = 22, life = 0.7 })
-			Core.shockwave(Core.axisCF(e, dir), { color = BLUE, from = 1, to = 10, duration = 0.4 })
-		end)
-	end)
-end
+	-- Spawn the Axoie Negative Singularity (Light = -100 space absorption + GravityBallShockwave)
+	local singularity = Core.negativeSingularity(target, 10, { duration = 1.2 })
 
--- Move2: 404 Not Found projectile
-function Error.Move2(ctx)
-	local character = ctx.character
-	local head = character:FindFirstChild("Head")
-	local lh = Core.getPart(character, { "LeftHand", "Left Arm" })
-	local rh = Core.getPart(character, { "RightHand", "Right Arm" })
+	task.delay(0.6, function()
+		-- Violent collapse cleave & ground fracture
+		Core.dismantleCleave(Core.lookCF(target, dir), GLITCH, 14)
+		Core.groundSlamCrater(target, GLITCH, 16, { duration = 2.0, rockCount = 22 })
 
-	-- 1. eyes glow for a moment, following the head
-	local eyes = {}
-	for i = 1, 2 do
-		local eye = Core.part(Enum.PartType.Ball, Vector3.one * 0.35, CFrame.new(ctx.origin), {
-			color = BLUE, material = Enum.Material.Neon, transparency = 0,
+		-- Negative Divergent Ring
+		local ringAnchor = Core.anchor(target)
+		local ring = Core.emitter(Core.attach(ringAnchor), {
+			texture = Core.PinnacleTextures.DivergentRing,
+			color = VOID_SEQ,
+			light = -20,
+			rate = 0,
+			lifetime = NumberRange.new(0.25, 0.4),
+			speed = NumberRange.new(0.1, 0.5),
+			size = NumberSequence.new(3, 16),
+			orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+			zOffset = 12,
 		})
-		local light = Instance.new("PointLight")
-		light.Color = BLUE
-		light.Range = 6
-		light.Brightness = 1.5
-		light.Parent = eye
-		table.insert(eyes, eye)
-	end
-	Core.runFor(0.6, function()
-		if head and head.Parent then
-			local cf = head.CFrame
-			eyes[1].CFrame = cf * CFrame.new(-0.4, 0.1, -0.5)
-			eyes[2].CFrame = cf * CFrame.new(0.4, 0.1, -0.5)
-		end
-	end, function()
-		Core.cleanupLater(eyes, 0.2)
+		ring:Emit(2)
+		Core.cleanupLater({ ringAnchor }, 0.6)
 	end)
+end
 
-	-- 2. glitch energy between the hands compresses into a projectile
-	local mid = ((lh and lh.Position or ctx.origin) + (rh and rh.Position or ctx.origin)) / 2
-	local orb = Core.part(Enum.PartType.Ball, Vector3.one * 3, CFrame.new(mid), {
-		color = PURPLE, material = Enum.Material.Neon, transparency = 0.1,
-	})
-	Core.flicker({ orb }, 0.6, 0.5)
+-- Move2: 404 Not Found / Byte Blast (Hollow Purple Void Sphere Furrow)
+function Error.Move2(ctx)
+	local origin = ctx.origin + ctx.direction * 3
+	local target = ctx.target
+	local dir = (target - origin).Unit
+	local dist = (target - origin).Magnitude
+	local dur = math.max(dist / 40, 0.4)
 
-	Core.runFor(0.6, function(_, t)
-		orb.Size = Vector3.one * (3 - 1.8 * Core.smooth(t / 0.6))
-	end, function()
-		-- 3. fly to the target
-		local target = ctx.target
-		local flight = math.clamp((target - mid).Magnitude / 50, 0.2, 1.2)
-		Core.runFor(flight, function(_, t)
-			orb.CFrame = CFrame.new(mid:Lerp(target, t / flight))
-			-- 4. impact: anime glitch spike burst, fragments, AoE ring, dark shell expanding out
-			orb.Transparency = 1
-			Core.animeSpikeBurst(target, {
-				color = PURPLE, coreColor = BLUE, outlineColor = BLACK,
-				count = 11, radius = 9, minHeight = 9, maxHeight = 18, duration = 0.65,
-			})
-			Core.fragments(target, 22, { color = PURPLE, material = Enum.Material.Neon, speed = 30, life = 0.8, minSize = 0.3, maxSize = 1.1 })
-			Core.fragments(target, 14, { color = BLUE, material = Enum.Material.Neon, speed = 24, life = 0.7 })
-			local R = ctx.radius or 14
-			Core.shockwave(Core.groundCF(target - Vector3.new(0, 2.5, 0)), { color = BLUE, from = 2, to = R * 2, duration = 0.5 })
-			local shell = Core.part(Enum.PartType.Ball, Vector3.one, CFrame.new(target), {
-				color = BLACK, material = Enum.Material.Glass, transparency = 0.5,
-			})
-			Core.runFor(0.45, function(_, t)
-				local k = t / 0.45
-				shell.Size = Vector3.one * (2 + (R * 2 - 2) * Core.smooth(k))
-				shell.Transparency = 0.5 + 0.5 * k
-			end, function()
-				shell:Destroy()
-			end)
-			Core.cleanupLater({ orb }, 0.5)
+	-- Dual Colliding Charges (Cyan Glitch + Magenta Void)
+	Core.converge(origin, 8, 25, 0.35, CYAN_GLITCH)
+	Core.converge(origin, 8, 25, 0.35, NEON_MAGENTA)
+
+	task.delay(0.3, function()
+		-- 3D Sculpted FancySphere Void Core
+		local voidBall, vMesh = Core.meshPart(Core.Meshes.FancySphere, Vector3.one * 6, Core.lookCF(origin, dir), {
+			color = BLACK,
+			material = Enum.Material.Neon,
+			transparency = 0.05,
+			spin = Vector3.new(10, 20, 10),
+		})
+
+		-- Negative Light Emission Void Aura (Light = -30)
+		local att = Core.attach(voidBall)
+		local voidE = Core.emitter(att, {
+			texture = Core.PinnacleTextures.AxoieVoid30,
+			color = VOID_SEQ,
+			light = -30,
+			rate = 50,
+			lifetime = NumberRange.new(0.25, 0.45),
+			speed = NumberRange.new(1, 4),
+			size = NumberSequence.new(8, 1),
+			zOffset = 18,
+		})
+
+		-- Black Flash Energy Lightning
+		local bfLightning = Core.emitter(att, {
+			texture = Core.PinnacleTextures.BlackFlash1,
+			color = ColorSequence.new(NEON_MAGENTA),
+			light = -10,
+			rate = 35,
+			lifetime = NumberRange.new(0.15, 0.25),
+			speed = NumberRange.new(2, 6),
+			size = NumberSequence.new(7, 1),
+			orientation = Enum.ParticleOrientation.VelocityParallel,
+			zOffset = 19,
+		})
+
+		-- Furrow trench across ground
+		local furrowThread = task.spawn(function()
+			while voidBall.Parent do
+				task.wait(0.08)
+				if not voidBall.Parent then break end
+				Core.groundSlamCrater(voidBall.Position, GLITCH, 8, { duration = 1.0, rockCount = 6, useMesh = false })
+			end
+		end)
+
+		Core.runFor(dur, function(_, t)
+			local k = math.clamp(t / dur, 0, 1)
+			voidBall.Position = origin:Lerp(target, k)
+		end, function()
+			task.cancel(furrowThread)
+			voidE.Enabled = false
+			bfLightning.Enabled = false
+			voidBall:Destroy()
+
+			-- Final Cataclysmic Annihilation Burst
+			Core.supernovaSphere(target, GLITCH, 35, { duration = 1.2 })
+			Core.groundSlamCrater(target, GLITCH, 20, { duration = 2.5, rockCount = 30 })
 		end)
 	end)
 end
 
--- Move3: got glitched (hidden + fragments). Returns a handle with :End().
+-- Move3: Got Glitched (Digital Fragmentation Dissolve + Handle)
 function Error.Move3(ctx)
-	local root = ctx.root
-	if not root then
-		return nil
-	end
-	local life = ctx.duration or 5
-	local fpos = root.Position - Vector3.new(0, 2.8, 0)
+	local char = ctx.character
+	local r = Core.root(char)
+	local duration = ctx.duration or 5
+	if not char or not r then return { End = function() end } end
 
-	-- break into fragments
-	local hidden = {}
-	for _, d in ipairs(ctx.character:GetDescendants()) do
-		if d:IsA("BasePart") then
-			table.insert(hidden, d)
-			Core.fragments(d.Position, 1, {
-				color = d.Name == "Head" and BLUE or PURPLE,
-				material = Enum.Material.Neon, speed = 14, life = 0.8, minSize = 0.2, maxSize = 0.6,
-			})
+	local hiddenParts = {}
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:IsA("BasePart") and d.Transparency < 1 then
+			table.insert(hiddenParts, { part = d, orig = d.Transparency })
+			d.Transparency = 1
 		end
 	end
-	for _, p in ipairs(hidden) do
-		p.LocalTransparencyModifier = 1
-	end
 
-	-- a spatial distortion remains where the caster vanished
-	local field = Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 6, 6), Core.groundCF(fpos), {
-		color = PURPLE, material = Enum.Material.Neon, transparency = 0.5,
+	-- Digital Dissolve Burst at origin
+	Core.burst(r.Position, 30, {
+		texture = Core.PinnacleTextures.BlackFlash2,
+		color = GLITCH,
+		speed = 22,
+		life = 0.6,
+		light = -5,
 	})
 
-	local lastRing = 0
-	local function restore()
-		for _, p in ipairs(hidden) do
-			if p.Parent then
-				p.LocalTransparencyModifier = 0
+	local isGlitched = true
+	local handle = {}
+
+	function handle:End()
+		if not isGlitched then return end
+		isGlitched = false
+		for _, item in ipairs(hiddenParts) do
+			if item.part.Parent then
+				item.part.Transparency = item.orig
 			end
 		end
-		field.Transparency = 1
-		Core.cleanupLater({ field }, 0.4)
+		Core.burst(r.Position, 25, {
+			texture = Core.PinnacleTextures.PopStar,
+			color = GLITCH,
+			speed = 20,
+			life = 0.4,
+		})
 	end
 
-	local finish = Core.runFor(life, function(_, t)
-		if t - lastRing >= 0.8 then
-			lastRing = t
-			Core.shockwave(Core.groundCF(fpos), { color = BLUE, from = 1, to = 7, duration = 0.6 })
-		end
-	end, restore)
+	task.delay(duration, function()
+		if isGlitched then handle:End() end
+	end)
 
-	return {
-		End = function()
-			finish()
-		end,
-	}
+	return handle
 end
 
--- Move4: colossal spatial distortion glitched domain (80 studs radius). Returns a handle with :End().
+-- Move4: Spatial Distortion (Glitch Domain Arena with GlitchWind + Handle)
 function Error.Move4(ctx)
-	local life = ctx.duration or 7
-	local origin = ctx.origin
-	local dir = ctx.direction
-	local R = ctx.radius or 80
-	local center = ctx.target or (origin - Vector3.new(0, 3, 0))
+	local center = ctx.arenaCFrame and ctx.arenaCFrame.Position or ctx.origin
+	local duration = ctx.duration or 7
+	local R = 45
 
-	-- 1. distortion bubble expands around the caster, fragments fly out
-	local bubble = Core.part(Enum.PartType.Ball, Vector3.one * 4, CFrame.new(origin), {
-		color = PURPLE, material = Enum.Material.Glass, transparency = 0.4,
-	})
-	Core.fragments(origin, 30, { color = BLUE, material = Enum.Material.Neon, speed = 36, life = 1.0 })
-	Core.runFor(1.2, function(_, t)
-		if t < 0.6 then
-			bubble.Size = Vector3.one * (4 + (R * 1.5) * Core.smooth(t / 0.6))
-		else
-			bubble.Transparency = 0.4 + 0.6 * ((t - 0.6) / 0.6)
-		end
-		bubble.CFrame = CFrame.new(origin)
-	end, function()
-		bubble:Destroy()
-	end)
+	local domainModel = Instance.new("Model")
+	domainModel.Name = "SpatialDistortionVFX"
+	domainModel.Parent = Core.Folder
 
-	-- 2. glitch portal in front of the caster, flickering
-	local portal = buildFrame(origin + dir * 6, dir, 8, 12)
-	local portalFlicker = Core.flicker(portal, life, 0.25)
-
-	-- 3. Colossal Grounded Anime Domain (80 studs radius)
-	Core.animeDomain(center, {
-		radius = R,
-		height = 50,
-		duration = life,
-		fadeOut = 1.0,
-		color = PURPLE,
-		accentColor = BLUE,
-		coreColor = Color3.fromRGB(0, 255, 255),
-		pillarCount = 32,
-		pillarHeight = 40,
+	-- 1. 3D Sculpted GlitchWind Mesh (`rbxassetid://6553151264`)
+	local windPart, m = Core.meshPart(Core.Meshes.GlitchWind, Vector3.one * (R * 1.6), CFrame.new(center), {
+		color = DEEP_VIOLET,
+		material = Enum.Material.Neon,
+		transparency = 0.4,
+		spin = Vector3.new(4, 8, 4),
+		parent = domainModel,
 	})
 
-	-- 4. Cybernetic grid floor lines across the entire 160-stud arena
-	local gridParts = {}
-	local step = 16
-	for i = -4, 4 do
-		local off = i * step
-		table.insert(gridParts, Core.part(Enum.PartType.Block, Vector3.new(R * 2, 0.15, 0.4),
-			CFrame.new(center + Vector3.new(0, 0.2, off)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
-		table.insert(gridParts, Core.part(Enum.PartType.Block, Vector3.new(0.4, 0.15, R * 2),
-			CFrame.new(center + Vector3.new(off, 0.2, 0)), { color = BLUE, material = Enum.Material.Neon, transparency = 0.3 }))
+	-- 2. Inverted Black Hole Singularities at Perimeter
+	local pts = Core.circle(center, R * 0.75, 6, 2)
+	for _, pt in ipairs(pts) do
+		Core.negativeSingularity(pt, 5, { duration = duration })
 	end
-	local gridFlicker = Core.flicker(gridParts, life, 0.3)
 
-	local finish = Core.runFor(life, function(_, t)
-		if t > life - 0.8 then
-			local k = (t - (life - 0.8)) / 0.8
-			Core.setTransparency(gridParts, 0.3 + 0.7 * k)
-			Core.setTransparency(portal, 0.1 + 0.9 * k)
-		end
-	end, function()
-		portalFlicker()
-		gridFlicker()
-		Core.destroyAll(portal)
-		Core.destroyAll(gridParts)
+	-- 3. Inverted Flat Floor Ring (Light = -20)
+	local floorAnchor = Core.anchor(center + Vector3.new(0, 0.1, 0))
+	local floorRing = Core.emitter(Core.attach(floorAnchor), {
+		texture = Core.PinnacleTextures.DivergentRing,
+		color = VOID_SEQ,
+		light = -20,
+		rate = 0,
+		lifetime = NumberRange.new(duration, duration),
+		size = NumberSequence.new(R * 2.2),
+		orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		direction = Enum.NormalId.Top,
+	})
+	floorRing:Emit(1)
+	floorAnchor.Parent = domainModel
+
+	local isDomainActive = true
+	local handle = {}
+
+	function handle:End()
+		if not isDomainActive then return end
+		isDomainActive = false
+		Core.supernovaSphere(center, GLITCH, R * 0.9, { duration = 0.8 })
+		task.delay(0.4, function()
+			domainModel:Destroy()
+		end)
+	end
+
+	task.delay(duration, function()
+		if isDomainActive then handle:End() end
 	end)
 
-	return {
-		End = function()
-			finish()
-		end,
-	}
+	return handle
 end
 
--- Move5: unparalleled. Outlines, orbiting fragments and a distortion disc on each target.
+-- Move5: Unparalleled (Reality Rupture on Targets)
 function Error.Move5(ctx)
-	local life = ctx.duration or 5
 	local targets = ctx.targets or { ctx.targetCharacter }
-	local rng = Random.new()
+	local duration = ctx.duration or 5
 
-	local parts, boxes, orbiters = {}, {}, {}
-	for _, model in ipairs(targets) do
-		local root = Core.root(model)
-		if root then
-			local box = Instance.new("BoxHandleAdornment")
-			box.Adornee = root
-			box.Size = model:GetExtentsSize() + Vector3.new(0.6, 0.6, 0.6)
-			box.Color3 = PURPLE
-			box.Transparency = 0.6
-			box.ZIndex = 1
-			box.Parent = Core.Folder
-			table.insert(boxes, box)
+	for _, tgt in ipairs(targets) do
+		if tgt then
+			local r = Core.root(tgt)
+			if r then
+				local p = r.Position
+				-- Negative Singularity on target
+				Core.negativeSingularity(p, 6, { duration = duration })
 
-			for i = 1, 6 do
-				local f = Core.part(Enum.PartType.Block, Vector3.one * 0.45, CFrame.new(root.Position), {
-					color = BLUE, material = Enum.Material.Neon, transparency = 0.1,
+				-- Black Flash Lightning Cage
+				local anchor = Core.anchor(p)
+				local att = Core.attach(anchor)
+				local cage = Core.emitter(att, {
+					texture = Core.PinnacleTextures.BlackFlash1,
+					color = ColorSequence.new(NEON_MAGENTA),
+					light = -10,
+					rate = 25,
+					lifetime = NumberRange.new(0.2, 0.4),
+					speed = NumberRange.new(2, 6),
+					size = NumberSequence.new(5, 8),
+					orientation = Enum.ParticleOrientation.VelocityParallel,
 				})
-				table.insert(orbiters, { part = f, root = root, idx = i })
+
+				task.delay(duration, function()
+					cage.Enabled = false
+					Core.dismantleCleave(Core.lookCF(p, Vector3.new(0, 1, 0)), GLITCH, 12)
+					Core.groundSlamCrater(p, GLITCH, 12, { duration = 1.5, rockCount = 14 })
+					Core.cleanupLater({ anchor }, 0.5)
+				end)
 			end
-
-			table.insert(parts, Core.part(Enum.PartType.Cylinder, Vector3.new(0.15, 6, 6), Core.groundCF(root.Position - Vector3.new(0, 2.8, 0)), {
-				color = PURPLE, material = Enum.Material.Neon, transparency = 0.6,
-			}))
-
-			Core.fragments(root.Position, 8, { color = BLUE, material = Enum.Material.Neon, speed = 12, life = 0.6 })
 		end
 	end
-
-	local spin = 0
-	Core.runFor(life, function(dt, t)
-		spin += dt
-		for _, o in ipairs(orbiters) do
-			if o.root.Parent then
-				local a = spin * 4 + o.idx * (math.pi * 2 / 6)
-				o.part.CFrame = CFrame.new(o.root.Position + Vector3.new(math.cos(a) * 3.2, math.sin(a * 2) * 1.2, math.sin(a) * 3.2))
-			end
-		end
-		-- glitch: occasionally jump the outline transparency
-		if rng:NextNumber() < 0.2 then
-			for _, b in ipairs(boxes) do
-				b.Transparency = rng:NextNumber(0.3, 0.8)
-			end
-		end
-	end, function()
-		for _, o in ipairs(orbiters) do
-			o.part:Destroy()
-		end
-		Core.destroyAll(parts)
-		Core.destroyAll(boxes)
-	end)
 end
 
--- Error Meter: a small bar above the character's head. pct is 0..1.
--- Call whenever the meter changes. Glitch effects grow as it rises.
-local meters = {}
-
+-- Error Meter Display above character head
 function Error.Meter(character, pct)
-	pct = math.clamp(pct or 0, 0, 1)
 	local head = character and character:FindFirstChild("Head")
-	if not head then
-		return
-	end
-
-	local m = meters[character]
-	if not m then
-		local gui = Instance.new("BillboardGui")
-		gui.Size = UDim2.fromOffset(140, 16)
-		gui.StudsOffset = Vector3.new(0, 3.2, 0)
-		gui.AlwaysOnTop = true
-		gui.Adornee = head
-		gui.Parent = head
+	if not head then return end
+	local bb = head:FindFirstChild("ErrorMeterBB")
+	if not bb then
+		local b = Instance.new("BillboardGui")
+		b.Name = "ErrorMeterBB"
+		b.Size = UDim2.new(0, 130, 0, 16)
+		b.StudsOffset = Vector3.new(0, 2.5, 0)
+		b.AlwaysOnTop = true
+		b.Parent = head
 
 		local bg = Instance.new("Frame")
-		bg.Size = UDim2.fromScale(1, 1)
-		bg.BackgroundColor3 = BLACK
+		bg.Size = UDim2.new(1, 0, 1, 0)
+		bg.BackgroundColor3 = Color3.fromRGB(15, 8, 22)
 		bg.BorderSizePixel = 0
-		bg.Parent = gui
+		bg.Parent = b
 
 		local fill = Instance.new("Frame")
-		fill.Size = UDim2.fromScale(0, 1)
-		fill.BackgroundColor3 = BLUE
+		fill.Name = "Fill"
+		fill.Size = UDim2.new(pct, 0, 1, 0)
+		fill.BackgroundColor3 = NEON_MAGENTA
 		fill.BorderSizePixel = 0
 		fill.Parent = bg
-
-		m = { gui = gui, fill = fill }
-		meters[character] = m
-		character.Destroying:Connect(function()
-			meters[character] = nil
-		end)
-	end
-
-	m.fill.Size = UDim2.fromScale(pct, 1)
-	m.fill.BackgroundColor3 = PURPLE:Lerp(BLUE, pct)
-	if pct >= 0.5 then
-		local jitter = (pct - 0.5) * 2
-		m.fill.Position = UDim2.fromScale(math.random() * jitter * 0.02 - jitter * 0.01, 0)
-		if math.random() < pct * 0.4 then
-			Core.fragments(head.Position + Vector3.new(0, 2.5, 0), 2, {
-				color = BLUE, material = Enum.Material.Neon, speed = 6, life = 0.5, minSize = 0.2, maxSize = 0.4,
-			})
-		end
 	else
-		m.fill.Position = UDim2.fromScale(0, 0)
+		local fill = bb:FindFirstChild("Fill", true) :: Frame?
+		if fill then
+			fill.Size = UDim2.new(math.clamp(pct, 0, 1), 0, 1, 0)
+		end
 	end
 end
 

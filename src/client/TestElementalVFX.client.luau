@@ -41,9 +41,45 @@ end
 
 local VFX = require(DispatcherMod)
 
+-- Safe UIController hook
+local UIController = nil
+pcall(function()
+    local sp = game:GetService("StarterPlayer")
+    local sps = sp:FindFirstChild("StarterPlayerScripts")
+    if sps then
+        local ewClient = sps:FindFirstChild("ElementalWorldsClient")
+        if ewClient then
+            local controllers = ewClient:FindFirstChild("Controllers")
+            if controllers then
+                local uiMod = controllers:FindFirstChild("UIController")
+                if uiMod then
+                    UIController = require(uiMod)
+                end
+            end
+        end
+    end
+end)
+
 local ELEMENTS = { "Fire", "Aqua", "Earth", "Light", "Wind", "Error", "Time" }
 local currentElementIndex = 1
 local activeHandles = {}
+local comboCount = 0
+
+-- Initialize Master HUD if available
+if UIController then
+    task.spawn(function()
+        task.wait(0.2)
+        UIController.CreateHUD()
+        UIController.UpdateStats({
+            Element = "Fire",
+            Level = 100,
+            MaxHealth = 1000,
+            Charges = 500,
+            ErrorMeter = 0,
+        })
+        UIController.SetHealth(1000, 1000)
+    end)
+end
 
 local function GetContext()
     local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -65,6 +101,17 @@ local function PlayMove(element: string, move: string)
 
     print(string.format("[VFX Test] Playing %s %s...", element, move))
     local handle = VFX.Play(element, move, ctx)
+
+    -- Trigger HUD feedback
+    if UIController then
+        comboCount = comboCount + 1
+        UIController.RegisterComboHit(comboCount)
+        local slotMap = { M1 = "M1", Move1 = "1", Move2 = "2", Move3 = "3", Move4 = "4", Move5 = "5" }
+        local slot = slotMap[move]
+        if slot then
+            UIController.StartCooldown(slot, slot == "M1" and 1.0 or 4.0)
+        end
+    end
 
     if handle then
         print(string.format("[VFX Test] %s %s returned active handle.", element, move))
@@ -137,6 +184,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         currentElementIndex = (currentElementIndex % #ELEMENTS) + 1
         local selected = ELEMENTS[currentElementIndex]
         print(string.format("[VFX Test] Selected Element: %s (Press M/1/2/3/4/5 or P for Showcase)", selected))
+        if UIController then
+            UIController.UpdateStats({
+                Element = selected,
+                Level = 100,
+                MaxHealth = 1000,
+                Charges = 500,
+                ErrorMeter = (selected == "Error" and 75 or 0),
+            })
+            UIController.ShowAnnouncement("Switched Element: " .. selected)
+        end
 
     elseif input.KeyCode == Enum.KeyCode.M or input.KeyCode == Enum.KeyCode.F then
         PlayMove(ELEMENTS[currentElementIndex], "M1")
